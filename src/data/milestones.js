@@ -1,0 +1,21 @@
+// Hitos del álbum. check(s) recibe el estado; se comprueba una vez al día y tras cada acción.
+
+export const MILESTONES = [
+  { id: 'primer_dia', name: 'Primera página', text: 'Abriste el cuaderno y la finca te miró.', check: (s) => s.day >= 2 },
+  { id: 'primer_voluntario', name: 'Primer voluntario', text: 'Alguien vino de lejos a cambio de cama y comida.', check: (s) => s.stats.volunteersArrived >= 1 },
+  { id: 'primera_venta', name: 'Primera venta', text: 'Las primeras monedas de la finca en mucho tiempo.', check: (s) => s.stats.sales >= 1 },
+  { id: 'primer_mercado', name: 'Día de mercado', text: 'Un puesto en el mercado de Fuente Obejuna.', check: (s) => s.stats.marketSales >= 1 },
+  { id: 'huerta_viva', name: 'La huerta, viva', text: 'Los bancales vuelven a dar de comer.', check: (s) => s.zones.huerta.unlocked && s.stats.produced.hortalizas >= 10 },
+  { id: 'cortijo_encalado', name: 'Cortijo encalado', text: 'Blanco como el pueblo de enfrente.', check: (s) => s.zones.cortijo.cons >= 85 },
+  { id: 'recuerdos5', name: 'Cinco recuerdos', text: 'La casa empieza a contarte cosas.', check: (s) => s.items.length >= 5 },
+  { id: 'primera_miel', name: 'Primera miel', text: 'Sabe a romero y a encina.', check: (s) => s.stats.produced.miel >= 1 },
+  { id: 'primera_montanera', name: 'Primera montanera', text: 'Los cerdos han engordado a bellota bajo las encinas.', check: (s) => s.stats.montaneras >= 1 },
+  { id: 'primer_huesped', name: 'Primer huésped', text: 'Alguien pagó por dormir aquí. Y quiere volver.', check: (s) => s.stats.guests >= 1 },
+  { id: 'piano_restaurado', name: 'Piano restaurado', text: 'Ochenta y ocho teclas. Todas dicen algo.', check: (s) => s.zones.piano.cons >= 80 },
+  { id: 'primer_concierto', name: 'Primer concierto', text: 'Sonó el piano al atardecer y nadie habló.', check: (s) => s.stats.concerts >= 1 },
+  { id: 'todos_a_una', name: 'Todos a una', text: 'Los vecinos de Ojuelos vinieron sin que nadie los llamara.', check: (s) => !!s.flags.todosAUna },
+  { id: 'todas_zonas', name: 'La finca entera', text: 'Todas las zonas vuelven a estar dibujadas en el plano.', check: (s) => Object.values(s.zones).every((z) => z.unlocked) },
+  { id: 'un_ano', name: 'Un año entero', text: 'Cuatro estaciones y la finca sigue despierta.', check: (s) => s.day > s.cfg.daysPerSeason * 4 },
+  { id: 'sin_deudas', name: 'Cuentas claras', text: 'Más de mil euros en la lata de galletas.', check: (s) => s.money >= 1000 },
+  { id: 'misterio', name: 'El tema completo', text: 'El tema del pianista ha sonado entero.', check: (s) => !!s.flags.revealed },
+];

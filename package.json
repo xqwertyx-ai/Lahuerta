@@ -1,0 +1,14 @@
+{
+  "name": "la-huerta-del-pianista",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gestor de recursos casual y poético de una finca en Ojuelos Bajos (Fuente Obejuna)",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "test": "node --test tests/unit/*.test.mjs",
+    "build": "node tools/build.mjs",
+    "balance": "node tools/balance.mjs",
+    "e2e": "python3 tests/e2e/smoke.py"
+  }
+}

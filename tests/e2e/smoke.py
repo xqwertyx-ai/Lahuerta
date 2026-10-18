@@ -1,0 +1,187 @@
+"""Prueba de humo e2e con Playwright.
+
+Uso: python3 tests/e2e/smoke.py [url] [carpeta_capturas]
+Si no se pasa url, levanta tools/serve.mjs en un puerto libre y prueba index.html y dist/index.html.
+Comprueba: arranca sin errores, portada, introducción, plano, tareas, recuerdos, eventos, cuaderno
+(todas las pestañas), velocidades, guardado y carga, móvil en vertical y horizontal, y 60 FPS.
+"""
+import os, sys, time, json, socket, subprocess
+from playwright.sync_api import sync_playwright
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SHOTS = sys.argv[2] if len(sys.argv) > 2 else os.path.join(ROOT, 'tests', 'e2e', 'shots')
+os.makedirs(SHOTS, exist_ok=True)
+
+results = []
+def check(name, cond, extra=''):
+    results.append((name, bool(cond)))
+    print(('  ✔ ' if cond else '  ✘ ') + name + (f'  [{extra}]' if extra else ''))
+
+def free_port():
+    s = socket.socket(); s.bind(('127.0.0.1', 0)); p = s.getsockname()[1]; s.close(); return p
+
+def dismiss(pg, shot=None):
+    for _ in range(8):
+        if not pg.locator('.modal .opts .btn').count():
+            return
+        if shot:
+            pg.screenshot(path=shot); shot = None
+        btns = pg.locator('.modal .opts .btn:not([disabled])')
+        if btns.count():
+            btns.first.click()
+        time.sleep(0.35)
+
+def tap_zone(pg, zx, zy):
+    pg.evaluate(f"""() => {{ const g = window.__huerta; g.onTap(({zx} - g.cam.x) * g.cam.zoom, ({zy} - g.cam.y) * g.cam.zoom); }}""")
+
+def run(url, tag, browser):
+    print(f'\n▶ {tag}: {url}')
+    errors = []
+    ctx = browser.new_context(viewport={'width': 1280, 'height': 800}, has_touch=True)
+    pg = ctx.new_page()
+    pg.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
+    pg.on('pageerror', lambda e: errors.append('pageerror: ' + str(e)))
+    pg.goto(url)
+    pg.wait_for_selector('.screen .btn', timeout=20000)
+    check('portada visible', pg.locator('text=La Huerta del Pianista').count() > 0)
+    pg.screenshot(path=f'{SHOTS}/{tag}-01-portada.png')
+    pg.click('text=Nuevo cuaderno')
+    pg.wait_for_selector('text=saltar', timeout=5000)
+    pg.screenshot(path=f'{SHOTS}/{tag}-02-intro.png')
+    pg.click('text=saltar')
+    pg.wait_for_selector('.hud', timeout=10000)
+    time.sleep(1)
+    st = pg.evaluate("() => ({ day: __huerta.s.day, zones: Object.keys(__huerta.s.zones).length })")
+    check('partida creada con 12 zonas', st['zones'] == 12)
+    pg.screenshot(path=f'{SHOTS}/{tag}-03-plano.png')
+
+    # Tocar el cortijo y encalar
+    tap_zone(pg, 775, 650)
+    pg.wait_for_selector('.sheet.open', timeout=3000)
+    check('panel de zona abierto', pg.locator('.sheet.open h2').inner_text().strip() == 'El cortijo')
+    c0 = pg.evaluate("() => __huerta.s.zones.cortijo.cons")
+    pg.locator('.sheet .task').filter(has_text='Encalar').locator('button').click()
+    time.sleep(0.4)
+    c1 = pg.evaluate("() => __huerta.s.zones.cortijo.cons")
+    check('encalar sube la conservación', c1 > c0 + 10, f'{c0:.1f} → {c1:.1f}')
+    # Debe aparecer el recuerdo de la firma de Transi
+    pg.wait_for_selector('.modal', timeout=3000)
+    check('aparece un recuerdo (la firma de los cuadros)', 'Transi' in pg.locator('.modal').inner_text())
+    pg.screenshot(path=f'{SHOTS}/{tag}-04-recuerdo.png')
+    pg.click('text=Guardarlo en el cuaderno')
+    time.sleep(0.3)
+    dismiss(pg)
+    pg.screenshot(path=f'{SHOTS}/{tag}-05-zona.png')
+
+    # Tarea sin jornales suficientes → aviso
+    pg.locator('.sheet .task').filter(has_text='Arreglar las tejas').locator('button').count()
+    pg.click('.sheet .close')
+
+    # Velocidad y paso del tiempo
+    pg.click('.speed button:nth-child(4)')
+    h0 = pg.evaluate("() => __huerta.s.day * 24 + __huerta.s.hour")
+    time.sleep(2)
+    dismiss(pg, f'{SHOTS}/{tag}-06-evento.png')
+    h1 = pg.evaluate("() => __huerta.s.day * 24 + __huerta.s.hour")
+    check('el tiempo avanza a x3', h1 > h0 + 0.5, f'+{h1 - h0:.2f} h')
+    pg.click('.speed button:nth-child(1)')
+    time.sleep(0.2)
+    h2 = pg.evaluate("() => __huerta.s.day * 24 + __huerta.s.hour")
+    time.sleep(0.8)
+    h3 = pg.evaluate("() => __huerta.s.day * 24 + __huerta.s.hour")
+    check('la pausa detiene el tiempo', abs(h3 - h2) < 1e-6)
+
+    # Forzar un evento y resolverlo
+    pg.evaluate("() => { __huerta.s.eventQueue.push('ciervos'); }")
+    pg.wait_for_selector('.modal .illus', timeout=3000)
+    check('evento con ilustración', pg.locator('.modal h2').inner_text().strip() == 'Ciervos al atardecer')
+    pg.screenshot(path=f'{SHOTS}/{tag}-07-ciervos.png')
+    dismiss(pg)
+    check('evento resuelto', pg.evaluate("() => __huerta.s.eventQueue.length") == 0)
+
+    # Cuaderno: todas las pestañas
+    dismiss(pg)
+    pg.click('text=✎ Cuaderno')
+    pg.wait_for_selector('.book', timeout=3000)
+    for i, name in enumerate(['Diario', 'Despensa', 'Gente', 'Recuerdos', 'Huéspedes', 'Álbum', 'Ajustes']):
+        pg.click(f'.book .tab:has-text("{name}")')
+        time.sleep(0.25)
+        ok = pg.locator('.book .page h2').count() > 0
+        check(f'pestaña {name}', ok)
+        pg.screenshot(path=f'{SHOTS}/{tag}-08-cuaderno-{i}-{name}.png')
+    pg.click('.book .close')
+
+    # Guardar y recargar
+    pg.evaluate("() => { __huerta.s.money = 777; window.dispatchEvent(new Event('pagehide')); }")
+    pg.reload()
+    pg.wait_for_selector('text=Continuar', timeout=10000)
+    pg.click('text=Continuar')
+    pg.wait_for_selector('.hud', timeout=8000)
+    time.sleep(0.5)
+    money = pg.evaluate("() => __huerta.s.money")
+    check('la partida se guarda y se carga', abs(money - 777) < 0.01, str(money))
+
+    # Rendimiento
+    time.sleep(2.5)
+    fps = pg.evaluate("() => __huerta.fps.value")
+    check('~60 FPS en escritorio', fps >= 50, f'{fps:.0f}')
+    check('sin errores de consola', not errors, '; '.join(errors[:3]))
+    ctx.close()
+
+    # Móvil vertical y horizontal
+    for name, vp in (('movil-vertical', {'width': 390, 'height': 844}), ('movil-horizontal', {'width': 844, 'height': 390})):
+        errs = []
+        mctx = browser.new_context(viewport=vp, device_scale_factor=2, has_touch=True, is_mobile=True)
+        mp = mctx.new_page()
+        mp.on('pageerror', lambda e: errs.append(str(e)))
+        mp.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
+        mp.goto(url)
+        mp.wait_for_selector('.screen .btn', timeout=20000)
+        mp.screenshot(path=f'{SHOTS}/{tag}-20-{name}-portada.png')
+        mp.click('text=Nuevo cuaderno')
+        mp.click('text=saltar')
+        mp.wait_for_selector('.hud', timeout=10000)
+        time.sleep(1)
+        mp.screenshot(path=f'{SHOTS}/{tag}-21-{name}-plano.png')
+        tap_zone(mp, 360, 300)  # dehesa
+        mp.wait_for_selector('.sheet.open', timeout=3000)
+        time.sleep(0.4)
+        mp.screenshot(path=f'{SHOTS}/{tag}-22-{name}-zona.png')
+        box = mp.locator('.sheet .btn').last.bounding_box()
+        check(f'{name}: botones de al menos 36 px', box and box['height'] >= 36, str(box and round(box['height'])))
+        hud = mp.locator('.hud').bounding_box()
+        check(f'{name}: el HUD cabe en la pantalla', hud and hud['width'] <= vp['width'] + 1)
+        dismiss(mp)
+        mp.click('.sheet .close')
+        dismiss(mp)
+        mp.click('text=✎ Cuaderno')
+        mp.click('.book .tab:has-text("Despensa")')
+        time.sleep(0.3)
+        mp.screenshot(path=f'{SHOTS}/{tag}-23-{name}-cuaderno.png')
+        check(f'{name}: sin errores', not errs, '; '.join(errs[:3]))
+        mctx.close()
+
+def main():
+    with sync_playwright() as p:
+        browser = p.chromium.launch(args=['--autoplay-policy=no-user-gesture-required'])
+        if len(sys.argv) > 1 and sys.argv[1].startswith('http'):
+            run(sys.argv[1], 'url', browser)
+        else:
+            port = free_port()
+            srv = subprocess.Popen(['node', os.path.join(ROOT, 'tools', 'serve.mjs'), str(port), ROOT], stdout=subprocess.DEVNULL)
+            time.sleep(0.8)
+            try:
+                run(f'http://127.0.0.1:{port}/index.html', 'src', browser)
+                if os.path.exists(os.path.join(ROOT, 'dist', 'index.html')):
+                    run(f'http://127.0.0.1:{port}/dist/index.html', 'dist', browser)
+            finally:
+                srv.terminate()
+        browser.close()
+    bad = [n for n, ok in results if not ok]
+    print(f'\n{len(results) - len(bad)}/{len(results)} comprobaciones correctas')
+    if bad:
+        print('Fallan: ' + ', '.join(bad))
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()
