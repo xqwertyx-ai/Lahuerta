@@ -31,6 +31,18 @@ function playDay(s, p) {
     });
     if (cands[0]) S.assignVolunteer(s, v.id, cands[0].id);
   }
+  // Huerta: recoger lo maduro y sembrar lo de temporada
+  if (s.zones.huerta.unlocked) {
+    S.beds(s).forEach((bed, i) => { if (!S.harvestBlocker(s, i)) S.harvest(s, i); });
+    const crops = S.seasonalCrops(s);
+    S.beds(s).forEach((bed, i) => { if (crops.length && !S.sowBlocker(s, i, crops[i % crops.length].id)) S.sow(s, i, crops[i % crops.length].id); });
+    if (s.water < 40 && s.zones.pozo.unlocked && !S.taskBlocker(s, 'pozo', S.findTask('pozo', 'agua'))) S.doTask(s, 'pozo', 'agua');
+  }
+  // Cocina: conservas con lo que sobra, matanza si hay cerdo
+  if (!S.recipeBlocker(s, 'matanza')) S.cook(s, 'matanza');
+  while (!S.recipeBlocker(s, 'conservas') && ['lechugas', 'habas', 'tomates', 'pimientos', 'calabazas', 'coles', 'ajos'].reduce((a, k) => a + s.products[k], 0) > 8) S.cook(s, 'conservas');
+  // Un rato libre de vez en cuando si hay voluntarios
+  if (s.volunteers.length && s.mood < 60) for (const id of ['comida_finca', 'paseo', 'acuarela']) if (!S.activityBlocker(s, id)) { S.doActivity(s, id); break; }
   // Tareas: lo más rentable sobre lo más descuidado
   let guard = 0;
   while (s.jornales > 0 && guard++ < 20) {

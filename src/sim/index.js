@@ -9,4 +9,6 @@ export * from './people.js';
 export * from './tourism.js';
 export * from './mystery.js';
 export * from './events.js';
+export * from './garden.js';
+export * from './kitchen.js';
 export { rand } from './rng.js';

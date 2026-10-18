@@ -111,12 +111,6 @@ h1, h2, h3, .title { font-family: var(--title); font-weight: 700; margin: 0; lin
 .speed button.on { background: rgba(59, 42, 28, 0.15); font-weight: bold; }
 .weather { font-size: 0.78em; color: var(--ink2); }
 
-/* ── Zoom ── */
-.zoom { position: fixed; left: calc(10px + var(--safe-l)); bottom: calc(14px + var(--safe-b)); display: flex; flex-direction: column; border: 2px solid var(--ink); border-radius: var(--hand-radius); overflow: hidden; box-shadow: 2px 3px 0 rgba(59, 42, 28, 0.22); }
-.zoom button { width: 46px; height: 44px; border: 0; background: transparent; font-family: var(--title); font-size: 1.6em; font-weight: 700; line-height: 1; }
-.zoom button + button { border-top: 1.5px solid rgba(59, 42, 28, 0.45); }
-.zoom button:active { background: rgba(59, 42, 28, 0.12); }
-
 /* ── Saltar al amanecer ── */
 .dawn { position: fixed; left: 50%; transform: translateX(-50%); top: calc(var(--hud-h, 80px) + 10px); }
 
@@ -314,7 +308,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610181837
+// La Huerta del Pianista · build 202610181930
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
@@ -370,7 +364,7 @@ const BALANCE = {
 
   // ── Economía ──
   foodCostPerVolunteer: 2,      // € por día si no hay comida de la finca
-  foodFromFarmPerVolunteer: 1,  // unidades de comida (huevos/hortalizas) por voluntario y día
+  foodFromFarmPerVolunteer: 1,  // unidades de comida (verduras, huevos…) por voluntario y día
   debtLimit: -150,              // por debajo, la finca está en números rojos
   priceRecoveryPerDay: 0.18,    // los precios saturados vuelven a la normalidad
   saturationPerUnit: 0.035,     // cada unidad vendida baja el precio del canal
@@ -473,27 +467,27 @@ const ZONES = [
   },
   {
     id: 'huerta', name: 'La huerta', x: 110, y: 560, w: 440, h: 230,
-    desc: 'Bancales de tierra roja junto al cortijo. Con agua, da para comer y para vender.',
-    start: 30, unlocked: false, decay: 1.2, weeds: true,
+    desc: 'Bancales de tierra roja junto al cortijo. Cada temporada se siembra lo suyo; con agua del pozo, da para comer y para vender.',
+    start: 30, unlocked: false, decay: 1.2, weeds: true, beds: true,
     unlock: { text: 'Desbrozar y cavar los bancales', jornales: 14, cost: { herramientas: 0.5 } },
     tasks: [
-      { id: 'sembrar', name: 'Cavar y sembrar', jornales: 2, effect: { cons: 15 }, skill: 'huerta', seasons: [0, 1, 2] },
-      { id: 'regar', name: 'Regar', jornales: 1, effect: { cons: 7 }, skill: 'agua', seasons: [0, 1, 2] },
+      { id: 'cavar', name: 'Cavar y abonar', jornales: 2, effect: { cons: 15 }, skill: 'huerta' },
+      { id: 'regar', name: 'Regar los bancales', jornales: 1, effect: { cons: 5 }, water: 6, growBeds: 0.15, skill: 'agua', notWeather: ['lluvia', 'tormenta'] },
       { id: 'desbrozar', name: 'Quitar malas hierbas', jornales: 1, effect: { cons: 4, weeds: -40 }, skill: 'huerta' },
     ],
-    produce: { hortalizas: [1.6, 2.4, 1.2, 0.4] },
   },
   {
     id: 'bosquete', name: 'El bosquete', x: 80, y: 820, w: 420, h: 165,
-    desc: 'Acacias, higueras, eucaliptos y una parra. La hojarasca cruje; hay un rastrillo y una caja de fruta olvidados.',
+    desc: 'Acacias, higueras y eucaliptos. La hojarasca cruje; hay un rastrillo y una caja de fruta olvidados. Da leña y, con la humedad, setas.',
     start: 26, unlocked: false, decay: 1.0, weeds: true,
     unlock: { text: 'Abrir paso entre la hojarasca', jornales: 12, requires: { zones: { huerta: 1 } } },
     tasks: [
       { id: 'barrer', name: 'Rastrillar la hojarasca', jornales: 1, effect: { cons: 9, weeds: -20 }, seasonBonus: { 2: 1.4 } },
       { id: 'higueras', name: 'Podar higueras y eucaliptos', jornales: 2, effect: { cons: 13 }, gain: { lena: 2 }, seasons: [2, 3], skill: 'monte' },
-      { id: 'parra', name: 'Atar la parra', jornales: 1, effect: { cons: 8 }, seasons: [0, 1], skill: 'huerta' },
+      { id: 'lena', name: 'Recoger leña caída', jornales: 1, effect: { cons: 3 }, gain: { lena: 2 } },
+      { id: 'setas', name: 'Buscar setas', jornales: 2, effect: { cons: 2 }, gainScaled: { setas: 4 }, seasons: [0, 2], skill: 'monte' },
     ],
-    produce: { higos: [0, 1.6, 0.6, 0], uvas: [0, 0.5, 1.4, 0] },
+    produce: { higos: [0, 1.6, 0.6, 0], setas: [0.2, 0, 0.5, 0.1] },
   },
   {
     id: 'dehesa', name: 'Dehesa de encinas', x: 60, y: 130, w: 700, h: 330,
@@ -536,6 +530,7 @@ const ZONES = [
     tasks: [
       { id: 'revisar', name: 'Revisar las colmenas', jornales: 1, effect: { cons: 10 }, skill: 'apicultura' },
       { id: 'catar', name: 'Catar la miel', jornales: 2, effect: { cons: 3 }, gainPerAnimal: { miel: 1.5, animal: 'colmenas' }, seasons: [1], skill: 'apicultura' },
+      { id: 'desbrozar', name: 'Desbrozar alrededor de las colmenas', jornales: 1, effect: { cons: 4, weeds: -40 }, skill: 'monte' },
     ],
     produce: { miel: [0.06, 0.12, 0.03, 0], per: 'colmenas' },
   },
@@ -550,6 +545,30 @@ const ZONES = [
       { id: 'esquilar', name: 'Esquilar las ovejas', jornales: 2, effect: { cons: 2 }, gainPerAnimal: { lana: 1, animal: 'ovejas' }, seasons: [0], skill: 'ganado' },
     ],
     produce: { huevos: [0.09, 0.08, 0.06, 0.04], per: 'gallinas', queso: [0.07, 0.04, 0.02, 0.01], perQueso: 'ovejas' },
+  },
+  {
+    id: 'pozo', name: 'El pozo y el emparrado', x: 942, y: 420, w: 132, h: 155,
+    desc: 'Un pozo de brocal encalado bajo un emparrado de viña. Agua dulce y fresca para la huerta y la casa, y racimos al final del verano.',
+    start: 30, unlocked: false, decay: 0.9, weeds: true,
+    unlock: { text: 'Destapar el pozo y apuntalar el emparrado', jornales: 9, cost: { herramientas: 0.5 } },
+    tasks: [
+      { id: 'agua', name: 'Sacar agua del pozo', jornales: 1, effect: { cons: 2 }, water: 15 },
+      { id: 'limpiar', name: 'Limpiar el pozo', jornales: 2, effect: { cons: 15 }, skill: 'agua' },
+      { id: 'atar', name: 'Atar la parra', jornales: 1, effect: { cons: 8, weeds: -15 }, seasons: [0, 1], skill: 'huerta' },
+      { id: 'podar', name: 'Podar la parra', jornales: 2, effect: { cons: 12 }, gain: { lena: 1 }, seasons: [2, 3], skill: 'huerta' },
+      { id: 'vendimiar', name: 'Vendimiar el emparrado', jornales: 2, effect: { cons: 2 }, gainScaled: { uvas: 8 }, seasons: [1, 2] },
+    ],
+    produce: { uvas: [0, 0.4, 1.0, 0] },
+  },
+  {
+    id: 'bancos', name: 'Los bancos de los nietos', x: 950, y: 898, w: 330, h: 78,
+    desc: 'A lo largo del camino a la ermita, bancos de obra encalados con mosaico y el nombre de cada nieto.',
+    start: 32, unlocked: true, decay: 0.8, weeds: false,
+    tasks: [
+      { id: 'encalar', name: 'Encalar los bancos', jornales: 2, cost: { cal: 1 }, effect: { cons: 16 }, skill: 'pintura', notWeather: ['lluvia', 'tormenta', 'helada'] },
+      { id: 'teselas', name: 'Reponer las teselas del mosaico', jornales: 2, cost: { money: 10 }, effect: { cons: 14 }, skill: 'pintura' },
+      { id: 'nombres', name: 'Repasar los nombres', jornales: 1, effect: { cons: 7, mood: 2 } },
+    ],
   },
   {
     id: 'piano', name: 'El rincón del piano', x: 1080, y: 430, w: 230, h: 200,
@@ -580,21 +599,39 @@ const __m6 = (() => {
 // Productos, materiales y animales. Precios en euros.
 // season: multiplicador de precio por estación [primavera, verano, otoño, invierno]
 
+// group: 'huerta' para lo que sale de los bancales (sirve para las conservas)
+// spoil: fracción que se estropea cada día si no se vende o se come (lo fresco no dura)
+// from: de dónde sale (se muestra en la despensa cuando no tienes)
 const PRODUCTS = {
-  huevos:     { name: 'Huevos', unit: 'docena', price: 3.5, season: [1, 1.05, 1, 1.1], food: 1, basket: true },
-  hortalizas: { name: 'Hortalizas', unit: 'cesta', price: 7, season: [1.1, 0.85, 1, 1.3], food: 1, basket: true },
-  higos:      { name: 'Higos', unit: 'kilo', price: 4, season: [1.4, 0.9, 1.0, 1.5], food: 1, basket: true },
-  uvas:       { name: 'Uvas de la parra', unit: 'kilo', price: 2.8, season: [1.3, 1, 0.9, 1.3], food: 1, basket: true },
-  miel:       { name: 'Miel', unit: 'tarro', price: 9, season: [1.05, 0.95, 1, 1.15], basket: true },
-  lana:       { name: 'Lana', unit: 'vellón', price: 5, season: [0.9, 1, 1.05, 1.1] },
-  queso:      { name: 'Queso de oveja', unit: 'pieza', price: 14, season: [0.95, 1, 1.05, 1.1], food: 2, basket: true },
-  bellota:    { name: 'Bellota', unit: 'saco', price: 7, season: [1.2, 1.3, 0.85, 0.95] },
-  cerdo:      { name: 'Cerdo ibérico de bellota', unit: 'animal', price: 240, season: [1, 1, 0.95, 1.1] },
-  lena:       { name: 'Leña de encina', unit: 'carga', price: 6, season: [0.8, 0.7, 1.1, 1.35], material: true },
-  carbon:     { name: 'Carbón de encina', unit: 'saco', price: 13, season: [0.85, 0.8, 1.1, 1.3] },
-  gurumelos:  { name: 'Gurumelos', unit: 'kilo', price: 22, season: [1.2, 1.2, 1, 1.1], basket: true },
-  aceite:     { name: 'Aceite de los olivos', unit: 'litro', price: 9, season: [1, 1.05, 1.1, 0.95], basket: true },
-  lavanda:    { name: 'Lavanda', unit: 'ramillete', price: 4, season: [1, 0.9, 1.1, 1.2], basket: true },
+  // ── Huerta (bancales por temporada) ──
+  lechugas:   { name: 'Lechugas', unit: 'cesta', price: 5, season: [0.9, 1.2, 1.1, 1.2], food: 1, basket: true, group: 'huerta', spoil: 0.12, from: 'Huerta, en primavera' },
+  habas:      { name: 'Habas', unit: 'cesta', price: 6, season: [0.9, 1.2, 1.3, 1.0], food: 1, basket: true, group: 'huerta', spoil: 0.06, from: 'Huerta, en invierno y primavera' },
+  tomates:    { name: 'Tomates', unit: 'cesta', price: 7, season: [1.3, 0.85, 1.0, 1.4], food: 1, basket: true, group: 'huerta', spoil: 0.1, from: 'Huerta, en verano' },
+  pimientos:  { name: 'Pimientos', unit: 'cesta', price: 7, season: [1.3, 0.9, 1.0, 1.4], food: 1, basket: true, group: 'huerta', spoil: 0.08, from: 'Huerta, en verano' },
+  calabazas:  { name: 'Calabazas', unit: 'pieza', price: 4, season: [1.2, 1.2, 0.9, 1.0], food: 1, basket: true, group: 'huerta', spoil: 0.02, from: 'Huerta, en otoño' },
+  coles:      { name: 'Coles', unit: 'pieza', price: 3, season: [1.1, 1.3, 1.0, 0.9], food: 1, basket: true, group: 'huerta', spoil: 0.04, from: 'Huerta, en otoño e invierno' },
+  ajos:       { name: 'Ajos', unit: 'ristra', price: 6, season: [1, 1, 1.1, 1.1], basket: true, group: 'huerta', spoil: 0.01, from: 'Huerta, en invierno' },
+  // ── Frutales, monte y dehesa ──
+  higos:      { name: 'Higos', unit: 'kilo', price: 4, season: [1.4, 0.9, 1.0, 1.5], food: 1, basket: true, spoil: 0.12, from: 'Higueras del bosquete, en verano' },
+  uvas:       { name: 'Uvas del emparrado', unit: 'kilo', price: 3, season: [1.3, 1, 0.9, 1.3], food: 1, basket: true, spoil: 0.08, from: 'Emparrado del pozo, a final de verano' },
+  setas:      { name: 'Setas (níscalos y de cardo)', unit: 'kilo', price: 12, season: [1.1, 1.3, 1, 1.1], food: 1, basket: true, spoil: 0.2, from: 'Bosquete, en otoño y primavera' },
+  gurumelos:  { name: 'Gurumelos', unit: 'kilo', price: 22, season: [1.2, 1.2, 1, 1.1], basket: true, spoil: 0.2, from: 'Dehesa, en otoño tras la lluvia' },
+  bellota:    { name: 'Bellota', unit: 'saco', price: 7, season: [1.2, 1.3, 0.85, 0.95], spoil: 0.01, from: 'Dehesa, en otoño' },
+  aceite:     { name: 'Aceite de los olivos', unit: 'litro', price: 9, season: [1, 1.05, 1.1, 0.95], basket: true, from: 'Olivos de la dehesa, en invierno' },
+  lavanda:    { name: 'Lavanda', unit: 'ramillete', price: 4, season: [1, 0.9, 1.1, 1.2], basket: true, spoil: 0.03, from: 'Patio, en verano' },
+  lena:       { name: 'Leña de encina', unit: 'carga', price: 6, season: [0.8, 0.7, 1.1, 1.35], material: true, from: 'Podando y recogiendo en el monte' },
+  carbon:     { name: 'Carbón de encina', unit: 'saco', price: 13, season: [0.85, 0.8, 1.1, 1.3], from: 'Dehesa: hacer carbón con leña' },
+  // ── Animales ──
+  huevos:     { name: 'Huevos', unit: 'docena', price: 3.5, season: [1, 1.05, 1, 1.1], food: 1, basket: true, spoil: 0.03, from: 'Corral, con gallinas' },
+  queso:      { name: 'Queso de oveja', unit: 'pieza', price: 14, season: [0.95, 1, 1.05, 1.1], food: 2, basket: true, from: 'Corral, con ovejas' },
+  lana:       { name: 'Lana', unit: 'vellón', price: 5, season: [0.9, 1, 1.05, 1.1], from: 'Corral: esquilar en primavera' },
+  miel:       { name: 'Miel', unit: 'tarro', price: 9, season: [1.05, 0.95, 1, 1.15], basket: true, from: 'Colmenar, con colmenas' },
+  cerdo:      { name: 'Cerdo ibérico de bellota', unit: 'animal', price: 240, season: [1, 1, 0.95, 1.1], from: 'Dehesa: montanera de otoño e invierno' },
+  // ── De la cocina ──
+  conservas:  { name: 'Conservas de la huerta', unit: 'tarro', price: 6, season: [1.1, 1, 1, 1.15], food: 1, basket: true, from: 'Cocina del cortijo, con verduras de la huerta' },
+  mermelada:  { name: 'Mermelada de higo y uva', unit: 'tarro', price: 6, season: [1.05, 1, 1, 1.1], food: 1, basket: true, from: 'Cocina del cortijo, con higos o uvas' },
+  embutido:   { name: 'Chorizo y salchichón', unit: 'ristra', price: 11, season: [1, 1, 1.05, 1.1], food: 2, basket: true, from: 'Matanza de un cerdo de montanera' },
+  jamon:      { name: 'Jamón ibérico de bellota', unit: 'pieza', price: 160, season: [1, 0.95, 1.05, 1.15], basket: true, from: 'Matanza de un cerdo de montanera' },
 };
 
 // Materiales para el mantenimiento (la leña es a la vez producto y material)
@@ -747,6 +784,8 @@ function createState(seed = Date.now() % 2147483647, overrides = {}) {
     hyp,
     themeHints: 0,
     upgrades: [],
+    beds: [{ crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }],
+    activityLast: {},
     guests: [],              // [{ n, nights }]
     log: [],
     eventQueue: [],          // eventos pendientes de mostrar (el tiempo se detiene)
@@ -765,7 +804,7 @@ function createState(seed = Date.now() % 2147483647, overrides = {}) {
       tasks: 0, sales: 0, marketSales: 0, earned: 0, spent: 0,
       produced: Object.fromEntries(Object.keys(PRODUCTS).map((k) => [k, 0])),
       volunteersArrived: 0, volunteersLeft: 0, guests: 0, concerts: 0, montaneras: 0,
-      events: 0, restored: 0,
+      events: 0, restored: 0, harvests: 0, activities: 0,
     },
   };
 }
@@ -775,6 +814,10 @@ function migrate(s) {
   // v0.1 → el «almacén» es en realidad la ermita de San Antonio
   if (s.zones && s.zones.almacen && !s.zones.ermita) { s.zones.ermita = s.zones.almacen; delete s.zones.almacen; }
   if (s.volunteers) for (const v of s.volunteers) if (v.zone === 'almacen') v.zone = 'ermita';
+  // v0.2 → las «hortalizas» pasan a ser cultivos concretos
+  if (s.products && s.products.hortalizas) { s.products.lechugas = (s.products.lechugas || 0) + s.products.hortalizas; }
+  if (s.products) delete s.products.hortalizas;
+  if (s.stats && s.stats.produced) delete s.stats.produced.hortalizas;
   const fresh = createState(s.seed || 1, s.cfg);
   for (const k of Object.keys(fresh)) if (s[k] === undefined) s[k] = fresh[k];
   for (const k of Object.keys(fresh.zones)) {
@@ -847,7 +890,11 @@ const MILESTONES = [
   { id: 'primer_voluntario', name: 'Primer voluntario', text: 'Alguien vino de lejos a cambio de cama y comida.', check: (s) => s.stats.volunteersArrived >= 1 },
   { id: 'primera_venta', name: 'Primera venta', text: 'Las primeras monedas de la finca en mucho tiempo.', check: (s) => s.stats.sales >= 1 },
   { id: 'primer_mercado', name: 'Día de mercado', text: 'Un puesto en el mercado de Fuente Obejuna.', check: (s) => s.stats.marketSales >= 1 },
-  { id: 'huerta_viva', name: 'La huerta, viva', text: 'Los bancales vuelven a dar de comer.', check: (s) => s.zones.huerta.unlocked && s.stats.produced.hortalizas >= 10 },
+  { id: 'huerta_viva', name: 'La huerta, viva', text: 'Los bancales vuelven a dar de comer.', check: (s) => (s.stats.harvests || 0) >= 3 },
+  { id: 'despensa', name: 'Despensa de invierno', text: 'Botes de conservas y mermelada en la alacena.', check: (s) => (s.stats.produced.conservas || 0) + (s.stats.produced.mermelada || 0) >= 6 },
+  { id: 'matanza', name: 'Día de matanza', text: 'Un jamón curándose con el aire de la sierra.', check: (s) => (s.stats.produced.jamon || 0) >= 1 },
+  { id: 'bancos', name: 'Los bancos de los nietos', text: 'Cada nombre se lee otra vez entre las teselas.', check: (s) => s.zones.bancos.cons >= 80 },
+  { id: 'ratos', name: 'Ratos libres', text: 'No todo es trabajar: diez tardes de música, pintura y estrellas.', check: (s) => (s.stats.activities || 0) >= 10 },
   { id: 'cortijo_encalado', name: 'Cortijo encalado', text: 'Blanco como el pueblo de enfrente.', check: (s) => s.zones.cortijo.cons >= 85 },
   { id: 'recuerdos5', name: 'Cinco recuerdos', text: 'La casa empieza a contarte cosas.', check: (s) => s.items.length >= 5 },
   { id: 'primera_miel', name: 'Primera miel', text: 'Sabe a romero y a encina.', check: (s) => s.stats.produced.miel >= 1 },
@@ -1372,7 +1419,7 @@ function arrive(s, id) {
 }
 
 // ── Comida ──
-const FOOD_ORDER = ['hortalizas', 'huevos', 'higos', 'uvas', 'queso'];
+const FOOD_ORDER = Object.keys(PRODUCTS).filter((k) => PRODUCTS[k].food && k !== 'jamon').sort((a, b) => (PRODUCTS[b].spoil || 0) - (PRODUCTS[a].spoil || 0));
 
 function feedVolunteers(s) {
   let fedFromFarm = 0, paid = 0;
@@ -1519,9 +1566,13 @@ const FAMILY = [
   },
 ];
 
+// ✎ AUTOR: los nombres de los nietos, tal como están en el mosaico de los bancos del camino a la
+//   ermita (uno por banco). Mientras esté vacío, los bancos muestran solo el mosaico.
+const GRANDCHILDREN = [];
+
 const FAMILY_BY_ID = Object.fromEntries(FAMILY.map((f) => [f.id, f]));
 
-return { FAMILY, FAMILY_BY_ID };
+return { FAMILY, GRANDCHILDREN, FAMILY_BY_ID };
 })();
 
 // ── src/sim/mystery.js ──
@@ -1607,6 +1658,172 @@ function lowerFirst(t) { return t.charAt(0).toLowerCase() + t.slice(1); }
 return { giveItem, clue, threadCount, threadTotal, threads, themeNotesKnown, hypothesesRanked, revelationReady, checkRevelation };
 })();
 
+// ── src/data/crops.js ──
+const __m21 = (() => {
+// Cultivos de la huerta. Cada temporada se siembra lo suyo en los bancales y se recoge a los días.
+// seasons: en qué estaciones se puede sembrar (0 primavera, 1 verano, 2 otoño, 3 invierno)
+// days: días hasta estar listo con buena agua y la huerta cuidada · yield: lo que da un bancal
+
+const CROPS = {
+  lechugas:  { name: 'Lechugas', seasons: [0], days: 5, yield: 6, color: '#7fb04a' },
+  habas:     { name: 'Habas', seasons: [3, 0], days: 9, yield: 6, color: '#5f8a3a' },
+  tomates:   { name: 'Tomates', seasons: [1], days: 7, yield: 8, color: '#c9412f' },
+  pimientos: { name: 'Pimientos', seasons: [1], days: 8, yield: 6, color: '#3f8a2a' },
+  calabazas: { name: 'Calabazas', seasons: [2], days: 9, yield: 5, color: '#d9852a' },
+  coles:     { name: 'Coles', seasons: [2, 3], days: 8, yield: 5, color: '#8aa86a' },
+  ajos:      { name: 'Ajos', seasons: [3], days: 11, yield: 6, color: '#e8e0c8' },
+};
+
+const BEDS = 3;            // bancales de la huerta
+const SOW_JORNALES = 1;
+const HARVEST_JORNALES = 1;
+const OVERRIPE_DAYS = 4;   // días que aguanta lo maduro en la mata antes de echarse a perder
+
+// Recetas de la cocina del cortijo
+// in: ingredientes (group:huerta acepta cualquier verdura de la huerta) · out: lo que sale
+const RECIPES = [
+  { id: 'conservas', name: 'Hacer conservas de la huerta', in: { 'group:huerta': 3 }, out: { conservas: 2 }, jornales: 1, skill: 'cocina',
+    text: 'Botes hirviendo al baño maría y la cocina oliendo a verano.' },
+  { id: 'mermelada', name: 'Hacer mermelada de higo o uva', in: { 'any:higos,uvas': 3 }, out: { mermelada: 2 }, jornales: 1, skill: 'cocina',
+    text: 'A fuego lento, removiendo con cuchara de palo.' },
+  { id: 'matanza', name: 'Hacer la matanza', in: { cerdo: 1 }, out: { jamon: 1, embutido: 6 }, jornales: 3, seasons: [2, 3], skill: 'cocina',
+    text: 'Día de matanza con los vecinos: un jamón a curar en la sierra y ristras de chorizo y salchichón.' },
+];
+
+return { CROPS, BEDS, SOW_JORNALES, HARVEST_JORNALES, OVERRIPE_DAYS, RECIPES };
+})();
+
+// ── src/sim/garden.js ──
+const __m20 = (() => {
+// La huerta por bancales: se siembra lo de cada temporada y se recoge a los días.
+const { CROPS, BEDS, SOW_JORNALES, HARVEST_JORNALES, OVERRIPE_DAYS } = __m21;
+const { roundP } = __m11;
+const { seasonIndex } = __m12;
+const { addLog, signal, clamp, addStock } = __m13;
+const { hasSkill } = __m16;
+const { PRODUCTS } = __m6;
+
+function beds(s) {
+  if (!Array.isArray(s.beds) || s.beds.length !== BEDS) {
+    const old = Array.isArray(s.beds) ? s.beds : [];
+    s.beds = Array.from({ length: BEDS }, (_, i) => old[i] || { crop: null, growth: 0, ready: null, left: 1 });
+  }
+  return s.beds;
+}
+
+function seasonalCrops(s) {
+  const si = seasonIndex(s);
+  return Object.entries(CROPS).filter(([, c]) => c.seasons.includes(si)).map(([id, c]) => ({ id, ...c }));
+}
+
+function sowBlocker(s, i, cropId, budget = s.jornales) {
+  if (!s.zones.huerta.unlocked) return 'Primero hay que recuperar la huerta';
+  const b = beds(s)[i];
+  if (!b) return 'Ese bancal no existe';
+  if (b.crop) return 'El bancal ya está sembrado';
+  const c = CROPS[cropId];
+  if (!c) return 'No se conoce esa semilla';
+  if (!c.seasons.includes(seasonIndex(s))) return 'No es su temporada';
+  if (budget < SOW_JORNALES) return 'No quedan jornales hoy';
+  return null;
+}
+
+function sow(s, i, cropId, { budget = null } = {}) {
+  const why = sowBlocker(s, i, cropId, budget != null ? budget : s.jornales);
+  if (why) return { ok: false, text: why };
+  if (budget == null) s.jornales -= SOW_JORNALES;
+  s.beds[i] = { crop: cropId, growth: 0, ready: null, left: 1, sown: s.day };
+  signal(s, 'task', { zone: 'huerta', task: 'sembrar' });
+  return { ok: true, used: SOW_JORNALES, text: `Siembras ${CROPS[cropId].name.toLowerCase()} en el bancal ${i + 1}` };
+}
+
+function harvestBlocker(s, i, budget = s.jornales) {
+  const b = beds(s)[i];
+  if (!b || !b.crop) return 'Bancal vacío';
+  if (b.ready == null) return 'Aún no está listo';
+  if (budget < HARVEST_JORNALES) return 'No quedan jornales hoy';
+  return null;
+}
+
+function harvestAmount(s, i) {
+  const b = beds(s)[i];
+  if (!b || !b.crop) return 0;
+  const c = CROPS[b.crop];
+  const q = 0.6 + 0.4 * s.zones.huerta.cons / 100;
+  return c.yield * q * (hasSkill(s, 'huerta') ? 1.25 : 1) * (b.left ?? 1);
+}
+
+function harvest(s, i, { budget = null } = {}) {
+  const why = harvestBlocker(s, i, budget != null ? budget : s.jornales);
+  if (why) return { ok: false, text: why };
+  if (budget == null) s.jornales -= HARVEST_JORNALES;
+  const b = s.beds[i];
+  const n = Math.max(1, roundP(s, harvestAmount(s, i)));
+  addStock(s, b.crop, n);
+  if (s.stats.produced[b.crop] !== undefined) s.stats.produced[b.crop] += n;
+  s.stats.harvests = (s.stats.harvests || 0) + 1;
+  const name = CROPS[b.crop].name.toLowerCase();
+  s.beds[i] = { crop: null, growth: 0, ready: null, left: 1 };
+  signal(s, 'task', { zone: 'huerta', task: 'recoger' });
+  return { ok: true, used: HARVEST_JORNALES, text: `Recoges ${n} de ${name}`, gained: n };
+}
+
+// El riego adelanta lo sembrado
+function growBeds(s, amount) {
+  for (const b of beds(s)) if (b.crop && b.ready == null) b.growth = Math.min(1, b.growth + amount / CROPS[b.crop].days * 3);
+}
+
+// Cada amanecer: crece lo sembrado, madura y, si nadie lo recoge, se pasa
+function gardenDay(s) {
+  if (!s.zones.huerta.unlocked) return;
+  const si = seasonIndex(s);
+  const st = s.zones.huerta;
+  for (let i = 0; i < beds(s).length; i++) {
+    const b = s.beds[i];
+    if (!b.crop) continue;
+    const c = CROPS[b.crop];
+    if (b.ready == null) {
+      let rate = (0.6 + 0.4 * s.water / 100) * (0.7 + 0.3 * st.cons / 100) * (1 - (st.weeds || 0) / 300);
+      if (!c.seasons.includes(si)) rate *= 0.5;      // fuera de su estación crece despacio
+      if (s.weather === 'helada' && b.crop !== 'habas' && b.crop !== 'ajos' && b.crop !== 'coles') rate = 0;
+      b.growth = clamp(b.growth + rate / c.days, 0, 1);
+      if (b.growth >= 1) {
+        b.ready = s.day;
+        addLog(s, `Las ${c.name.toLowerCase()} del bancal ${i + 1} están listas para recoger.`, 'good');
+        signal(s, 'ripe', { bed: i, crop: b.crop });
+      }
+    } else if (s.day - b.ready > OVERRIPE_DAYS) {
+      b.left = (b.left ?? 1) * 0.75;
+      if (b.left < 0.3) {
+        addLog(s, `Las ${c.name.toLowerCase()} del bancal ${i + 1} se han pasado sin recoger.`, 'bad');
+        s.beds[i] = { crop: null, growth: 0, ready: null, left: 1 };
+      }
+    }
+  }
+}
+
+// Quien cuida la huerta recoge lo maduro y siembra lo de temporada. Devuelve los jornales usados.
+function autoGarden(s, budget) {
+  let used = 0;
+  for (let i = 0; i < beds(s).length; i++) {
+    if (budget - used < HARVEST_JORNALES) break;
+    if (!harvestBlocker(s, i, budget - used)) { harvest(s, i, { budget: budget - used }); used += HARVEST_JORNALES; }
+  }
+  const best = seasonalCrops(s).sort((a, b) => b.yield * priceOf(b.id) - a.yield * priceOf(a.id));
+  for (let i = 0; i < beds(s).length && best.length; i++) {
+    if (budget - used < SOW_JORNALES) break;
+    // Variedad: alterna entre los cultivos de temporada
+    const crop = best[i % best.length].id;
+    if (!sowBlocker(s, i, crop, budget - used)) { sow(s, i, crop, { budget: budget - used }); used += SOW_JORNALES; }
+  }
+  return used;
+}
+
+function priceOf(id) { return PRODUCTS[id] ? PRODUCTS[id].price : 1; }
+
+return { beds, seasonalCrops, sowBlocker, sow, harvestBlocker, harvestAmount, harvest, growBeds, gardenDay, autoGarden };
+})();
+
 // ── src/sim/farm.js ──
 const __m14 = (() => {
 // Zonas: deterioro, maleza, tareas de mantenimiento, desbloqueo y restauración.
@@ -1619,6 +1836,7 @@ const { seasonIndex } = __m12;
 const { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, costLabel, labelOf } = __m13;
 const { hasSkill, skillName, traitOf, volunteerJornales, infoOf, setZoneSkillMap } = __m16;
 const { giveItem, checkRevelation } = __m18;
+const { growBeds, autoGarden } = __m20;
 
 // Qué oficios usa cada zona (para el ánimo de los voluntarios encargados)
 setZoneSkillMap(Object.fromEntries(ZONES.map((z) => [z.id, [...new Set(z.tasks.map((t) => t.skill).filter(Boolean))]])));
@@ -1730,6 +1948,8 @@ function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   if (eff.cons) st.cons = clamp(st.cons + eff.cons * mult * diminish(st.cons), 0, 100);
   if (eff.weeds && st.weeds != null) st.weeds = clamp(st.weeds + eff.weeds * (skilled ? 1.3 : 1), 0, 100);
   if (eff.mood) s.mood = clamp(s.mood + eff.mood, 0, 100);
+  if (task.water) s.water = clamp(s.water + task.water * (skilled ? 1.3 : 1), 0, 100);
+  if (task.growBeds) growBeds(s, task.growBeds * (skilled ? 1.3 : 1));
   const gains = [];
   if (task.gain) for (const [k, v] of Object.entries(task.gain)) { addStock(s, k, v); gains.push([k, v]); }
   if (task.gainScaled) {
@@ -1914,6 +2134,12 @@ function autoMaintain(s) {
       continue;
     }
     let budget = volunteerJornales(v);
+    // En la huerta, primero recoger lo maduro y sembrar lo de temporada
+    if (v.zone === 'huerta') {
+      const used = autoGarden(s, budget);
+      if (used) v.lastWork = 'recogió y sembró los bancales';
+      budget -= used;
+    }
     let guard = 0;
     const done = [];
     while (budget >= 1 && guard++ < 6) {
@@ -1933,7 +2159,7 @@ return { avgCons, avgWeeds, restoredCount, decayHour, taskSkillBonus, taskJornal
 })();
 
 // ── src/sim/economy.js ──
-const __m20 = (() => {
+const __m22 = (() => {
 // Producción, agua, montanera, mercado y compras.
 const { BALANCE } = __m4;
 const { ZONES } = __m5;
@@ -2023,7 +2249,17 @@ function waterDay(s) {
   let d = w.water || 0;
   d += [-1, -6, -2, 0][si];
   if (s.zones.alberca.unlocked) d += (s.zones.alberca.cons - 40) / 25;
+  if (s.zones.pozo.unlocked) d += (s.zones.pozo.cons - 30) / 25;
   s.water = clamp(s.water + d, 0, 100);
+}
+
+// ── Lo fresco se estropea si no se vende ni se come ──
+function spoilDay(s) {
+  for (const [k, p] of Object.entries(PRODUCTS)) {
+    if (!p.spoil || !(s.products[k] >= 1)) continue;
+    const lost = roundP(s, s.products[k] * p.spoil);
+    if (lost > 0) addStock(s, k, -lost);
+  }
 }
 
 // ── Precios ──
@@ -2153,11 +2389,11 @@ function buyAnimal(s, key) {
   return { ok: true, text: `Compras ${art} ${a.unit} (${a.price} €)` };
 }
 
-return { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices, channelOpen, basketCapacity, unitPrice, sellBlocker, sell, sellAllAt, buyMaterial, animalBlocker, buyAnimal };
+return { produceDay, montaneraDay, waterDay, spoilDay, rollPriceNoise, recoverPrices, channelOpen, basketCapacity, unitPrice, sellBlocker, sell, sellAllAt, buyMaterial, animalBlocker, buyAnimal };
 })();
 
 // ── src/data/events.js ──
-const __m22 = (() => {
+const __m24 = (() => {
 // Eventos de la finca. Todo por datos.
 //
 // weight: probabilidad relativa · seasons: estaciones en que puede pasar (0-3)
@@ -2421,7 +2657,7 @@ return { EVENTS, EVENT_BY_ID };
 })();
 
 // ── src/data/texts.js ──
-const __m23 = (() => {
+const __m25 = (() => {
 // Textos sueltos: introducción, regalos del gato, postales, la finca dormida, consejos.
 
 const INTRO = [
@@ -2486,7 +2722,7 @@ return { INTRO, CAT_NAME, CAT_GIFTS, POSTCARDS, SLEEP, TIPS };
 })();
 
 // ── src/data/tourism.js ──
-const __m25 = (() => {
+const __m27 = (() => {
 // Agroturismo (fase 2). Mejoras que se construyen y actividades que se ofrecen.
 // requires.zones: conservación mínima; requires.animals; requires.items; requires.skill
 // capacity: plazas para huéspedes · appeal: atractivo · price: lo que paga cada huésped por día
@@ -2538,10 +2774,10 @@ return { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON };
 })();
 
 // ── src/sim/tourism.js ──
-const __m24 = (() => {
+const __m26 = (() => {
 // Agroturismo: mejoras, huéspedes, actividades y conciertos.
 const { BALANCE } = __m4;
-const { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON } = __m25;
+const { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON } = __m27;
 const { WEATHER } = __m9;
 const { ZONE_BY_ID } = __m5;
 const { rand, randInt, chance } = __m11;
@@ -2677,12 +2913,12 @@ return { tourismOpen, capacity, appeal, guestCount, upgradeBlocker, buildUpgrade
 })();
 
 // ── src/sim/events.js ──
-const __m21 = (() => {
+const __m23 = (() => {
 // Motor de eventos: elige, encola y resuelve eventos definidos en data/events.js.
 const { BALANCE } = __m4;
-const { EVENTS, EVENT_BY_ID } = __m22;
+const { EVENTS, EVENT_BY_ID } = __m24;
 const { REVELATION } = __m7;
-const { CAT_GIFTS, POSTCARDS } = __m23;
+const { CAT_GIFTS, POSTCARDS } = __m25;
 const { PRODUCTS } = __m6;
 const { ITEM_BY_ID } = __m15;
 const { VOLUNTEER_BY_ID } = __m17;
@@ -2691,9 +2927,9 @@ const { seasonIndex } = __m12;
 const { addLog, signal, clamp, canAfford, payCost, applyEffects, addStock, costLabel, missingOf, labelOf } = __m13;
 const { avgCons, avgWeeds } = __m14;
 const { giveItem, clue } = __m18;
-const { sellAllAt } = __m20;
+const { sellAllAt } = __m22;
 const { departVolunteer, infoOf } = __m16;
-const { concert } = __m24;
+const { concert } = __m26;
 
 // Evento sintético de la revelación (sus textos están en story.js)
 const REVELATION_EVENT = {
@@ -2922,12 +3158,13 @@ const { rand, pick, weighted } = __m11;
 const { seasonIndex, isSeasonStart, isMarketDay, yearOf, weekday } = __m12;
 const { addLog, signal, clamp } = __m13;
 const { decayHour, avgCons, autoMaintain, restoredCount, checkItems } = __m14;
-const { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices } = __m20;
+const { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices, spoilDay } = __m22;
+const { gardenDay } = __m20;
 const { tryArrival, feedVolunteers, dailyVolunteers, departVolunteer, payEmployees, dailyJornales } = __m16;
-const { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } = __m21;
+const { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } = __m23;
 const { checkRevelation } = __m18;
 const { TRAITS, VOLUNTEER_BY_ID } = __m17;
-const { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } = __m24;
+const { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } = __m26;
 
 // Horas de juego por segundo real a velocidad x1
 const HOURS_PER_SECOND = 24 / BALANCE.realSecondsPerDay;
@@ -3017,7 +3254,9 @@ function dawn(s) {
   payEmployees(s);
 
   // Finca
+  spoilDay(s);
   produceDay(s);
+  gardenDay(s);
   montaneraDay(s);
   waterDay(s);
   rollPriceNoise(s);
@@ -3099,6 +3338,171 @@ function checkMilestones(s) {
 return { HOURS_PER_SECOND, isBlocked, advance, runDays, autoResolve, dawn, checkSleep, checkMilestones };
 })();
 
+// ── src/data/activities.js ──
+const __m29 = (() => {
+// Ratos libres: actividades artísticas y de ocio que suben el ánimo de la casa y de los voluntarios.
+// cost: jornales, dinero, materiales o productos ('food' = cualquier comida de la finca)
+// happy: cuánto se alegran los voluntarios · mood: ánimo de la casa · cooldown: días hasta repetir
+// requires: zonas desbloqueadas (y conservación), estaciones, horas, tiempo que no puede hacer
+
+const ACTIVITIES = [
+  { id: 'acuarela', name: 'Tarde de acuarela en el patio', cost: { jornales: 1 }, happy: 8, mood: 4, cooldown: 4,
+    text: 'Papel, agua y la fuente de modelo. Nadie pinta bien y da igual.' },
+  { id: 'comida', name: 'Comida larga en el patio', cost: { money: 12 }, happy: 10, mood: 5, cooldown: 6,
+    text: 'Mesa bajo la parra, sobremesa hasta las tantas y el gato pidiendo.' },
+  { id: 'comida_finca', name: 'Comida con lo de la finca', cost: { food: 4 }, happy: 12, mood: 6, cooldown: 6,
+    text: 'Todo lo de la mesa ha salido de aquí. Se nota y se dice.' },
+  { id: 'paseo', name: 'Paseo al atardecer por la dehesa', cost: { jornales: 1 }, happy: 6, mood: 3, cooldown: 3, requires: { notWeather: ['lluvia', 'tormenta'] },
+    text: 'Entre encinas hasta el berrocal grande, con el pueblo encendiéndose a lo lejos.' },
+  { id: 'musica', name: 'Música en el cenador', cost: { jornales: 1 }, happy: 10, mood: 6, cooldown: 4, requires: { zones: { piano: 40 } },
+    text: 'Alguien se atreve con el piano, otra canta, el resto da palmas.' },
+  { id: 'estrellas', name: 'Noche de estrellas sobre una manta', cost: { jornales: 1 }, happy: 8, mood: 4, cooldown: 5, requires: { notWeather: ['lluvia', 'tormenta', 'nubes', 'niebla'] },
+    text: 'Aquí la Vía Láctea se ve entera. Alguien cuenta estrellas fugaces; nadie lleva la cuenta.' },
+  { id: 'bano', name: 'Baño en la alberca', cost: { jornales: 1 }, happy: 10, mood: 5, cooldown: 4, requires: { seasons: [1], zones: { alberca: 50 } },
+    text: 'Agua fría, risas y los juncos de testigo.' },
+  { id: 'mosaico', name: 'Taller de mosaico en los bancos', cost: { jornales: 1, cal: 0.5 }, happy: 7, mood: 3, cooldown: 5, zoneCare: { bancos: 6 },
+    text: 'Teselas de azulejo roto, cemento cola y paciencia. Los bancos lo agradecen.' },
+  { id: 'candela', name: 'Candela y castañas', cost: { lena: 2 }, happy: 8, mood: 4, cooldown: 5, requires: { seasons: [2, 3] },
+    text: 'Fuego de encina en el patio, castañas asadas y alguna historia de miedo.' },
+  { id: 'cine', name: 'Cine de verano en la pared del cortijo', cost: { money: 5 }, happy: 8, mood: 4, cooldown: 6, requires: { seasons: [1], zones: { cortijo: 60 } },
+    text: 'Una sábana, un proyector viejo y la fachada recién encalada de pantalla.' },
+];
+
+const ACTIVITY_BY_ID = Object.fromEntries(ACTIVITIES.map((a) => [a.id, a]));
+
+return { ACTIVITIES, ACTIVITY_BY_ID };
+})();
+
+// ── src/sim/kitchen.js ──
+const __m28 = (() => {
+// La cocina del cortijo (conservas, mermelada, matanza) y los ratos libres.
+const { RECIPES } = __m21;
+const { PRODUCTS } = __m6;
+const { ACTIVITIES, ACTIVITY_BY_ID } = __m29;
+const { WEATHER } = __m9;
+const { ZONE_BY_ID } = __m5;
+const { seasonIndex } = __m12;
+const { addLog, signal, clamp, addStock, canAfford, payCost, labelOf } = __m13;
+const { hasSkill, infoOf } = __m16;
+
+const RECIPE_BY_ID = Object.fromEntries(RECIPES.map((r) => [r.id, r]));
+
+// Productos que valen para un ingrediente ('group:huerta', 'any:higos,uvas' o un producto)
+function ingredientOptions(key) {
+  if (key.startsWith('group:')) { const g = key.slice(6); return Object.keys(PRODUCTS).filter((k) => PRODUCTS[k].group === g); }
+  if (key.startsWith('any:')) return key.slice(4).split(',');
+  return [key];
+}
+
+function ingredientLabel(key) {
+  if (key.startsWith('group:huerta')) return 'verduras de la huerta';
+  if (key.startsWith('any:')) return ingredientOptions(key).map(labelOf).join(' o ');
+  return labelOf(key);
+}
+
+function available(s, key) {
+  return ingredientOptions(key).reduce((a, k) => a + Math.floor(s.products[k] || 0), 0);
+}
+
+function recipeJornales(s, r) {
+  return Math.max(1, r.jornales - (r.skill && hasSkill(s, r.skill) && r.jornales >= 2 ? 1 : 0));
+}
+
+function recipeBlocker(s, id) {
+  const r = RECIPE_BY_ID[id];
+  if (!r) return 'Receta desconocida';
+  if (r.seasons && !r.seasons.includes(seasonIndex(s))) return 'No es la época';
+  for (const [k, n] of Object.entries(r.in)) if (available(s, k) < n) return `Faltan ${ingredientLabel(k)}`;
+  if (s.jornales < recipeJornales(s, r)) return 'No quedan jornales hoy';
+  return null;
+}
+
+function cook(s, id) {
+  const why = recipeBlocker(s, id);
+  if (why) return { ok: false, text: why };
+  const r = RECIPE_BY_ID[id];
+  s.jornales -= recipeJornales(s, r);
+  for (const [k, n] of Object.entries(r.in)) {
+    let need = n;
+    // Primero lo que más se estropea
+    const opts = ingredientOptions(k).sort((a, b) => (PRODUCTS[b].spoil || 0) - (PRODUCTS[a].spoil || 0));
+    for (const p of opts) {
+      const take = Math.min(need, Math.floor(s.products[p] || 0));
+      addStock(s, p, -take);
+      need -= take;
+      if (!need) break;
+    }
+  }
+  const mult = r.skill && hasSkill(s, r.skill) ? 1.5 : 1;
+  const got = [];
+  for (const [k, n] of Object.entries(r.out)) {
+    const q = Math.round(n * (k === 'jamon' ? 1 : mult));
+    addStock(s, k, q);
+    if (s.stats.produced[k] !== undefined) s.stats.produced[k] += q;
+    got.push(`${q} ${labelOf(k)}`);
+  }
+  addLog(s, `${r.name}: ${got.join(', ')}. ${r.text}`, 'good');
+  signal(s, 'task', { zone: 'cortijo', task: id });
+  return { ok: true, text: `${r.name}: ${got.join(', ')}` };
+}
+
+// ── Ratos libres ──
+function foodTotal(s) {
+  return Object.keys(PRODUCTS).filter((k) => PRODUCTS[k].food).reduce((a, k) => a + Math.floor(s.products[k] || 0), 0);
+}
+
+function activityCostOk(s, cost) {
+  const { food = 0, ...rest } = cost;
+  if (food && foodTotal(s) < food) return false;
+  return canAfford(s, rest);
+}
+
+function activityBlocker(s, id) {
+  const a = ACTIVITY_BY_ID[id];
+  if (!a) return 'Desconocida';
+  const last = (s.activityLast || {})[id];
+  if (last != null && s.day - last < a.cooldown) return `Otra vez dentro de ${a.cooldown - (s.day - last)} días`;
+  const r = a.requires || {};
+  if (r.seasons && !r.seasons.includes(seasonIndex(s))) return 'No es la estación';
+  if (r.notWeather && r.notWeather.includes(s.weather)) return `Hoy no: ${WEATHER[s.weather].name.toLowerCase()}`;
+  if (r.zones) for (const [z, min] of Object.entries(r.zones)) {
+    if (!s.zones[z].unlocked || s.zones[z].cons < min) return `Hace falta ${ZONE_BY_ID[z].name.toLowerCase()} a ${min}`;
+  }
+  if (!activityCostOk(s, a.cost)) {
+    if (a.cost.food) return 'Falta comida de la finca';
+    if (a.cost.jornales && s.jornales < a.cost.jornales) return 'No quedan jornales hoy';
+    return 'Falta ' + Object.keys(a.cost).filter((k) => k !== 'food').map(labelOf).join(', ');
+  }
+  return null;
+}
+
+function doActivity(s, id) {
+  const why = activityBlocker(s, id);
+  if (why) return { ok: false, text: why };
+  const a = ACTIVITY_BY_ID[id];
+  const { food = 0, ...rest } = a.cost;
+  payCost(s, rest);
+  if (rest.money) s.stats.spent += rest.money;
+  let need = food;
+  const foods = Object.keys(PRODUCTS).filter((k) => PRODUCTS[k].food).sort((x, y) => (PRODUCTS[y].spoil || 0) - (PRODUCTS[x].spoil || 0));
+  for (const k of foods) { while (need > 0 && s.products[k] >= 1) { addStock(s, k, -1); need--; } }
+  s.activityLast = s.activityLast || {};
+  s.activityLast[id] = s.day;
+  for (const v of s.volunteers) v.happy = clamp(v.happy + a.happy, 0, 100);
+  s.mood = clamp(s.mood + a.mood, 0, 100);
+  if (a.zoneCare) for (const [z, d] of Object.entries(a.zoneCare)) if (s.zones[z].unlocked) s.zones[z].cons = clamp(s.zones[z].cons + d, 0, 100);
+  s.stats.activities = (s.stats.activities || 0) + 1;
+  const who = s.volunteers.length ? ` (${s.volunteers.map((v) => infoOf(v).name).join(', ')})` : '';
+  addLog(s, `${a.name}${who}. ${a.text}`, 'good');
+  signal(s, 'activity', { id });
+  return { ok: true, text: a.name };
+}
+
+
+
+return { RECIPE_BY_ID, ingredientOptions, ingredientLabel, recipeJornales, recipeBlocker, cook, activityCostOk, activityBlocker, doActivity, ACTIVITIES };
+})();
+
 // ── src/sim/index.js ──
 const __m2 = (() => {
 // Punto de entrada de la simulación: todo lo que la interfaz necesita.
@@ -3114,11 +3518,13 @@ const __m2 = (() => {
 
 
 
-return { ...__m3, ...__m8, ...__m12, ...__m13, ...__m14, ...__m20, ...__m16, ...__m24, ...__m18, ...__m21, rand: __m11.rand };
+
+
+return { ...__m3, ...__m8, ...__m12, ...__m13, ...__m14, ...__m22, ...__m16, ...__m26, ...__m18, ...__m23, ...__m20, ...__m28, rand: __m11.rand };
 })();
 
 // ── src/art/noise.js ──
-const __m28 = (() => {
+const __m32 = (() => {
 // Aleatoriedad para el dibujo (independiente de la simulación) y ruido suave.
 
 function makeRng(seed = 1) {
@@ -3185,10 +3591,10 @@ return { makeRng, hashStr, noise1, noise2, fbm2 };
 })();
 
 // ── src/art/ink.js ──
-const __m27 = (() => {
+const __m31 = (() => {
 // Trazo «a mano»: líneas con temblor, doble trazo, rayado y aguadas de acuarela.
 // Todo se dibuja sobre capas cacheadas, nunca por fotograma.
-const { makeRng, noise1 } = __m28;
+const { makeRng, noise1 } = __m32;
 
 // ── Color ──
 function hexToRgb(hex) {
@@ -3479,10 +3885,10 @@ return { hexToRgb, rgba, mix, INK, INK_LIGHT, PENCIL, Pen, blobPts, canopyPts, s
 })();
 
 // ── src/art/paper.js ──
-const __m29 = (() => {
+const __m33 = (() => {
 // Papel antiguo generado por código: fibras, manchas de café y humedad, bordes gastados.
-const { makeRng, noise2, fbm2 } = __m28;
-const { rgba, mix, blobPts, wash } = __m27;
+const { makeRng, noise2, fbm2 } = __m32;
+const { rgba, mix, blobPts, wash } = __m31;
 
 function makeCanvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined' && !makeCanvas.forceDom) {
@@ -3658,9 +4064,9 @@ return { makeCanvas, makePaper, coffeeRing, paperDataURL, mix };
 })();
 
 // ── src/art/palette.js ──
-const __m30 = (() => {
+const __m34 = (() => {
 // Colores de las aguadas según la estación, y el tinte del papel según la hora.
-const { mix } = __m27;
+const { mix } = __m31;
 
 const BASE = {
   whitewash: '#f4efe4', wallShade: '#a9b4c2', tile: '#2f5f9e', tileLight: '#7fa6d6',
@@ -3723,11 +4129,12 @@ return { palette, timeTint, SEASON_PAPER };
 })();
 
 // ── src/art/sketches.js ──
-const __m31 = (() => {
+const __m35 = (() => {
 // Ilustraciones a boceto de la finca, dibujadas a partir de las fotos de referencia.
 // Cada función dibuja en coordenadas locales de su zona (0,0 → w,h) sobre dos capas:
 //   d.pen → tinta (capa de líneas)      d.wash(...) → acuarela (capa de color)
-const { canopyPts, blobPts, rgba, mix } = __m27;
+const { canopyPts, blobPts, rgba, mix } = __m31;
+const { GRANDCHILDREN } = __m19;
 
 // ───────────────────────── Elementos reutilizables ─────────────────────────
 
@@ -4322,8 +4729,8 @@ const SKETCHES = {
       d.wash([...pts.map(([x, yy]) => [x, yy - 7]), ...pts.slice().reverse().map(([x, yy]) => [x, yy + 7])], mix(P.redEarth, '#5a3420', 0.25), { alpha: 0.35, edge: 0.2, spread: 1 });
       pen.set({ width: 0.9 });
       pen.curve(pts.map(([x, yy]) => [x, yy + 7]));
-      // Plantas
-      for (let x = 52; x < W - 64; x += 12 + r() * 6) {
+      // Las plantas se dibujan en vivo según lo sembrado en cada bancal (map.js)
+      for (let x = 52; false && x < W - 64; x += 12 + r() * 6) {
         const yy = y + Math.sin(x / 50 + row) * 2 - 2;
         const kind = row % 3;
         if (kind === 0) { // lechugas
@@ -4370,14 +4777,21 @@ const SKETCHES = {
     mimosa(d, 190, H - 16, 1.05);
     higuera(d, 270, H - 18, 1.1);
     higuera(d, 330, H - 34, 0.85);
-    // Parra sobre emparrado
-    const px = 360, py = H - 16;
+    // Pila de leña y cesta de setas
+    const px = 362, py = H - 10;
     pen.set({ width: 1.1 });
-    for (const x of [px, px + 48]) pen.line(x, py, x, py - 46);
-    pen.line(px - 6, py - 46, px + 54, py - 46);
-    for (let x = px; x <= px + 48; x += 12) pen.line(x, py - 46, x + 4, py - 52);
-    d.wash(canopyPts(px + 24, py - 50, 34, 10, r, 10, 0.3), P.foliage, { alpha: 0.5 });
-    for (let i = 0; i < 5; i++) pen.dot(px + 6 + i * 9, py - 40, 2, '#5a3a6a', 0.7);
+    for (let row = 0; row < 3; row++) {
+      for (let k = 0; k < 4 - row; k++) {
+        const lx = px + row * 7 + k * 14, ly = py - row * 11;
+        d.washBlob(lx, ly, 7, 5.5, '#b8783a', { alpha: 0.65, layers: 1, edge: 0.4, grain: 0 });
+        pen.ellipse(lx, ly, 7, 5.5, 0.1);
+        pen.dot(lx, ly, 1.2, '#6a4020', 0.8);
+      }
+    }
+    d.wash([[px + 62, py], [px + 84, py], [px + 88, py - 12], [px + 58, py - 12]], '#c9a060', { alpha: 0.6 });
+    pen.path([[px + 62, py], [px + 84, py], [px + 88, py - 12], [px + 58, py - 12]], true);
+    pen.curve([[px + 58, py - 12], [px + 73, py - 26], [px + 88, py - 12]]);
+    for (let i = 0; i < 4; i++) { d.washBlob(px + 64 + i * 6, py - 14, 3.2, 2.2, '#c8742a', { alpha: 0.9, layers: 1, edge: 0.4, grain: 0 }); }
     // Troncos cortados, caja de fruta y rastrillo
     d.washBlob(150, H - 8, 14, 6, '#b8683a', { alpha: 0.6 });
     pen.ellipse(150, H - 8, 14, 6); pen.ellipse(162, H - 8, 3, 6, 0.1);
@@ -4575,6 +4989,97 @@ const SKETCHES = {
     }
   },
 
+  pozo(d) {
+    const { pen, r, P } = d;
+    const W = d.w, H = d.h;
+    groundPatch(d, 4, 60, W - 8, H - 64, mix(P.ground, '#bfae88', 0.4), 0.3, 24);
+    // Emparrado: postes, vigas y la viña por encima
+    pen.set({ width: 1.3 });
+    for (const x of [14, W - 14]) {
+      d.wash([[x - 3, H - 8], [x + 3, H - 8], [x + 3, 34], [x - 3, 34]], P.wood, { alpha: 0.5, edge: 0 });
+      pen.line(x - 3, H - 8, x - 3, 34); pen.line(x + 3, H - 8, x + 3, 34);
+    }
+    pen.line(6, 34, W - 6, 34); pen.line(6, 40, W - 6, 40);
+    for (let x = 18; x < W - 10; x += 16) pen.line(x, 32, x + 6, 26);
+    d.wash(canopyPts(W / 2, 30, W / 2 - 2, 20, r, 14, 0.35), mix(P.foliage, '#6a8a3a', 0.4), { alpha: 0.55 });
+    pen.set({ width: 0.8 });
+    pen.path(canopyPts(W / 2, 30, W / 2 - 2, 20, r, 14, 0.35), true);
+    // Pámpanos colgando y racimos
+    for (let i = 0; i < 7; i++) {
+      const x = 20 + i * 17 + r.range(-3, 3);
+      pen.curve([[x, 42], [x + 3, 50], [x - 1, 58]]);
+      if (i % 2 === 0) for (let k = 0; k < 5; k++) pen.dot(x + (k % 2) * 3 - 1, 50 + k * 2.4, 2.1, '#5a3a6a', 0.8);
+    }
+    // El pozo: brocal encalado, arco de hierro, polea y cubo
+    const cx = W / 2, top = H - 50;
+    groundShadow(d, cx + 4, H - 14, 36, 6);
+    d.wash([[cx - 30, top], [cx + 30, top], [cx + 30, H - 18], [cx - 30, H - 18]], P.whitewash, { alpha: 1 });
+    d.washBlob(cx, top, 30, 9, '#e8e4da', { alpha: 1, irregular: 0.03 });
+    d.washBlob(cx, top, 22, 6, '#2a3a44', { alpha: 0.85, irregular: 0.03, edge: 0 });
+    pen.set({ width: 1.4 });
+    pen.ellipse(cx, top, 30, 9, 0.03);
+    pen.ellipse(cx, top, 22, 6, 0.03);
+    pen.line(cx - 30, top, cx - 30, H - 18);
+    pen.line(cx + 30, top, cx + 30, H - 18);
+    pen.curve([[cx - 30, H - 18], [cx, H - 12], [cx + 30, H - 18]]);
+    pen.set({ width: 0.6, double: false });
+    for (let k = 0; k < 6; k++) pen.line(cx - 26 + k * 10, top + 10, cx - 27 + k * 10, H - 16);
+    pen.set({ width: 1.6, double: true, color: '#2b2420' });
+    pen.curve([[cx - 26, top - 2], [cx - 18, top - 30], [cx, top - 38], [cx + 18, top - 30], [cx + 26, top - 2]]);
+    pen.ellipse(cx, top - 32, 4, 4);
+    pen.set({ width: 0.8 });
+    pen.line(cx, top - 28, cx, top - 12);
+    pen.set({ color: '#3b2a1c', width: 1.1 });
+    d.wash([[cx - 6, top - 12], [cx + 6, top - 12], [cx + 5, top - 2], [cx - 5, top - 2]], '#8a8a8a', { alpha: 0.7 });
+    pen.path([[cx - 6, top - 12], [cx + 6, top - 12], [cx + 5, top - 2], [cx - 5, top - 2]], true);
+    // Cántaro junto al brocal
+    d.washBlob(cx + 42, H - 22, 7, 9, '#c07a4a', { alpha: 0.75 });
+    pen.ellipse(cx + 42, H - 22, 7, 9);
+  },
+
+  bancos(d) {
+    const { pen, r, P } = d;
+    const W = d.w, H = d.h;
+    const names = GRANDCHILDREN.length ? GRANDCHILDREN : [];
+    const n = Math.max(4, Math.min(6, names.length || 4));
+    const gap = W / n;
+    const bw = gap * 0.78;
+    const tiles = ['#2f5f9e', '#7fa6d6', '#c9412f', '#e2b33a', '#4f8a3a', '#f4efe4'];
+    for (let i = 0; i < n; i++) {
+      const x = i * gap + (gap - bw) / 2, seatY = H - 22, backTop = H - 52;
+      groundShadow(d, x + bw / 2, H - 10, bw / 2 + 4, 5);
+      // Respaldo con mosaico
+      d.wash([[x, backTop], [x + bw, backTop], [x + bw, seatY], [x, seatY]], P.whitewash, { alpha: 1, edge: 0.2 });
+      const cell = 4.2;
+      for (let yy = backTop + 3; yy < seatY - 3; yy += cell) {
+        for (let xx = x + 3; xx < x + bw - 3; xx += cell) {
+          const edge = yy < backTop + 8 || yy > seatY - 8 || xx < x + 8 || xx > x + bw - 8;
+          if (!edge && names[i]) continue; // el centro, para el nombre
+          d.wash([[xx, yy], [xx + cell - 0.8, yy], [xx + cell - 0.8, yy + cell - 0.8], [xx, yy + cell - 0.8]], r.pick(tiles), { alpha: 0.85, layers: 1, spread: 0.2, edge: 0, grain: 0 });
+        }
+      }
+      // Asiento y patas de obra
+      d.wash([[x - 3, seatY], [x + bw + 3, seatY], [x + bw + 3, seatY + 7], [x - 3, seatY + 7]], mix(P.whitewash, P.wallShade, 0.25), { alpha: 1 });
+      d.wash([[x + 3, seatY + 7], [x + 12, seatY + 7], [x + 12, H - 10], [x + 3, H - 10]], P.whitewash, { alpha: 1, edge: 0.2 });
+      d.wash([[x + bw - 12, seatY + 7], [x + bw - 3, seatY + 7], [x + bw - 3, H - 10], [x + bw - 12, H - 10]], P.whitewash, { alpha: 1, edge: 0.2 });
+      pen.set({ width: 1.2 });
+      pen.rect(x, backTop, bw, seatY - backTop);
+      pen.rect(x - 3, seatY, bw + 6, 7);
+      pen.rect(x + 3, seatY + 7, 9, H - 10 - seatY - 7);
+      pen.rect(x + bw - 12, seatY + 7, 9, H - 10 - seatY - 7);
+      if (names[i]) {
+        d.ctx.save();
+        d.ctx.fillStyle = '#2f5f9e';
+        d.ctx.font = `700 ${Math.min(15, bw / Math.max(4, names[i].length) * 1.6)}px "Caveat", cursive`;
+        d.ctx.textAlign = 'center';
+        d.ctx.fillText(names[i], x + bw / 2, (backTop + seatY) / 2 + 5);
+        d.ctx.restore();
+      }
+    }
+    // Arbustos entre bancos
+    for (let i = 1; i < n; i++) arbusto(d, i * gap, H - 12, 0.7);
+  },
+
   piano(d) {
     const { pen, r, P } = d;
     const W = d.w, H = d.h;
@@ -4707,7 +5212,7 @@ return { groundShadow, groundPatch, encina, olivo, pino, eucalipto, mimosa, higu
 })();
 
 // ── src/art/cat.js ──
-const __m32 = (() => {
+const __m36 = (() => {
 // El gato de la finca: blanco con manchas atigradas. Te sigue, duerme al sol y a veces encuentra cosas.
 const { ZONES, ZONE_BY_ID } = __m5;
 
@@ -4893,7 +5398,7 @@ return { Cat };
 })();
 
 // ── src/art/critters.js ──
-const __m33 = (() => {
+const __m37 = (() => {
 // Pequeños seres vivos del plano, dibujados en vivo con pocos trazos.
 const INK = 'rgba(59,42,28,0.9)';
 
@@ -5022,23 +5527,24 @@ return { drawHen, drawSheep, drawPig, drawBee, drawDeer, drawFigure };
 })();
 
 // ── src/art/map.js ──
-const __m26 = (() => {
+const __m30 = (() => {
 // El plano de la finca: capas cacheadas (papel, terreno, zonas) y elementos vivos
 // (gato, animales, voluntarios, clima, luz). Lo estático solo se redibuja cuando cambia.
 const { ZONES, ZONE_BY_ID, DECOR } = __m5;
-const { Pen, wash, blobPts, rgba, mix, INK, PENCIL, canopyPts } = __m27;
-const { makeRng, hashStr } = __m28;
-const { makePaper, makeCanvas } = __m29;
-const { palette, timeTint } = __m30;
-const { SKETCHES, village, compass, encina: encinaFree, arbusto: matorral } = __m31;
-const { Cat } = __m32;
-const { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } = __m33;
+const { Pen, wash, blobPts, rgba, mix, INK, PENCIL, canopyPts } = __m31;
+const { makeRng, hashStr } = __m32;
+const { makePaper, makeCanvas } = __m33;
+const { palette, timeTint } = __m34;
+const { SKETCHES, village, compass, encina: encinaFree, arbusto: matorral } = __m35;
+const { Cat } = __m36;
+const { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } = __m37;
+const { CROPS } = __m21;
 
 const WORLD = { w: 1600, h: 1000 };
 const PAD = 46;
 
 const LABELS = {
-  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], huerta: [330, 582],
+  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], pozo: [1000, 414], bancos: [1115, 994], huerta: [330, 582],
   bosquete: [290, 818], dehesa: [250, 140], muros: [640, 462], alberca: [940, 184], colmenar: [1205, 134],
   corral: [1445, 140], piano: [1195, 424],
 };
@@ -5054,7 +5560,7 @@ function layeredCtx(inkCtx, washCtx, seed, P, w, h) {
   const r = makeRng(seed);
   const pen = new Pen(inkCtx, seed + 1);
   return {
-    pen, r, P, w, h,
+    pen, r, P, w, h, ctx: inkCtx,
     wash: (pts, color, o) => wash(washCtx, pts, color, r, o),
     washBlob: (cx, cy, rx, ry, color, o = {}) => wash(washCtx, blobPts(cx, cy, rx, ry, r, o.irregular ?? 0.14, 24), color, r, o),
   };
@@ -5142,8 +5648,8 @@ class FarmMap {
     }
     pen.set({ width: 1.4, double: true, alpha: 1 });
     // Árboles y matas sueltas en los huecos del plano
-    const loose = [[1010, 470, 'e', 0.8], [1080, 360, 'e', 0.7], [990, 560, 'a', 1], [620, 470, 'a', 0.9], [1340, 560, 'e', 0.9],
-      [1350, 650, 'a', 1], [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8], [960, 940, 'a', 0.9], [1150, 950, 'e', 0.7], [1240, 900, 'a', 1],
+    const loose = [[1080, 360, 'e', 0.7], [620, 470, 'a', 0.9], [1340, 560, 'e', 0.9],
+      [1350, 650, 'a', 1], [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8],
       [560, 990, 'a', 0.8], [1250, 300, 'a', 0.8], [800, 410, 'e', 0.7], [1050, 120, 'e', 0.6], [520, 400, 'a', 0.6]];
     for (const [x, y, k, s] of loose) {
       if (k === 'e') encinaFree(d, x, y, s); else matorral(d, x, y, s);
@@ -5368,6 +5874,35 @@ class FarmMap {
         const bx = corral.x + 110 + r() * 100, by = corral.y + 180 + r() * 60;
         drawSheep(ctx, bx + Math.sin(T * 0.2 + i) * 6, by, Math.sin(T * 0.3 + i) > 0 ? 1 : -1);
       }
+    }
+    // Lo sembrado en los bancales de la huerta
+    if (s.zones.huerta.unlocked && Array.isArray(s.beds)) {
+      const hz = ZONE_BY_ID.huerta;
+      s.beds.forEach((b, i) => {
+        if (!b || !b.crop) return;
+        const c = CROPS[b.crop];
+        const g = b.ready != null ? 1 : Math.max(0.15, b.growth);
+        for (const row of [i * 2, i * 2 + 1]) {
+          const y = hz.y + 36 + row * 30;
+          for (let x = hz.x + 54; x < hz.x + hz.w - 66; x += 13) {
+            const yy = y + Math.sin((x - hz.x) / 50 + row) * 2 - 2;
+            const sz = 2.6 + g * 4;
+            ctx.fillStyle = c.color;
+            ctx.globalAlpha = 0.85;
+            ctx.beginPath();
+            ctx.ellipse(x, yy - sz * 0.6, sz * 0.8, sz, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = 'rgba(59,42,28,0.6)';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+            if (b.ready != null && (x / 13) % 2 < 1) {
+              ctx.fillStyle = 'rgba(255,240,180,0.9)';
+              ctx.beginPath(); ctx.arc(x + 2, yy - sz, 1.2, 0, 6.28); ctx.fill();
+            }
+          }
+        }
+      });
     }
     // Cerdos de montanera bajo las encinas
     if (s.animals.cerdos > 0) {
@@ -5601,9 +6136,9 @@ return { WORLD, singleCtx, FarmMap, canopyPts, mix };
 })();
 
 // ── src/engine/camera.js ──
-const __m34 = (() => {
+const __m38 = (() => {
 // Cámara del plano: encaje en pantalla, arrastre, pellizco y rueda.
-const { WORLD } = __m26;
+const { WORLD } = __m30;
 
 class Camera {
   constructor() {
@@ -5750,7 +6285,7 @@ return { Camera, attachGestures };
 })();
 
 // ── src/ui/dom.js ──
-const __m36 = (() => {
+const __m40 = (() => {
 // Ayudas mínimas para construir la interfaz sin librerías.
 
 function h(tag, attrs = {}, ...children) {
@@ -5799,9 +6334,9 @@ return { h, $, clear, fmtMoney, fmtNum, bar, btn };
 })();
 
 // ── src/ui/hud.js ──
-const __m37 = (() => {
+const __m41 = (() => {
 // Barra superior: fecha, hora, tiempo, recursos y velocidad.
-const { h, fmtMoney } = __m36;
+const { h, fmtMoney } = __m40;
 const { WEATHER } = __m9;
 const { dateLabel, clockLabel, daysToMarket, isMarketDay } = __m12;
 const { dailyJornales } = __m16;
@@ -5867,14 +6402,14 @@ return { Hud };
 })();
 
 // ── src/art/illus.js ──
-const __m39 = (() => {
+const __m43 = (() => {
 // Ilustraciones a boceto para eventos, recuerdos y la portada.
-const { Pen, wash, blobPts, canopyPts, rgba, mix, INK } = __m27;
-const { makeRng, hashStr } = __m28;
-const { palette } = __m30;
-const { encina, pino, eucalipto, adelfa, yuca, boulder, lavanda, grassTufts, mimosa, village } = __m31;
-const { singleCtx } = __m26;
-const { drawDeer } = __m33;
+const { Pen, wash, blobPts, canopyPts, rgba, mix, INK } = __m31;
+const { makeRng, hashStr } = __m32;
+const { palette } = __m34;
+const { encina, pino, eucalipto, adelfa, yuca, boulder, lavanda, grassTufts, mimosa, village } = __m35;
+const { singleCtx } = __m30;
+const { drawDeer } = __m37;
 
 const W = 360, H = 210;
 
@@ -6436,7 +6971,7 @@ return { drawIllus, drawIcon, drawTitleArt, ILLUS_W: W, ILLUS_H: H };
 })();
 
 // ── src/audio/audio.js ──
-const __m41 = (() => {
+const __m45 = (() => {
 // Motor de audio: buses separados (música, ambiente, efectos), reverberación generada,
 // capa lo-fi y desbloqueo en iOS/Android (incluido el interruptor de silencio del iPhone).
 
@@ -6602,10 +7137,10 @@ return { AudioEngine, silentWav, audio };
 })();
 
 // ── src/audio/ambience.js ──
-const __m40 = (() => {
+const __m44 = (() => {
 // Ambiente: viento en las encinas, lluvia, chicharras, grillos, fuente, pájaros,
 // ovejas, cencerros, gallinas y el gato. Y los efectos de papel, pluma, sello y monedas.
-const { audio } = __m41;
+const { audio } = __m45;
 
 function noiseSrc(loop = true) {
   const c = audio.ctx;
@@ -6932,17 +7467,19 @@ return { Ambience, sfx, ambience };
 })();
 
 // ── src/ui/zonePanel.js ──
-const __m38 = (() => {
+const __m42 = (() => {
 // Nota sujeta con clip: una zona de la finca, su estado y sus tareas.
-const { h, clear, bar, btn, fmtNum } = __m36;
+const { h, clear, bar, btn, fmtNum } = __m40;
 const { ZONE_BY_ID } = __m5;
 const { ANIMALS, PRODUCTS } = __m6;
 const { ITEMS } = __m15;
 const { SEASONS } = __m9;
 const { VOLUNTEER_BY_ID } = __m17;
 const { taskBlocker, taskJornales, taskSkillBonus, doTask, unlockBlocker, unlockZone, unlockCostLabel, unlockTotal, unlockRequirement, taskGain, costLabel, seasonIndex, hasSkill, skillName, assignVolunteer, buyAnimal, animalBlocker, infoOf } = __m2;
-const { drawIcon } = __m39;
-const { sfx } = __m40;
+const { drawIcon } = __m43;
+const { CROPS, RECIPES, SOW_JORNALES, HARVEST_JORNALES } = __m21;
+const { beds, seasonalCrops, sow, sowBlocker, harvest, harvestBlocker, harvestAmount, recipeBlocker, recipeJornales, cook, ingredientLabel } = __m2;
+const { sfx } = __m44;
 
 class ZonePanel {
   constructor(root, game) {
@@ -7050,7 +7587,9 @@ class ZonePanel {
           g.afterAction(r, z.id);
         }, { disabled: why })));
     }
+    if (z.beds) this._beds(s);
     this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Cuidados'), tasks));
+    if (z.id === 'cortijo') this._kitchen(s);
 
     // Producción
     if (z.produce) {
@@ -7101,6 +7640,56 @@ class ZonePanel {
     this.el.scrollTop = scroll;
   }
 
+  // Bancales de la huerta
+  _beds(s) {
+    const g = this.game;
+    const box = h('div', { class: 'tasks' });
+    const crops = seasonalCrops(s);
+    beds(s).forEach((b, i) => {
+      if (!b.crop) {
+        const why = crops.length ? null : 'Ahora no es tiempo de sembrar nada';
+        box.append(h('div', { class: 'task' },
+          h('div', { class: 'info' },
+            h('div', { class: 'name' }, `Bancal ${i + 1}: vacío`),
+            h('div', { class: 'meta' }, crops.length ? `Siembra de temporada (${SOW_JORNALES} jornal):` : why),
+            h('div', { class: 'row', style: { marginTop: '4px' } }, crops.map((c) => btn(c.name, () => {
+              g.afterAction(sow(s, i, c.id), 'huerta');
+            }, { cls: 'small', disabled: sowBlocker(s, i, c.id) }))))));
+      } else {
+        const c = CROPS[b.crop];
+        const ready = b.ready != null;
+        box.append(h('div', { class: 'task' },
+          h('div', { class: 'info' },
+            h('div', { class: 'name' }, `Bancal ${i + 1}: ${c.name.toLowerCase()}${ready ? ' · ¡listas!' : ''}`),
+            ready
+              ? h('div', { class: 'meta' }, `Darán unas ${Math.round(harvestAmount(s, i))}. ${s.day - b.ready > 2 ? 'Recógelas pronto o se pasarán.' : ''}`)
+              : h('div', {}, bar(b.growth * 100, 'green'), h('div', { class: 'meta' }, `Creciendo (${Math.round(b.growth * 100)} %). El agua y una huerta cuidada lo adelantan.`))),
+          ready ? btn(`Recoger (${HARVEST_JORNALES})`, () => g.afterAction(harvest(s, i), 'huerta'), { disabled: harvestBlocker(s, i) }) : null));
+      }
+    });
+    this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Bancales'),
+      h('p', { class: 'small muted' }, `Agua del pozo y la alberca: ${Math.round(s.water)} %. Cada estación tiene sus cultivos.`), box));
+  }
+
+  // La cocina del cortijo
+  _kitchen(s) {
+    const g = this.game;
+    const box = h('div', { class: 'tasks' });
+    for (const r of RECIPES) {
+      const why = recipeBlocker(s, r.id);
+      const ins = Object.entries(r.in).map(([k, n]) => `${n} ${ingredientLabel(k)}`).join(' + ');
+      const outs = Object.entries(r.out).map(([k, n]) => `${n} ${PRODUCTS[k].name.toLowerCase()}`).join(' + ');
+      box.append(h('div', { class: 'task' },
+        h('div', { class: 'info' },
+          h('div', { class: 'name' }, r.name),
+          h('div', { class: 'meta' }, `${recipeJornales(s, r)} jornal${recipeJornales(s, r) > 1 ? 'es' : ''} · ${ins} → ${outs}`),
+          why ? h('div', { class: 'why' }, why) : null),
+        btn('Hacer', () => g.afterAction(cook(s, r.id), 'cortijo'), { disabled: why })));
+    }
+    this.el.append(h('div', { class: 'section' }, h('h3', {}, 'La cocina'),
+      h('p', { class: 'small muted' }, 'Lo fresco se estropea a los pocos días; en conserva aguanta y se vende mejor. Quien sabe de cocina saca más.'), box));
+  }
+
   _assign(s, z) {
     const g = this.game;
     const box = h('div', { class: 'pills' });
@@ -7127,21 +7716,21 @@ return { ZonePanel, fmtNum };
 })();
 
 // ── src/ui/notebook.js ──
-const __m42 = (() => {
+const __m46 = (() => {
 // El cuaderno: diario, despensa y mercado, gente, recuerdos, huéspedes, álbum y ajustes.
-const { h, clear, bar, btn, fmtMoney, fmtNum } = __m36;
+const { h, clear, bar, btn, fmtMoney, fmtNum } = __m40;
 const { PRODUCTS, MATERIALS, ANIMALS, CHANNELS } = __m6;
 const { VOLUNTEER_BY_ID, TRAITS, SKILLS } = __m17;
 const { ZONES, ZONE_BY_ID } = __m5;
 const { ITEMS } = __m15;
 const { FAMILY } = __m19;
 const { MILESTONES } = __m10;
-const { UPGRADES } = __m25;
+const { UPGRADES } = __m27;
 const { THEME } = __m7;
 const { BALANCE } = __m4;
-const { unitPrice, sell, sellBlocker, channelOpen, basketCapacity, buyMaterial, hireEmployee, fireEmployee, bedsTotal, assignVolunteer, threads, themeNotesKnown, hypothesesRanked, upgradeBlocker, buildUpgrade, capacity, guestCount, WEEKDAYS, daysToMarket, isMarketDay, costLabel, dailyJornales, volunteerJornales } = __m2;
-const { drawIcon } = __m39;
-const { sfx } = __m40;
+const { unitPrice, sell, sellBlocker, channelOpen, basketCapacity, buyMaterial, hireEmployee, fireEmployee, bedsTotal, assignVolunteer, threads, themeNotesKnown, hypothesesRanked, upgradeBlocker, buildUpgrade, capacity, guestCount, WEEKDAYS, daysToMarket, isMarketDay, costLabel, dailyJornales, volunteerJornales, activityBlocker, doActivity, ACTIVITIES } = __m2;
+const { drawIcon } = __m43;
+const { sfx } = __m44;
 
 const TABS = [
   ['diario', 'Diario'], ['despensa', 'Despensa'], ['gente', 'Gente'], ['recuerdos', 'Recuerdos'],
@@ -7223,17 +7812,17 @@ class Notebook {
     const chans = h('div', { class: 'row' }, Object.entries(CHANNELS).map(([id, c]) => btn(c.name.replace(' de Fuente Obejuna', ''), () => { this.channel = id; this.render(); }, { cls: 'small' + (this.channel === id ? ' on' : '') })));
     el.append(chans, h('p', { class: 'small muted' }, CHANNELS[this.channel].desc + (this.channel === 'basket' && channelOpen(s, 'basket') ? ` Hoy aún quieren ${basketCapacity(s)}.` : '')));
     const tbl = h('table', { class: 'inv' }, h('tr', {}, h('th', {}, 'Producto'), h('th', {}, 'Tienes'), h('th', {}, 'Precio'), h('th', {}, '')));
-    let any = false;
+    let any = true;
+    const SECTIONS = { lechugas: 'De la huerta', higos: 'Frutales, monte y dehesa', huevos: 'De los animales', conservas: 'De la cocina' };
     for (const [k, p] of Object.entries(PRODUCTS)) {
       const q = Math.floor(s.products[k] || 0);
-      if (!q && !(s.stats.produced[k] > 0)) continue;
-      any = true;
+      if (SECTIONS[k]) tbl.append(h('tr', {}, h('td', { colspan: 4, style: { fontFamily: 'var(--title)', fontSize: '1.25em', paddingTop: '10px' } }, SECTIONS[k])));
       const price = unitPrice(s, k, this.channel);
       const why1 = sellBlocker(s, k, this.channel, 1);
       const whyAll = sellBlocker(s, k, this.channel, Math.max(1, this.channel === 'basket' ? Math.min(q, basketCapacity(s)) : q));
       const doSell = (n) => { const r = sell(s, k, n, this.channel); g.afterAction(r, null, 'coins'); this.render(); };
       tbl.append(h('tr', {},
-        h('td', {}, p.name, h('div', { class: 'tiny muted' }, p.unit)),
+        h('td', {}, p.name, h('div', { class: 'tiny muted' }, q ? p.unit + (p.spoil ? ' · fresco, se estropea' : '') : p.from || p.unit)),
         h('td', { class: 'num' }, q),
         h('td', { class: 'num' }, fmtMoney(price) + ' €'),
         h('td', {}, h('div', { class: 'row' },
@@ -7288,6 +7877,7 @@ class Notebook {
     }
     if (!s.volunteers.length) grid.append(h('div', { class: 'card faded' }, h('p', {}, 'Ahora mismo no hay voluntarios. Llegan si hay cama libre y la finca tiene buena fama.')));
     el.append(grid);
+    this._leisure(el, s);
     // Jornaleros
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Jornaleros del pueblo'),
       h('p', { class: 'small' }, `Tienes ${s.employees}. Cada uno cuesta ${BALANCE.employeeWagePerDay} € al día y aporta ${BALANCE.employeeJornales} jornales.`),
@@ -7299,6 +7889,23 @@ class Notebook {
       el.append(h('div', { class: 'section' }, h('h3', {}, 'Pasaron por aquí'),
         h('div', { class: 'pills' }, gone.map((id) => h('span', { class: 'pill' }, `${VOLUNTEER_BY_ID[id].name}${s.flags['contento_' + id] ? ' ♥' : ''}`)))));
     }
+  }
+
+  _leisure(el, s) {
+    const g = this.game;
+    const grid = h('div', { class: 'tasks' });
+    for (const a of ACTIVITIES) {
+      const why = activityBlocker(s, a.id);
+      const cost = Object.entries(a.cost).map(([k, v]) => (k === 'food' ? `${v} de comida de la finca` : costLabel({ [k]: v }))).join(' · ');
+      grid.append(h('div', { class: 'task' },
+        h('div', { class: 'info' },
+          h('div', { class: 'name' }, a.name),
+          h('div', { class: 'meta' }, `${cost} → +${a.happy} alegría de los voluntarios, +${a.mood} ánimo`),
+          why ? h('div', { class: 'why' }, why) : null),
+        btn('Hacer', () => { g.afterAction(doActivity(s, a.id), null, 'chime'); this.render(); }, { disabled: why })));
+    }
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Ratos libres'),
+      h('p', { class: 'small muted' }, 'Arte, música y sobremesas: suben el ánimo de la casa y la alegría de quien está de voluntario (y quien se va contento, recomienda la finca).'), grid));
   }
 
   // ── Recuerdos y misterio ──
@@ -7475,9 +8082,9 @@ return { Notebook, drawStaff, WEEKDAYS };
 })();
 
 // ── src/ui/toast.js ──
-const __m43 = (() => {
+const __m47 = (() => {
 // Notas emergentes sujetas al borde del cuaderno.
-const { h } = __m36;
+const { h } = __m40;
 
 class Toasts {
   constructor(root) {
@@ -7500,12 +8107,12 @@ return { Toasts };
 })();
 
 // ── src/ui/screens.js ──
-const __m44 = (() => {
+const __m48 = (() => {
 // Diálogos de eventos, confirmaciones, importación, portada, introducción y la finca dormida.
-const { h, clear, btn } = __m36;
-const { drawIllus, drawTitleArt } = __m39;
-const { INTRO, SLEEP } = __m23;
-const { sfx } = __m40;
+const { h, clear, btn } = __m40;
+const { drawIllus, drawTitleArt } = __m43;
+const { INTRO, SLEEP } = __m25;
+const { sfx } = __m44;
 
 function modal(root, content, { onClose = null, closable = false } = {}) {
   const card = h('div', { class: 'modal paper', role: 'dialog' }, content);
@@ -7628,19 +8235,19 @@ return { modal, eventDialog, confirmDialog, importDialog, titleScreen, introScre
 })();
 
 // ── src/ui/ui.js ──
-const __m35 = (() => {
+const __m39 = (() => {
 // Coordinador de la interfaz: HUD, panel de zona, cuaderno, notas y diálogos.
-const { h } = __m36;
-const { Hud } = __m37;
-const { ZonePanel } = __m38;
-const { Notebook } = __m42;
-const { Toasts } = __m43;
-const { eventDialog, confirmDialog, importDialog, modal } = __m44;
-const { drawIcon } = __m39;
+const { h } = __m40;
+const { Hud } = __m41;
+const { ZonePanel } = __m42;
+const { Notebook } = __m46;
+const { Toasts } = __m47;
+const { eventDialog, confirmDialog, importDialog, modal } = __m48;
+const { drawIcon } = __m43;
 const { ITEM_BY_ID } = __m15;
-const { TIPS } = __m23;
-const { sfx } = __m40;
-const { btn } = __m36;
+const { TIPS } = __m25;
+const { sfx } = __m44;
+const { btn } = __m40;
 
 class UI {
   constructor(game) {
@@ -7654,12 +8261,6 @@ class UI {
     this.toasts = new Toasts(this.layer);
     this.modalOpen = null;
     this.noteQueue = [];
-    const cam = () => game.cam;
-    this.zoomBox = h('div', { class: 'zoom paper', role: 'group', 'aria-label': 'Zoom del plano' },
-      h('button', { 'aria-label': 'Acercar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1.35) }, '+'),
-      h('button', { 'aria-label': 'Ver el plano entero', onclick: () => { cam().zoom = cam().fit; cam().centerOn(800, 500); } }, '⊡'),
-      h('button', { 'aria-label': 'Alejar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1 / 1.35) }, '−'));
-    this.layer.append(this.zoomBox);
     this.dawnBtn = btn('☾ Sin jornales: pasar al amanecer', () => game.skipToDawn(), { cls: 'dawn primary' });
     this.dawnBtn.hidden = true;
     this.layer.append(this.dawnBtn);
@@ -7764,7 +8365,7 @@ return { UI };
 })();
 
 // ── src/save/save.js ──
-const __m45 = (() => {
+const __m49 = (() => {
 // Guardado automático en localStorage, copia del inicio de estación y exportar/importar.
 const { migrate, STATE_VERSION } = __m3;
 
@@ -7865,10 +8466,10 @@ return { pack, unpack, save, load, hasSave, savedInfo, clearSave, saveSeasonSnap
 })();
 
 // ── src/audio/music.js ──
-const __m46 = (() => {
+const __m50 = (() => {
 // Música generativa: piano tranquilo con mucho espacio, que cambia con la estación,
 // la hora y la situación. Y el tema del pianista, que gana notas con cada partitura.
-const { audio } = __m41;
+const { audio } = __m45;
 const { THEME, THEME_TEMPO } = __m7;
 
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
@@ -8129,21 +8730,21 @@ return { pianoNote, Music, music };
 const __m1 = (() => {
 // El juego: bucle, tiempo con pausa y velocidades, plano, interfaz, audio y guardado.
 const S = __m2;
-const { FarmMap, WORLD } = __m26;
-const { Camera, attachGestures } = __m34;
-const { UI } = __m35;
-const { titleScreen, introScreen, sleepScreen, confirmDialog, importDialog } = __m44;
-const { paperDataURL } = __m29;
-const { SEASON_PAPER } = __m30;
+const { FarmMap, WORLD } = __m30;
+const { Camera, attachGestures } = __m38;
+const { UI } = __m39;
+const { titleScreen, introScreen, sleepScreen, confirmDialog, importDialog } = __m48;
+const { paperDataURL } = __m33;
+const { SEASON_PAPER } = __m34;
 const { ITEM_BY_ID } = __m15;
 const { MILESTONES } = __m10;
 const { ZONE_BY_ID } = __m5;
 const { VOLUNTEER_BY_ID } = __m17;
 const { SEASONS } = __m9;
-const Save = __m45;
-const { audio } = __m41;
-const { music } = __m46;
-const { ambience, sfx } = __m40;
+const Save = __m49;
+const { audio } = __m45;
+const { music } = __m50;
+const { ambience, sfx } = __m44;
 
 class Game {
   constructor() {

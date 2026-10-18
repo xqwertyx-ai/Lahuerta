@@ -12,7 +12,7 @@ import { BALANCE } from '../data/balance.js';
 import {
   unitPrice, sell, sellBlocker, channelOpen, basketCapacity, buyMaterial, hireEmployee, fireEmployee, bedsTotal,
   assignVolunteer, threads, themeNotesKnown, hypothesesRanked, upgradeBlocker, buildUpgrade, capacity, guestCount,
-  WEEKDAYS, daysToMarket, isMarketDay, costLabel, dailyJornales, volunteerJornales,
+  WEEKDAYS, daysToMarket, isMarketDay, costLabel, dailyJornales, volunteerJornales, activityBlocker, doActivity, ACTIVITIES,
 } from '../sim/index.js';
 import { drawIcon } from '../art/illus.js';
 import { sfx } from '../audio/ambience.js';
@@ -97,17 +97,17 @@ export class Notebook {
     const chans = h('div', { class: 'row' }, Object.entries(CHANNELS).map(([id, c]) => btn(c.name.replace(' de Fuente Obejuna', ''), () => { this.channel = id; this.render(); }, { cls: 'small' + (this.channel === id ? ' on' : '') })));
     el.append(chans, h('p', { class: 'small muted' }, CHANNELS[this.channel].desc + (this.channel === 'basket' && channelOpen(s, 'basket') ? ` Hoy aún quieren ${basketCapacity(s)}.` : '')));
     const tbl = h('table', { class: 'inv' }, h('tr', {}, h('th', {}, 'Producto'), h('th', {}, 'Tienes'), h('th', {}, 'Precio'), h('th', {}, '')));
-    let any = false;
+    let any = true;
+    const SECTIONS = { lechugas: 'De la huerta', higos: 'Frutales, monte y dehesa', huevos: 'De los animales', conservas: 'De la cocina' };
     for (const [k, p] of Object.entries(PRODUCTS)) {
       const q = Math.floor(s.products[k] || 0);
-      if (!q && !(s.stats.produced[k] > 0)) continue;
-      any = true;
+      if (SECTIONS[k]) tbl.append(h('tr', {}, h('td', { colspan: 4, style: { fontFamily: 'var(--title)', fontSize: '1.25em', paddingTop: '10px' } }, SECTIONS[k])));
       const price = unitPrice(s, k, this.channel);
       const why1 = sellBlocker(s, k, this.channel, 1);
       const whyAll = sellBlocker(s, k, this.channel, Math.max(1, this.channel === 'basket' ? Math.min(q, basketCapacity(s)) : q));
       const doSell = (n) => { const r = sell(s, k, n, this.channel); g.afterAction(r, null, 'coins'); this.render(); };
       tbl.append(h('tr', {},
-        h('td', {}, p.name, h('div', { class: 'tiny muted' }, p.unit)),
+        h('td', {}, p.name, h('div', { class: 'tiny muted' }, q ? p.unit + (p.spoil ? ' · fresco, se estropea' : '') : p.from || p.unit)),
         h('td', { class: 'num' }, q),
         h('td', { class: 'num' }, fmtMoney(price) + ' €'),
         h('td', {}, h('div', { class: 'row' },
@@ -162,6 +162,7 @@ export class Notebook {
     }
     if (!s.volunteers.length) grid.append(h('div', { class: 'card faded' }, h('p', {}, 'Ahora mismo no hay voluntarios. Llegan si hay cama libre y la finca tiene buena fama.')));
     el.append(grid);
+    this._leisure(el, s);
     // Jornaleros
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Jornaleros del pueblo'),
       h('p', { class: 'small' }, `Tienes ${s.employees}. Cada uno cuesta ${BALANCE.employeeWagePerDay} € al día y aporta ${BALANCE.employeeJornales} jornales.`),
@@ -173,6 +174,23 @@ export class Notebook {
       el.append(h('div', { class: 'section' }, h('h3', {}, 'Pasaron por aquí'),
         h('div', { class: 'pills' }, gone.map((id) => h('span', { class: 'pill' }, `${VOLUNTEER_BY_ID[id].name}${s.flags['contento_' + id] ? ' ♥' : ''}`)))));
     }
+  }
+
+  _leisure(el, s) {
+    const g = this.game;
+    const grid = h('div', { class: 'tasks' });
+    for (const a of ACTIVITIES) {
+      const why = activityBlocker(s, a.id);
+      const cost = Object.entries(a.cost).map(([k, v]) => (k === 'food' ? `${v} de comida de la finca` : costLabel({ [k]: v }))).join(' · ');
+      grid.append(h('div', { class: 'task' },
+        h('div', { class: 'info' },
+          h('div', { class: 'name' }, a.name),
+          h('div', { class: 'meta' }, `${cost} → +${a.happy} alegría de los voluntarios, +${a.mood} ánimo`),
+          why ? h('div', { class: 'why' }, why) : null),
+        btn('Hacer', () => { g.afterAction(doActivity(s, a.id), null, 'chime'); this.render(); }, { disabled: why })));
+    }
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Ratos libres'),
+      h('p', { class: 'small muted' }, 'Arte, música y sobremesas: suben el ánimo de la casa y la alegría de quien está de voluntario (y quien se va contento, recomienda la finca).'), grid));
   }
 
   // ── Recuerdos y misterio ──

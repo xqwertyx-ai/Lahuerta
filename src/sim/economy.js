@@ -87,7 +87,17 @@ export function waterDay(s) {
   let d = w.water || 0;
   d += [-1, -6, -2, 0][si];
   if (s.zones.alberca.unlocked) d += (s.zones.alberca.cons - 40) / 25;
+  if (s.zones.pozo.unlocked) d += (s.zones.pozo.cons - 30) / 25;
   s.water = clamp(s.water + d, 0, 100);
+}
+
+// ── Lo fresco se estropea si no se vende ni se come ──
+export function spoilDay(s) {
+  for (const [k, p] of Object.entries(PRODUCTS)) {
+    if (!p.spoil || !(s.products[k] >= 1)) continue;
+    const lost = roundP(s, s.products[k] * p.spoil);
+    if (lost > 0) addStock(s, k, -lost);
+  }
 }
 
 // ── Precios ──

@@ -23,12 +23,6 @@ export class UI {
     this.toasts = new Toasts(this.layer);
     this.modalOpen = null;
     this.noteQueue = [];
-    const cam = () => game.cam;
-    this.zoomBox = h('div', { class: 'zoom paper', role: 'group', 'aria-label': 'Zoom del plano' },
-      h('button', { 'aria-label': 'Acercar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1.35) }, '+'),
-      h('button', { 'aria-label': 'Ver el plano entero', onclick: () => { cam().zoom = cam().fit; cam().centerOn(800, 500); } }, '⊡'),
-      h('button', { 'aria-label': 'Alejar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1 / 1.35) }, '−'));
-    this.layer.append(this.zoomBox);
     this.dawnBtn = btn('☾ Sin jornales: pasar al amanecer', () => game.skipToDawn(), { cls: 'dawn primary' });
     this.dawnBtn.hidden = true;
     this.layer.append(this.dawnBtn);

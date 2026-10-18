@@ -52,7 +52,7 @@ def run(url, tag, browser):
     pg.wait_for_selector('.hud', timeout=10000)
     time.sleep(1)
     st = pg.evaluate("() => ({ day: __huerta.s.day, zones: Object.keys(__huerta.s.zones).length })")
-    check('partida creada con 12 zonas', st['zones'] == 12)
+    check('partida creada con 14 zonas', st['zones'] == 14)
     pg.screenshot(path=f'{SHOTS}/{tag}-03-plano.png')
 
     # Tocar el cortijo y encalar
@@ -119,7 +119,19 @@ def run(url, tag, browser):
         ok = pg.locator('.book .page h2').count() > 0
         check(f'pestaña {name}', ok)
         pg.screenshot(path=f'{SHOTS}/{tag}-08-cuaderno-{i}-{name}.png')
+    pg.click('.book .tab:has-text("Gente")')
+    check('ratos libres en el cuaderno', pg.locator('text=Ratos libres').count() > 0)
     pg.click('.book .close')
+
+    # Huerta: sembrar en un bancal
+    pg.evaluate("() => { const s = __huerta.s; s.zones.huerta.unlocked = true; s.zones.huerta.cons = 60; s.jornales = 5; }")
+    tap_zone(pg, 330, 680)
+    pg.wait_for_selector('.sheet.open h2:has-text("La huerta")', timeout=3000)
+    pg.locator('.sheet .task').filter(has_text='Bancal 1').locator('button').first.click()
+    time.sleep(0.3)
+    check('se siembra un bancal', pg.evaluate("() => !!__huerta.s.beds[0].crop"))
+    pg.screenshot(path=f'{SHOTS}/{tag}-09-huerta.png')
+    pg.click('.sheet .close')
 
     # Guardar y recargar
     pg.evaluate("() => { __huerta.s.money = 777; window.dispatchEvent(new Event('pagehide')); }")
@@ -161,11 +173,15 @@ def run(url, tag, browser):
           c.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [mk(80, 320)], cancelable: true, bubbles: true })); }""")
         x1 = mp.evaluate("() => __huerta.cam.x + ',' + __huerta.cam.y")
         check(f'{name}: arrastrar con el dedo mueve el plano', x0 != x1, f'{x0} → {x1}')
+        # Pellizcar con dos dedos aleja el plano
         z0 = mp.evaluate("() => __huerta.cam.zoom")
-        mp.click('.zoom button[aria-label="Alejar"]')
+        mp.evaluate("""() => { const c = document.getElementById('map'); const mk = (id, x, y) => new Touch({ identifier: id, target: c, clientX: x, clientY: y });
+          const ev = (type, a, b) => c.dispatchEvent(new TouchEvent(type, { touches: type === 'touchend' ? [] : [a, b], changedTouches: [a, b], cancelable: true, bubbles: true }));
+          ev('touchstart', mk(1, 100, 300), mk(2, 300, 300));
+          for (let i = 1; i <= 8; i++) ev('touchmove', mk(1, 100 + i * 10, 300), mk(2, 300 - i * 10, 300));
+          ev('touchend', mk(1, 180, 300), mk(2, 220, 300)); }""")
         z1 = mp.evaluate("() => __huerta.cam.zoom")
-        check(f'{name}: botón de alejar', z1 < z0, f'{z0:.2f} → {z1:.2f}')
-        mp.click('.zoom button[aria-label="Acercar"]')
+        check(f'{name}: pellizcar aleja el plano', z1 < z0, f'{z0:.2f} → {z1:.2f}')
         tap_zone(mp, 360, 300)  # dehesa
         mp.wait_for_selector('.sheet.open', timeout=3000)
         time.sleep(0.4)

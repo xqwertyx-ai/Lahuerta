@@ -10,6 +10,8 @@ import {
   costLabel, seasonIndex, hasSkill, skillName, assignVolunteer, buyAnimal, animalBlocker, infoOf,
 } from '../sim/index.js';
 import { drawIcon } from '../art/illus.js';
+import { CROPS, RECIPES, SOW_JORNALES, HARVEST_JORNALES } from '../data/crops.js';
+import { beds, seasonalCrops, sow, sowBlocker, harvest, harvestBlocker, harvestAmount, recipeBlocker, recipeJornales, cook, ingredientLabel } from '../sim/index.js';
 import { sfx } from '../audio/ambience.js';
 
 export class ZonePanel {
@@ -118,7 +120,9 @@ export class ZonePanel {
           g.afterAction(r, z.id);
         }, { disabled: why })));
     }
+    if (z.beds) this._beds(s);
     this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Cuidados'), tasks));
+    if (z.id === 'cortijo') this._kitchen(s);
 
     // Producción
     if (z.produce) {
@@ -167,6 +171,56 @@ export class ZonePanel {
       this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Recuerdos'), box));
     }
     this.el.scrollTop = scroll;
+  }
+
+  // Bancales de la huerta
+  _beds(s) {
+    const g = this.game;
+    const box = h('div', { class: 'tasks' });
+    const crops = seasonalCrops(s);
+    beds(s).forEach((b, i) => {
+      if (!b.crop) {
+        const why = crops.length ? null : 'Ahora no es tiempo de sembrar nada';
+        box.append(h('div', { class: 'task' },
+          h('div', { class: 'info' },
+            h('div', { class: 'name' }, `Bancal ${i + 1}: vacío`),
+            h('div', { class: 'meta' }, crops.length ? `Siembra de temporada (${SOW_JORNALES} jornal):` : why),
+            h('div', { class: 'row', style: { marginTop: '4px' } }, crops.map((c) => btn(c.name, () => {
+              g.afterAction(sow(s, i, c.id), 'huerta');
+            }, { cls: 'small', disabled: sowBlocker(s, i, c.id) }))))));
+      } else {
+        const c = CROPS[b.crop];
+        const ready = b.ready != null;
+        box.append(h('div', { class: 'task' },
+          h('div', { class: 'info' },
+            h('div', { class: 'name' }, `Bancal ${i + 1}: ${c.name.toLowerCase()}${ready ? ' · ¡listas!' : ''}`),
+            ready
+              ? h('div', { class: 'meta' }, `Darán unas ${Math.round(harvestAmount(s, i))}. ${s.day - b.ready > 2 ? 'Recógelas pronto o se pasarán.' : ''}`)
+              : h('div', {}, bar(b.growth * 100, 'green'), h('div', { class: 'meta' }, `Creciendo (${Math.round(b.growth * 100)} %). El agua y una huerta cuidada lo adelantan.`))),
+          ready ? btn(`Recoger (${HARVEST_JORNALES})`, () => g.afterAction(harvest(s, i), 'huerta'), { disabled: harvestBlocker(s, i) }) : null));
+      }
+    });
+    this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Bancales'),
+      h('p', { class: 'small muted' }, `Agua del pozo y la alberca: ${Math.round(s.water)} %. Cada estación tiene sus cultivos.`), box));
+  }
+
+  // La cocina del cortijo
+  _kitchen(s) {
+    const g = this.game;
+    const box = h('div', { class: 'tasks' });
+    for (const r of RECIPES) {
+      const why = recipeBlocker(s, r.id);
+      const ins = Object.entries(r.in).map(([k, n]) => `${n} ${ingredientLabel(k)}`).join(' + ');
+      const outs = Object.entries(r.out).map(([k, n]) => `${n} ${PRODUCTS[k].name.toLowerCase()}`).join(' + ');
+      box.append(h('div', { class: 'task' },
+        h('div', { class: 'info' },
+          h('div', { class: 'name' }, r.name),
+          h('div', { class: 'meta' }, `${recipeJornales(s, r)} jornal${recipeJornales(s, r) > 1 ? 'es' : ''} · ${ins} → ${outs}`),
+          why ? h('div', { class: 'why' }, why) : null),
+        btn('Hacer', () => g.afterAction(cook(s, r.id), 'cortijo'), { disabled: why })));
+    }
+    this.el.append(h('div', { class: 'section' }, h('h3', {}, 'La cocina'),
+      h('p', { class: 'small muted' }, 'Lo fresco se estropea a los pocos días; en conserva aguanta y se vende mejor. Quien sabe de cocina saca más.'), box));
   }
 
   _assign(s, z) {

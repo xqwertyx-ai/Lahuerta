@@ -59,10 +59,10 @@ test('tareas: gastan jornales y materiales y suben la conservación', () => {
 
 test('la tarea de temporada se bloquea fuera de su estación', () => {
   const s = fresh(); // otoño
-  const t = S.findTask('huerta', 'sembrar');
-  s.zones.huerta.unlocked = true;
+  const t = S.findTask('pozo', 'atar');
+  s.zones.pozo.unlocked = true;
   s.cfg.startSeason = 3; // invierno
-  assert.match(S.taskBlocker(s, 'huerta', t), /temporada/);
+  assert.match(S.taskBlocker(s, 'pozo', t), /temporada/);
 });
 
 test('desbloquear una zona la vuelve a dibujar y puede dar un recuerdo', () => {
@@ -271,4 +271,66 @@ test('rendimiento decreciente: lo bien cuidado sube menos', () => {
   assert.equal(S.diminish(20), 1);
   assert.ok(S.diminish(80) < 0.6);
   assert.ok(S.diminish(100) >= 0.25);
+});
+
+test('huerta: se siembra lo de temporada, crece con agua y se recoge', () => {
+  const s = fresh(21);
+  s.zones.huerta.unlocked = true; s.zones.huerta.cons = 80; s.water = 90; s.jornales = 10;
+  // otoño: calabazas sí, tomates no
+  assert.match(S.sowBlocker(s, 0, 'tomates'), /temporada/);
+  assert.ok(S.sow(s, 0, 'calabazas').ok);
+  assert.equal(S.beds(s)[0].crop, 'calabazas');
+  for (let i = 0; i < 20 && S.beds(s)[0].ready == null; i++) { s.day++; S.gardenDay(s); }
+  assert.notEqual(S.beds(s)[0].ready, null);
+  const r = S.harvest(s, 0);
+  assert.ok(r.ok && s.products.calabazas >= 3, JSON.stringify(r));
+  assert.equal(S.beds(s)[0].crop, null);
+});
+
+test('lo maduro sin recoger se pasa', () => {
+  const s = fresh(22);
+  s.zones.huerta.unlocked = true;
+  s.beds = [{ crop: 'coles', growth: 1, ready: 1, left: 1 }, { crop: null }, { crop: null }];
+  for (let i = 0; i < 12; i++) { s.day++; S.gardenDay(s); }
+  assert.equal(s.beds[0].crop, null);
+});
+
+test('cocina: conservas con verduras y matanza con un cerdo', () => {
+  const s = fresh(23);
+  s.jornales = 10; s.products.tomates = 2; s.products.pimientos = 2;
+  assert.ok(S.cook(s, 'conservas').ok);
+  assert.ok(s.products.conservas >= 2);
+  assert.equal(s.products.tomates + s.products.pimientos, 1);
+  s.products.cerdo = 1;
+  assert.ok(S.cook(s, 'matanza').ok); // otoño: época de matanza
+  assert.equal(s.products.jamon, 1);
+  assert.ok(s.products.embutido >= 6);
+});
+
+test('ratos libres alegran a los voluntarios y tienen espera', () => {
+  const s = fresh(24);
+  S.arrive(s, 'lucia');
+  const h0 = s.volunteers[0].happy, m0 = s.mood;
+  assert.ok(S.doActivity(s, 'acuarela').ok);
+  assert.ok(s.volunteers[0].happy > h0 && s.mood > m0);
+  assert.match(S.activityBlocker(s, 'acuarela'), /dentro de/);
+});
+
+test('lo fresco se estropea y las conservas no', () => {
+  const s = fresh(25);
+  s.products.lechugas = 20; s.products.conservas = 20;
+  for (let i = 0; i < 10; i++) S.spoilDay(s);
+  assert.ok(s.products.lechugas < 12);
+  assert.equal(s.products.conservas, 20);
+});
+
+test('el pozo da agua', () => {
+  const s = fresh(26);
+  s.zones.pozo.unlocked = true; s.jornales = 3; s.water = 30;
+  assert.ok(S.doTask(s, 'pozo', 'agua').ok);
+  assert.ok(s.water >= 45);
+});
+
+test('todas las zonas con maleza tienen una tarea para quitarla', () => {
+  for (const z of ZONES) if (z.weeds) assert.ok(z.tasks.some((t) => t.effect?.weeds < 0), z.id);
 });

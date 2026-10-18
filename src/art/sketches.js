@@ -2,6 +2,7 @@
 // Cada función dibuja en coordenadas locales de su zona (0,0 → w,h) sobre dos capas:
 //   d.pen → tinta (capa de líneas)      d.wash(...) → acuarela (capa de color)
 import { canopyPts, blobPts, rgba, mix } from './ink.js';
+import { GRANDCHILDREN } from '../data/family.js';
 
 // ───────────────────────── Elementos reutilizables ─────────────────────────
 
@@ -596,8 +597,8 @@ export const SKETCHES = {
       d.wash([...pts.map(([x, yy]) => [x, yy - 7]), ...pts.slice().reverse().map(([x, yy]) => [x, yy + 7])], mix(P.redEarth, '#5a3420', 0.25), { alpha: 0.35, edge: 0.2, spread: 1 });
       pen.set({ width: 0.9 });
       pen.curve(pts.map(([x, yy]) => [x, yy + 7]));
-      // Plantas
-      for (let x = 52; x < W - 64; x += 12 + r() * 6) {
+      // Las plantas se dibujan en vivo según lo sembrado en cada bancal (map.js)
+      for (let x = 52; false && x < W - 64; x += 12 + r() * 6) {
         const yy = y + Math.sin(x / 50 + row) * 2 - 2;
         const kind = row % 3;
         if (kind === 0) { // lechugas
@@ -644,14 +645,21 @@ export const SKETCHES = {
     mimosa(d, 190, H - 16, 1.05);
     higuera(d, 270, H - 18, 1.1);
     higuera(d, 330, H - 34, 0.85);
-    // Parra sobre emparrado
-    const px = 360, py = H - 16;
+    // Pila de leña y cesta de setas
+    const px = 362, py = H - 10;
     pen.set({ width: 1.1 });
-    for (const x of [px, px + 48]) pen.line(x, py, x, py - 46);
-    pen.line(px - 6, py - 46, px + 54, py - 46);
-    for (let x = px; x <= px + 48; x += 12) pen.line(x, py - 46, x + 4, py - 52);
-    d.wash(canopyPts(px + 24, py - 50, 34, 10, r, 10, 0.3), P.foliage, { alpha: 0.5 });
-    for (let i = 0; i < 5; i++) pen.dot(px + 6 + i * 9, py - 40, 2, '#5a3a6a', 0.7);
+    for (let row = 0; row < 3; row++) {
+      for (let k = 0; k < 4 - row; k++) {
+        const lx = px + row * 7 + k * 14, ly = py - row * 11;
+        d.washBlob(lx, ly, 7, 5.5, '#b8783a', { alpha: 0.65, layers: 1, edge: 0.4, grain: 0 });
+        pen.ellipse(lx, ly, 7, 5.5, 0.1);
+        pen.dot(lx, ly, 1.2, '#6a4020', 0.8);
+      }
+    }
+    d.wash([[px + 62, py], [px + 84, py], [px + 88, py - 12], [px + 58, py - 12]], '#c9a060', { alpha: 0.6 });
+    pen.path([[px + 62, py], [px + 84, py], [px + 88, py - 12], [px + 58, py - 12]], true);
+    pen.curve([[px + 58, py - 12], [px + 73, py - 26], [px + 88, py - 12]]);
+    for (let i = 0; i < 4; i++) { d.washBlob(px + 64 + i * 6, py - 14, 3.2, 2.2, '#c8742a', { alpha: 0.9, layers: 1, edge: 0.4, grain: 0 }); }
     // Troncos cortados, caja de fruta y rastrillo
     d.washBlob(150, H - 8, 14, 6, '#b8683a', { alpha: 0.6 });
     pen.ellipse(150, H - 8, 14, 6); pen.ellipse(162, H - 8, 3, 6, 0.1);
@@ -847,6 +855,97 @@ export const SKETCHES = {
       pen.rect(tx - 6, ty - 14, 12, 14);
       pen.ellipse(tx, ty - 14, 6, 2);
     }
+  },
+
+  pozo(d) {
+    const { pen, r, P } = d;
+    const W = d.w, H = d.h;
+    groundPatch(d, 4, 60, W - 8, H - 64, mix(P.ground, '#bfae88', 0.4), 0.3, 24);
+    // Emparrado: postes, vigas y la viña por encima
+    pen.set({ width: 1.3 });
+    for (const x of [14, W - 14]) {
+      d.wash([[x - 3, H - 8], [x + 3, H - 8], [x + 3, 34], [x - 3, 34]], P.wood, { alpha: 0.5, edge: 0 });
+      pen.line(x - 3, H - 8, x - 3, 34); pen.line(x + 3, H - 8, x + 3, 34);
+    }
+    pen.line(6, 34, W - 6, 34); pen.line(6, 40, W - 6, 40);
+    for (let x = 18; x < W - 10; x += 16) pen.line(x, 32, x + 6, 26);
+    d.wash(canopyPts(W / 2, 30, W / 2 - 2, 20, r, 14, 0.35), mix(P.foliage, '#6a8a3a', 0.4), { alpha: 0.55 });
+    pen.set({ width: 0.8 });
+    pen.path(canopyPts(W / 2, 30, W / 2 - 2, 20, r, 14, 0.35), true);
+    // Pámpanos colgando y racimos
+    for (let i = 0; i < 7; i++) {
+      const x = 20 + i * 17 + r.range(-3, 3);
+      pen.curve([[x, 42], [x + 3, 50], [x - 1, 58]]);
+      if (i % 2 === 0) for (let k = 0; k < 5; k++) pen.dot(x + (k % 2) * 3 - 1, 50 + k * 2.4, 2.1, '#5a3a6a', 0.8);
+    }
+    // El pozo: brocal encalado, arco de hierro, polea y cubo
+    const cx = W / 2, top = H - 50;
+    groundShadow(d, cx + 4, H - 14, 36, 6);
+    d.wash([[cx - 30, top], [cx + 30, top], [cx + 30, H - 18], [cx - 30, H - 18]], P.whitewash, { alpha: 1 });
+    d.washBlob(cx, top, 30, 9, '#e8e4da', { alpha: 1, irregular: 0.03 });
+    d.washBlob(cx, top, 22, 6, '#2a3a44', { alpha: 0.85, irregular: 0.03, edge: 0 });
+    pen.set({ width: 1.4 });
+    pen.ellipse(cx, top, 30, 9, 0.03);
+    pen.ellipse(cx, top, 22, 6, 0.03);
+    pen.line(cx - 30, top, cx - 30, H - 18);
+    pen.line(cx + 30, top, cx + 30, H - 18);
+    pen.curve([[cx - 30, H - 18], [cx, H - 12], [cx + 30, H - 18]]);
+    pen.set({ width: 0.6, double: false });
+    for (let k = 0; k < 6; k++) pen.line(cx - 26 + k * 10, top + 10, cx - 27 + k * 10, H - 16);
+    pen.set({ width: 1.6, double: true, color: '#2b2420' });
+    pen.curve([[cx - 26, top - 2], [cx - 18, top - 30], [cx, top - 38], [cx + 18, top - 30], [cx + 26, top - 2]]);
+    pen.ellipse(cx, top - 32, 4, 4);
+    pen.set({ width: 0.8 });
+    pen.line(cx, top - 28, cx, top - 12);
+    pen.set({ color: '#3b2a1c', width: 1.1 });
+    d.wash([[cx - 6, top - 12], [cx + 6, top - 12], [cx + 5, top - 2], [cx - 5, top - 2]], '#8a8a8a', { alpha: 0.7 });
+    pen.path([[cx - 6, top - 12], [cx + 6, top - 12], [cx + 5, top - 2], [cx - 5, top - 2]], true);
+    // Cántaro junto al brocal
+    d.washBlob(cx + 42, H - 22, 7, 9, '#c07a4a', { alpha: 0.75 });
+    pen.ellipse(cx + 42, H - 22, 7, 9);
+  },
+
+  bancos(d) {
+    const { pen, r, P } = d;
+    const W = d.w, H = d.h;
+    const names = GRANDCHILDREN.length ? GRANDCHILDREN : [];
+    const n = Math.max(4, Math.min(6, names.length || 4));
+    const gap = W / n;
+    const bw = gap * 0.78;
+    const tiles = ['#2f5f9e', '#7fa6d6', '#c9412f', '#e2b33a', '#4f8a3a', '#f4efe4'];
+    for (let i = 0; i < n; i++) {
+      const x = i * gap + (gap - bw) / 2, seatY = H - 22, backTop = H - 52;
+      groundShadow(d, x + bw / 2, H - 10, bw / 2 + 4, 5);
+      // Respaldo con mosaico
+      d.wash([[x, backTop], [x + bw, backTop], [x + bw, seatY], [x, seatY]], P.whitewash, { alpha: 1, edge: 0.2 });
+      const cell = 4.2;
+      for (let yy = backTop + 3; yy < seatY - 3; yy += cell) {
+        for (let xx = x + 3; xx < x + bw - 3; xx += cell) {
+          const edge = yy < backTop + 8 || yy > seatY - 8 || xx < x + 8 || xx > x + bw - 8;
+          if (!edge && names[i]) continue; // el centro, para el nombre
+          d.wash([[xx, yy], [xx + cell - 0.8, yy], [xx + cell - 0.8, yy + cell - 0.8], [xx, yy + cell - 0.8]], r.pick(tiles), { alpha: 0.85, layers: 1, spread: 0.2, edge: 0, grain: 0 });
+        }
+      }
+      // Asiento y patas de obra
+      d.wash([[x - 3, seatY], [x + bw + 3, seatY], [x + bw + 3, seatY + 7], [x - 3, seatY + 7]], mix(P.whitewash, P.wallShade, 0.25), { alpha: 1 });
+      d.wash([[x + 3, seatY + 7], [x + 12, seatY + 7], [x + 12, H - 10], [x + 3, H - 10]], P.whitewash, { alpha: 1, edge: 0.2 });
+      d.wash([[x + bw - 12, seatY + 7], [x + bw - 3, seatY + 7], [x + bw - 3, H - 10], [x + bw - 12, H - 10]], P.whitewash, { alpha: 1, edge: 0.2 });
+      pen.set({ width: 1.2 });
+      pen.rect(x, backTop, bw, seatY - backTop);
+      pen.rect(x - 3, seatY, bw + 6, 7);
+      pen.rect(x + 3, seatY + 7, 9, H - 10 - seatY - 7);
+      pen.rect(x + bw - 12, seatY + 7, 9, H - 10 - seatY - 7);
+      if (names[i]) {
+        d.ctx.save();
+        d.ctx.fillStyle = '#2f5f9e';
+        d.ctx.font = `700 ${Math.min(15, bw / Math.max(4, names[i].length) * 1.6)}px "Caveat", cursive`;
+        d.ctx.textAlign = 'center';
+        d.ctx.fillText(names[i], x + bw / 2, (backTop + seatY) / 2 + 5);
+        d.ctx.restore();
+      }
+    }
+    // Arbustos entre bancos
+    for (let i = 1; i < n; i++) arbusto(d, i * gap, H - 12, 0.7);
   },
 
   piano(d) {

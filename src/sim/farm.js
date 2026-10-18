@@ -8,6 +8,7 @@ import { seasonIndex } from './calendar.js';
 import { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, costLabel, labelOf } from './effects.js';
 import { hasSkill, skillName, traitOf, volunteerJornales, infoOf, setZoneSkillMap } from './people.js';
 import { giveItem, checkRevelation } from './mystery.js';
+import { growBeds, autoGarden } from './garden.js';
 
 // Qué oficios usa cada zona (para el ánimo de los voluntarios encargados)
 setZoneSkillMap(Object.fromEntries(ZONES.map((z) => [z.id, [...new Set(z.tasks.map((t) => t.skill).filter(Boolean))]])));
@@ -119,6 +120,8 @@ export function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   if (eff.cons) st.cons = clamp(st.cons + eff.cons * mult * diminish(st.cons), 0, 100);
   if (eff.weeds && st.weeds != null) st.weeds = clamp(st.weeds + eff.weeds * (skilled ? 1.3 : 1), 0, 100);
   if (eff.mood) s.mood = clamp(s.mood + eff.mood, 0, 100);
+  if (task.water) s.water = clamp(s.water + task.water * (skilled ? 1.3 : 1), 0, 100);
+  if (task.growBeds) growBeds(s, task.growBeds * (skilled ? 1.3 : 1));
   const gains = [];
   if (task.gain) for (const [k, v] of Object.entries(task.gain)) { addStock(s, k, v); gains.push([k, v]); }
   if (task.gainScaled) {
@@ -303,6 +306,12 @@ export function autoMaintain(s) {
       continue;
     }
     let budget = volunteerJornales(v);
+    // En la huerta, primero recoger lo maduro y sembrar lo de temporada
+    if (v.zone === 'huerta') {
+      const used = autoGarden(s, budget);
+      if (used) v.lastWork = 'recogió y sembró los bancales';
+      budget -= used;
+    }
     let guard = 0;
     const done = [];
     while (budget >= 1 && guard++ < 6) {

@@ -57,6 +57,8 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
     hyp,
     themeHints: 0,
     upgrades: [],
+    beds: [{ crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }],
+    activityLast: {},
     guests: [],              // [{ n, nights }]
     log: [],
     eventQueue: [],          // eventos pendientes de mostrar (el tiempo se detiene)
@@ -75,7 +77,7 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
       tasks: 0, sales: 0, marketSales: 0, earned: 0, spent: 0,
       produced: Object.fromEntries(Object.keys(PRODUCTS).map((k) => [k, 0])),
       volunteersArrived: 0, volunteersLeft: 0, guests: 0, concerts: 0, montaneras: 0,
-      events: 0, restored: 0,
+      events: 0, restored: 0, harvests: 0, activities: 0,
     },
   };
 }
@@ -85,6 +87,10 @@ export function migrate(s) {
   // v0.1 → el «almacén» es en realidad la ermita de San Antonio
   if (s.zones && s.zones.almacen && !s.zones.ermita) { s.zones.ermita = s.zones.almacen; delete s.zones.almacen; }
   if (s.volunteers) for (const v of s.volunteers) if (v.zone === 'almacen') v.zone = 'ermita';
+  // v0.2 → las «hortalizas» pasan a ser cultivos concretos
+  if (s.products && s.products.hortalizas) { s.products.lechugas = (s.products.lechugas || 0) + s.products.hortalizas; }
+  if (s.products) delete s.products.hortalizas;
+  if (s.stats && s.stats.produced) delete s.stats.produced.hortalizas;
   const fresh = createState(s.seed || 1, s.cfg);
   for (const k of Object.keys(fresh)) if (s[k] === undefined) s[k] = fresh[k];
   for (const k of Object.keys(fresh.zones)) {

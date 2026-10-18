@@ -33,4 +33,8 @@ export const FAMILY = [
   },
 ];
 
+// ✎ AUTOR: los nombres de los nietos, tal como están en el mosaico de los bancos del camino a la
+//   ermita (uno por banco). Mientras esté vacío, los bancos muestran solo el mosaico.
+export const GRANDCHILDREN = [];
+
 export const FAMILY_BY_ID = Object.fromEntries(FAMILY.map((f) => [f.id, f]));

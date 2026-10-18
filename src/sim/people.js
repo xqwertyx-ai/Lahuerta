@@ -87,7 +87,7 @@ export function arrive(s, id) {
 }
 
 // ── Comida ──
-const FOOD_ORDER = ['hortalizas', 'huevos', 'higos', 'uvas', 'queso'];
+const FOOD_ORDER = Object.keys(PRODUCTS).filter((k) => PRODUCTS[k].food && k !== 'jamon').sort((a, b) => (PRODUCTS[b].spoil || 0) - (PRODUCTS[a].spoil || 0));
 
 export function feedVolunteers(s) {
   let fedFromFarm = 0, paid = 0;

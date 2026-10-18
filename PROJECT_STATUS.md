@@ -1,11 +1,12 @@
 # LA HUERTA DEL PIANISTA — Estado del proyecto
 
-_Última actualización: 18 oct 2026 · v0.2_
+_Última actualización: 18 oct 2026 · v0.3_
 
 ## Resumen
 Gestor de recursos casual y poético para navegador (móvil y escritorio). Cuidas una finca familiar real en Ojuelos Bajos (Fuente Obejuna, Córdoba): lo descuidado se destiñe y se borra del cuaderno; lo restaurado vuelve a entintarse y gana color. Voluntarios, producción de la dehesa, mercado, agroturismo, eventos y el misterio del pianista, con música generativa de piano. JavaScript con módulos ES, sin dependencias.
 
 ## ✅ COMPLETADO
+- ✅ v0.3 — **El pozo y el emparrado** (agua dulce para la huerta y la casa, uvas y vendimia), **los bancos de los nietos** en el camino a la ermita (encalar, reponer teselas, repasar nombres; los nombres se escriben en `GRANDCHILDREN` de `src/data/family.js`), **huerta por bancales** (3 bancales: se siembra lo de cada estación —lechugas, habas, tomates, pimientos, calabazas, coles, ajos—, crece con agua y cuidado, se recoge y, si no, se pasa), **cocina del cortijo** (conservas, mermelada, matanza con jamón y embutido), **lo fresco se estropea**, el bosquete da **leña y setas**, desbroce del colmenar, **ratos libres** (acuarela, comidas, paseos, música, estrellas, baño, mosaico, candela, cine de verano) y la despensa enseña todos los productos y de dónde salen. Zoom solo con los dedos (sin botones)
 - ✅ v0.2 — El «almacén de la puerta roja» es en realidad la **ermita de San Antonio**: nuevo nombre, espadaña con cruz, tareas propias (barrer y poner flores, encalar, pintar la reja, arreglar la espadaña), evento «Fiesta de San Antonio» en verano y, como el santo encuentra lo perdido, con la ermita restaurada aparecen recuerdos con más facilidad. Reparar herramientas pasa al cortijo y el carbón a la dehesa. Las partidas guardadas se convierten solas
 - ✅ Repositorio propio: github.com/xqwertyx-ai/Lahuerta
 - ✅ Fase 1 — Arquitectura (`src/engine`, `sim`, `data`, `art`, `audio`, `ui`, `scenes`→`ui/screens`, `save`, `tests`, `tools`) y bucle de tiempo: 1 día = 2 min reales, pausa y x1/x2/x3, el tiempo se detiene con un evento abierto o el cuaderno (opcional)

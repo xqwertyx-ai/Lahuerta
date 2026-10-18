@@ -8,7 +8,8 @@ import { rand, pick, weighted } from './rng.js';
 import { seasonIndex, isSeasonStart, isMarketDay, yearOf, weekday } from './calendar.js';
 import { addLog, signal, clamp } from './effects.js';
 import { decayHour, avgCons, autoMaintain, restoredCount, checkItems } from './farm.js';
-import { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices } from './economy.js';
+import { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices, spoilDay } from './economy.js';
+import { gardenDay } from './garden.js';
 import { tryArrival, feedVolunteers, dailyVolunteers, departVolunteer, payEmployees, dailyJornales } from './people.js';
 import { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } from './events.js';
 import { checkRevelation } from './mystery.js';
@@ -103,7 +104,9 @@ export function dawn(s) {
   payEmployees(s);
 
   // Finca
+  spoilDay(s);
   produceDay(s);
+  gardenDay(s);
   montaneraDay(s);
   waterDay(s);
   rollPriceNoise(s);

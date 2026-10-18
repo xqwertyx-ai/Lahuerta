@@ -51,7 +51,7 @@ export const BALANCE = {
 
   // ── Economía ──
   foodCostPerVolunteer: 2,      // € por día si no hay comida de la finca
-  foodFromFarmPerVolunteer: 1,  // unidades de comida (huevos/hortalizas) por voluntario y día
+  foodFromFarmPerVolunteer: 1,  // unidades de comida (verduras, huevos…) por voluntario y día
   debtLimit: -150,              // por debajo, la finca está en números rojos
   priceRecoveryPerDay: 0.18,    // los precios saturados vuelven a la normalidad
   saturationPerUnit: 0.035,     // cada unidad vendida baja el precio del canal

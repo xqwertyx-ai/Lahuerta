@@ -8,12 +8,13 @@ import { palette, timeTint } from './palette.js';
 import { SKETCHES, village, compass, encina as encinaFree, arbusto as matorral } from './sketches.js';
 import { Cat } from './cat.js';
 import { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } from './critters.js';
+import { CROPS } from '../data/crops.js';
 
 export const WORLD = { w: 1600, h: 1000 };
 const PAD = 46;
 
 const LABELS = {
-  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], huerta: [330, 582],
+  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], pozo: [1000, 414], bancos: [1115, 994], huerta: [330, 582],
   bosquete: [290, 818], dehesa: [250, 140], muros: [640, 462], alberca: [940, 184], colmenar: [1205, 134],
   corral: [1445, 140], piano: [1195, 424],
 };
@@ -29,7 +30,7 @@ function layeredCtx(inkCtx, washCtx, seed, P, w, h) {
   const r = makeRng(seed);
   const pen = new Pen(inkCtx, seed + 1);
   return {
-    pen, r, P, w, h,
+    pen, r, P, w, h, ctx: inkCtx,
     wash: (pts, color, o) => wash(washCtx, pts, color, r, o),
     washBlob: (cx, cy, rx, ry, color, o = {}) => wash(washCtx, blobPts(cx, cy, rx, ry, r, o.irregular ?? 0.14, 24), color, r, o),
   };
@@ -117,8 +118,8 @@ export class FarmMap {
     }
     pen.set({ width: 1.4, double: true, alpha: 1 });
     // Árboles y matas sueltas en los huecos del plano
-    const loose = [[1010, 470, 'e', 0.8], [1080, 360, 'e', 0.7], [990, 560, 'a', 1], [620, 470, 'a', 0.9], [1340, 560, 'e', 0.9],
-      [1350, 650, 'a', 1], [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8], [960, 940, 'a', 0.9], [1150, 950, 'e', 0.7], [1240, 900, 'a', 1],
+    const loose = [[1080, 360, 'e', 0.7], [620, 470, 'a', 0.9], [1340, 560, 'e', 0.9],
+      [1350, 650, 'a', 1], [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8],
       [560, 990, 'a', 0.8], [1250, 300, 'a', 0.8], [800, 410, 'e', 0.7], [1050, 120, 'e', 0.6], [520, 400, 'a', 0.6]];
     for (const [x, y, k, s] of loose) {
       if (k === 'e') encinaFree(d, x, y, s); else matorral(d, x, y, s);
@@ -343,6 +344,35 @@ export class FarmMap {
         const bx = corral.x + 110 + r() * 100, by = corral.y + 180 + r() * 60;
         drawSheep(ctx, bx + Math.sin(T * 0.2 + i) * 6, by, Math.sin(T * 0.3 + i) > 0 ? 1 : -1);
       }
+    }
+    // Lo sembrado en los bancales de la huerta
+    if (s.zones.huerta.unlocked && Array.isArray(s.beds)) {
+      const hz = ZONE_BY_ID.huerta;
+      s.beds.forEach((b, i) => {
+        if (!b || !b.crop) return;
+        const c = CROPS[b.crop];
+        const g = b.ready != null ? 1 : Math.max(0.15, b.growth);
+        for (const row of [i * 2, i * 2 + 1]) {
+          const y = hz.y + 36 + row * 30;
+          for (let x = hz.x + 54; x < hz.x + hz.w - 66; x += 13) {
+            const yy = y + Math.sin((x - hz.x) / 50 + row) * 2 - 2;
+            const sz = 2.6 + g * 4;
+            ctx.fillStyle = c.color;
+            ctx.globalAlpha = 0.85;
+            ctx.beginPath();
+            ctx.ellipse(x, yy - sz * 0.6, sz * 0.8, sz, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = 'rgba(59,42,28,0.6)';
+            ctx.lineWidth = 0.6;
+            ctx.stroke();
+            if (b.ready != null && (x / 13) % 2 < 1) {
+              ctx.fillStyle = 'rgba(255,240,180,0.9)';
+              ctx.beginPath(); ctx.arc(x + 2, yy - sz, 1.2, 0, 6.28); ctx.fill();
+            }
+          }
+        }
+      });
     }
     // Cerdos de montanera bajo las encinas
     if (s.animals.cerdos > 0) {
