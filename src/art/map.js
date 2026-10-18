@@ -161,7 +161,7 @@ export class FarmMap {
   sync(s) {
     for (const z of ZONES) {
       const st = s.zones[z.id];
-      const key = st.unlocked ? `u${Math.round(st.cons / 4)}w${st.weeds == null ? '-' : Math.round(st.weeds / 10)}` : 'locked';
+      const key = st.unlocked ? `u${Math.round(st.cons / 4)}w${st.weeds == null ? '-' : Math.round(st.weeds / 10)}` : `l${st.unlockWork || 0}`;
       const L = this.zl[z.id];
       if (L && L.key !== key) {
         L.key = key;
@@ -179,8 +179,9 @@ export class FarmMap {
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.clearRect(0, 0, L.comp.width, L.comp.height);
     if (!st.unlocked) {
-      // Borrado: apenas un rastro de lápiz
-      c.globalAlpha = 0.13;
+      // Borrado: apenas un rastro de lápiz (se marca más a medida que se recupera)
+      const prog = Math.min(1, (st.unlockWork || 0) / ((z.unlock || {}).jornales || 1));
+      c.globalAlpha = 0.13 + 0.32 * prog;
       c.drawImage(L.ink, 0, 0);
       c.globalAlpha = 1;
       return;
@@ -262,7 +263,8 @@ export class FarmMap {
       g.fillText(z.name, lx, ly);
       if (!st.unlocked) {
         g.font = `17px ${this.labelFont}`;
-        g.fillText('borrado · tócalo para recuperarlo', lx, ly + 18);
+        const total = (z.unlock || {}).jornales || 1;
+        g.fillText(st.unlockWork ? `recuperándose · ${st.unlockWork}/${total}` : 'borrado · tócalo para recuperarlo', lx, ly + 18);
         // Contorno a lápiz discontinuo
         g.save();
         g.setLineDash([6, 7]);
@@ -297,7 +299,7 @@ export class FarmMap {
   addWork(zoneId, text, skilled) {
     const z = ZONE_BY_ID[zoneId];
     if (!z) return;
-    this.effects.push({ kind: 'work', x: z.x + z.w * (0.3 + Math.random() * 0.4), y: z.y + z.h * (0.55 + Math.random() * 0.3), t: 0, life: 4, text, skilled });
+    this.effects.push({ kind: 'work', x: z.x + z.w * (0.2 + Math.random() * 0.6), y: z.y + z.h * (0.88 + Math.random() * 0.1), t: 0, life: 4, text, skilled });
     this.cat.notice(z.x + z.w / 2, z.y + z.h * 0.8);
   }
 
@@ -327,7 +329,7 @@ export class FarmMap {
     const day = hour > 7 && hour < 20.5;
     // Gallinas y ovejas en el corral
     const corral = ZONE_BY_ID.corral;
-    if (s.zones.corral.unlocked) {
+    if (s.zones.corral.unlocked && hour > 6.5 && hour < 21) {
       const hens = Math.min(10, s.animals.gallinas);
       for (let i = 0; i < hens; i++) {
         const r = makeRng(100 + i);
@@ -372,7 +374,8 @@ export class FarmMap {
     s.volunteers.forEach((v, i) => {
       const z = v.zone ? ZONE_BY_ID[v.zone] : ZONE_BY_ID.patio;
       const r = makeRng(hashStr(v.id));
-      let x = z.x + z.w * (0.2 + r() * 0.6), y = z.y + z.h * (0.5 + r() * 0.4);
+      // De pie en el suelo de su zona (nunca subidos a una fachada)
+      let x = z.x + z.w * (0.15 + r() * 0.7), y = z.y + z.h * (0.9 + r() * 0.08);
       const working = v.zone && day;
       if (!day) { x = ZONE_BY_ID.cortijo.x + 100 + i * 12; y = ZONE_BY_ID.cortijo.y + 214; }
       drawFigure(ctx, x, y, { hat: r() < 0.5, color: ['#a04030', '#406a90', '#6a8a3a', '#8a5aa0'][hashStr(v.id) % 4], work: working ? T * 4 + i : null, scale: 1 });
@@ -453,7 +456,8 @@ export class FarmMap {
     const w = s.weather;
     if (w === 'lluvia' || w === 'tormenta') {
       const n = w === 'tormenta' ? 260 : 150;
-      ctx.strokeStyle = rgba('#4a5a78', 0.35);
+      const dark = s.hour < 7 || s.hour > 20;
+      ctx.strokeStyle = dark ? 'rgba(200,210,235,0.35)' : rgba('#4a5a78', 0.35);
       ctx.lineWidth = 1;
       ctx.beginPath();
       for (let i = 0; i < n; i++) {

@@ -35,6 +35,7 @@ export const REVELATION = {
   requires: {
     items: ['partitura1', 'partitura2', 'partitura3', 'partitura4', 'partitura5', 'partitura6', 'diario', 'firma'],
     zones: { piano: 80 },
+    minDay: 100,   // no antes del día 100 (casi dos años): el misterio se cuece despacio
   },
   title: 'El tema completo',
   pages: [

@@ -83,7 +83,7 @@ export function tourismDawn(s) {
   if (cap <= 0) return;
   const si = seasonIndex(s);
   const w = WEATHER[s.weather] || WEATHER.sol;
-  const expected = (BALANCE.visitorBase + s.rep * BALANCE.visitorPerRep) * (1 + appeal(s) * 0.2) * TOURISM_SEASON[si] * w.visitors * (s.zones.cortijo.cons / 100);
+  const expected = (BALANCE.visitorBase + s.rep * BALANCE.visitorPerRep) * (1 + Math.min(8, appeal(s)) * 0.1) * TOURISM_SEASON[si] * w.visitors * (s.zones.cortijo.cons / 100);
   let free = cap;
   let tries = Math.floor(expected) + (rand(s) < expected % 1 ? 1 : 0);
   while (tries-- > 0 && free > 0) {
@@ -100,12 +100,12 @@ export function tourismDawn(s) {
 export function tourismEvening(s) {
   const n = guestCount(s);
   if (!n) return 0;
-  let total = n * BALANCE.nightPrice * (0.8 + s.rep / 250);
-  for (const id of s.upgrades) {
-    const u = UPGRADE_BY_ID[id];
-    if (u.kind !== 'activity' || id === 'concierto') continue;
-    for (let i = 0; i < n; i++) if (chance(s, 0.35)) total += u.price;
-  }
+  let total = n * BALANCE.nightPrice * (0.8 + s.rep / 300);
+  // Cada huésped hace, como mucho, una actividad al día
+  const acts = s.upgrades.map((id) => UPGRADE_BY_ID[id]).filter((u) => u.kind === 'activity' && u.id !== 'concierto');
+  if (acts.length) for (let i = 0; i < n; i++) if (chance(s, 0.5)) total += acts[randInt(s, 0, acts.length - 1)].price;
+  // Desayuno, sábanas y luz
+  total -= n * BALANCE.guestCostPerNight;
   total = Math.round(total);
   addStock(s, 'money', total);
   s.stats.earned += total;

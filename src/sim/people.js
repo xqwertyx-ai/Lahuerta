@@ -5,6 +5,9 @@ import { PRODUCTS } from '../data/products.js';
 import { rand, chance, randInt, pick } from './rng.js';
 import { addLog, signal, clamp, addStock } from './effects.js';
 
+// Concordancia: adj(v, 'contento') → contenta / contento
+export function adj(info, word) { return info.g === 'f' ? word.replace(/o$/, 'a') : word; }
+
 export function traitOf(v) { return TRAITS[VOLUNTEER_BY_ID[v.id].trait] || {}; }
 export function infoOf(v) { return VOLUNTEER_BY_ID[v.id]; }
 
@@ -102,6 +105,7 @@ export function feedVolunteers(s) {
       const cost = Math.ceil(need) * BALANCE.foodCostPerVolunteer;
       addStock(s, 'money', -cost);
       s.stats.spent += cost;
+      s.foodWeek = (s.foodWeek || 0) + cost;
       paid += cost;
       v._fed = 0;
     } else {
@@ -142,14 +146,14 @@ export function departVolunteer(s, v) {
   s.stats.volunteersLeft++;
   const t = traitOf(v);
   if (v.happy >= 60) {
-    const rep = 3 + (t.repOnLeave || 0) + Math.round((v.happy - 60) / 10);
+    const rep = 2 + (t.repOnLeave || 0) + Math.round((v.happy - 60) / 15);
     s.rep = clamp(s.rep + rep, 0, 100);
     s.recommendUntil = Math.max(s.recommendUntil, s.day + 10);
     s.flags['contento_' + v.id] = true;
-    addLog(s, `${info.name} se marcha contento. «${pick(s, info.lines)}» Recomendará la finca (+${rep} de reputación).`, 'volunteer');
+    addLog(s, `${info.name} se marcha ${adj(info, 'contento')}. «${pick(s, info.lines)}» Recomendará la finca (+${rep} de reputación).`, 'volunteer');
   } else if (v.happy < 35) {
     s.rep = clamp(s.rep - 2, 0, 100);
-    addLog(s, `${info.name} se marcha antes de tiempo, algo decepcionado. La cama era dura y la comida, poca.`, 'bad');
+    addLog(s, `${info.name} se marcha antes de tiempo, algo ${adj(info, 'decepcionado')}. La cama era dura y la comida, poca.`, 'bad');
   } else {
     s.rep = clamp(s.rep + 1, 0, 100);
     addLog(s, `${info.name} se despide. Ha sido una buena temporada.`, 'volunteer');
@@ -160,7 +164,8 @@ export function departVolunteer(s, v) {
 export function assignVolunteer(s, volunteerId, zoneId) {
   const v = s.volunteers.find((x) => x.id === volunteerId);
   if (!v) return false;
-  if (zoneId && !s.zones[zoneId]?.unlocked) return false;
+  // A una zona borrada solo se le puede encargar si su recuperación ya ha empezado
+  if (zoneId && !s.zones[zoneId]?.unlocked && !(s.zones[zoneId]?.unlockWork > 0)) return false;
   v.zone = zoneId || null;
   return true;
 }

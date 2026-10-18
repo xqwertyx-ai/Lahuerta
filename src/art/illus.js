@@ -180,13 +180,27 @@ function catSketch(d, x, y, s = 1) {
 
 function boar(d, x, y, s = 1) {
   const { pen } = d;
-  const body = [[x - 34 * s, y - 10 * s], [x - 30 * s, y - 30 * s], [x - 4 * s, y - 38 * s], [x + 22 * s, y - 32 * s], [x + 36 * s, y - 20 * s], [x + 44 * s, y - 14 * s], [x + 36 * s, y - 8 * s], [x - 30 * s, y - 6 * s]];
-  d.wash(body, '#4a3a30', { alpha: 0.7 });
-  pen.set({ width: 1.3 });
-  pen.path(body, true);
-  pen.hatch(body, { gap: 3, alpha: 0.5 });
-  for (const lx of [-24, -12, 16, 28]) pen.line(x + lx * s, y - 8 * s, x + lx * s, y + 4 * s);
-  pen.line(x + 38 * s, y - 12 * s, x + 44 * s, y - 20 * s);
+  // Cuerpo con cruz alta y lomo erizado, cabeza baja con hocico
+  const body = [[x - 40 * s, y - 14 * s], [x - 38 * s, y - 30 * s], [x - 20 * s, y - 40 * s], [x + 4 * s, y - 44 * s], [x + 22 * s, y - 38 * s],
+    [x + 32 * s, y - 30 * s], [x + 46 * s, y - 24 * s], [x + 54 * s, y - 18 * s], [x + 50 * s, y - 12 * s], [x + 34 * s, y - 12 * s], [x + 20 * s, y - 10 * s], [x - 30 * s, y - 10 * s]];
+  d.wash(body, '#5a4636', { alpha: 0.75 });
+  pen.set({ width: 1.4 });
+  pen.curve(body, true);
+  pen.hatch(body, { gap: 3.2, alpha: 0.45, angle: -1.2 });
+  // Crines del lomo
+  pen.set({ width: 1 });
+  for (let i = 0; i < 9; i++) { const bx = x - 26 * s + i * 6 * s, by = y - 41 * s + Math.abs(i - 4) * 1.4 * s; pen.line(bx, by, bx - 2 * s, by - 6 * s); }
+  // Oreja, ojo, colmillo y hocico
+  pen.path([[x + 26 * s, y - 36 * s], [x + 28 * s, y - 46 * s], [x + 33 * s, y - 34 * s]], false);
+  pen.dot(x + 38 * s, y - 25 * s, 1.6 * s, '#1a120c');
+  d.washBlob(x + 53 * s, y - 15 * s, 3.5 * s, 4 * s, '#8a6a5a', { alpha: 0.9, edge: 0.5 });
+  pen.set({ width: 1.6, color: '#f4ecdc' });
+  pen.curve([[x + 46 * s, y - 13 * s], [x + 48 * s, y - 18 * s], [x + 45 * s, y - 21 * s]]);
+  pen.set({ color: '#3b2a1c', width: 1.5 });
+  // Patas finas
+  for (const [lx, k] of [[-30, -1], [-20, 1], [16, -1], [26, 1]]) pen.curve([[x + lx * s, y - 11 * s], [x + (lx + k) * s, y - 2 * s], [x + (lx + k * 2) * s, y + 6 * s]]);
+  // Cola
+  pen.curve([[x - 39 * s, y - 26 * s], [x - 45 * s, y - 24 * s], [x - 44 * s, y - 18 * s]]);
 }
 
 const MOTIFS = {
@@ -261,7 +275,7 @@ const MOTIFS = {
   jabali(d) {
     hills(d, 120);
     grassTufts(d, 10, 130, 340, 70, 50);
-    boar(d, 180, 180, 1.4);
+    boar(d, 170, 186, 1.6);
     encina(d, 60, 150, 1.0);
   },
   plaga(d) {
@@ -376,7 +390,7 @@ const MOTIFS = {
     sky(d, '#e0a060', '#f4dcb0', 130);
     piano(d, 120, 190, 1.4);
     notes(d, 70, 70, 6);
-    for (let i = 0; i < 4; i++) person(d, 290 + (i % 2) * 22, 205 - Math.floor(i / 2) * 6, 1.1, false, ['#a04030', '#406a90', '#6a8a3a', '#8a5aa0'][i]);
+    for (let i = 0; i < 4; i++) person(d, 262 + i * 24, 205 - (i % 2) * 6, 1.5, i % 2 === 1, ['#a04030', '#406a90', '#6a8a3a', '#8a5aa0'][i]);
   },
   revelacion(d) {
     sky(d, '#d8805a', '#f4d8a8', 140);

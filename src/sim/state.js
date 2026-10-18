@@ -18,6 +18,7 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
       cons: z.unlocked ? z.start : 0,
       weeds: z.weeds ? (z.unlocked ? 35 : 80) : null,
       unlocked: !!z.unlocked,
+      unlockWork: 0,
       everRestored: false,
     };
   }
@@ -83,7 +84,10 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
 export function migrate(s) {
   const fresh = createState(s.seed || 1, s.cfg);
   for (const k of Object.keys(fresh)) if (s[k] === undefined) s[k] = fresh[k];
-  for (const k of Object.keys(fresh.zones)) if (!s.zones[k]) s.zones[k] = fresh.zones[k];
+  for (const k of Object.keys(fresh.zones)) {
+    if (!s.zones[k]) s.zones[k] = fresh.zones[k];
+    if (s.zones[k].unlockWork === undefined) s.zones[k].unlockWork = 0;
+  }
   for (const k of Object.keys(fresh.products)) if (s.products[k] === undefined) s.products[k] = 0;
   for (const k of Object.keys(fresh.stats)) if (s.stats[k] === undefined) s.stats[k] = fresh.stats[k];
   for (const k of Object.keys(fresh.stats.produced)) if (s.stats.produced[k] === undefined) s.stats.produced[k] = 0;

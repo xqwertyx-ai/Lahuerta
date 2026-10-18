@@ -6,7 +6,7 @@ import { ITEMS } from '../data/items.js';
 import { SEASONS } from '../data/seasons.js';
 import { VOLUNTEER_BY_ID } from '../data/volunteers.js';
 import {
-  taskBlocker, taskJornales, taskSkillBonus, doTask, unlockBlocker, unlockZone, unlockCostLabel,
+  taskBlocker, taskJornales, taskSkillBonus, doTask, unlockBlocker, unlockZone, unlockCostLabel, unlockTotal, unlockRequirement, taskGain,
   costLabel, seasonIndex, hasSkill, skillName, assignVolunteer, buyAnimal, animalBlocker, infoOf,
 } from '../sim/index.js';
 import { drawIcon } from '../art/illus.js';
@@ -60,20 +60,25 @@ export class ZonePanel {
     );
     if (!st.unlocked) {
       const u = z.unlock || {};
+      const total = unlockTotal(z.id);
+      const work = st.unlockWork || 0;
       const why = unlockBlocker(s, z.id);
+      const req = unlockRequirement(s, z.id);
       this.el.append(
-        h('p', {}, 'Esta parte de la finca se ha borrado del cuaderno. Hay que volver a dibujarla.'),
+        h('p', {}, work ? 'Ya has empezado a recuperarla. Poco a poco vuelve al papel.' : 'Esta parte de la finca se ha borrado del cuaderno. Hay que volver a dibujarla: es un trabajo de varios días.'),
         h('div', { class: 'task' },
           h('div', { class: 'info' },
             h('div', { class: 'name' }, u.text || 'Recuperar la zona'),
             h('div', { class: 'meta' }, unlockCostLabel(z.id)),
-            u.requires?.skill ? h('div', { class: 'meta' }, `Necesita a alguien que sepa de ${skillName(u.requires.skill)}`) : null,
-            why ? h('div', { class: 'why' }, why) : null),
-          btn('Volver a dibujar', () => {
+            work ? h('div', {}, h('div', { class: 'statline small' }, h('span', {}, 'Trabajo hecho'), h('span', {}, `${work} / ${total} jornales`)), bar(work / total * 100, 'green')) : null,
+            req ? h('div', { class: 'why' }, req) : (why ? h('div', { class: 'why' }, why) : null)),
+          btn(work ? `Seguir (−${Math.min(Math.floor(s.jornales), total - work) || 0})` : 'Empezar', () => {
             const r = unlockZone(s, z.id);
             g.afterAction(r, z.id);
           }, { cls: 'primary', disabled: why })),
       );
+      if (work && s.volunteers.length) this._assign(s, z);
+      else if (s.volunteers.length) this.el.append(h('p', { class: 'small muted' }, 'Cuando empieces, podrás encargar el trabajo a un voluntario.'));
       return;
     }
     // Estado
@@ -95,7 +100,7 @@ export class ZonePanel {
       const j = taskJornales(s, t);
       const skilled = taskSkillBonus(s, t);
       const eff = [];
-      if (t.effect?.cons) eff.push(`+${Math.round(t.effect.cons * (skilled ? 1.5 : 1))} conservación`);
+      if (t.effect?.cons) { const gn = taskGain(s, z.id, t); eff.push(gn >= 0.5 ? `+${Math.round(gn)} conservación` : 'ya está al máximo'); }
       if (t.effect?.weeds) eff.push(`${t.effect.weeds} maleza`);
       if (t.effect?.mood) eff.push(`+${t.effect.mood} ánimo`);
       if (t.gain) eff.push(...Object.entries(t.gain).map(([k, v]) => `+${v} ${PRODUCTS[k]?.name.toLowerCase() || k}`));
@@ -146,23 +151,7 @@ export class ZonePanel {
       this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Animales'), box));
     }
 
-    // Encargos a voluntarios
-    if (s.volunteers.length) {
-      const box = h('div', { class: 'pills' });
-      for (const v of s.volunteers) {
-        const info = VOLUNTEER_BY_ID[v.id];
-        const here = v.zone === z.id;
-        box.append(btn(`${here ? '✓ ' : ''}${info.name}${hasSkill(s, info.skill) && z.tasks.some((t) => t.skill === info.skill) ? ' ★' : ''}`, () => {
-          assignVolunteer(s, v.id, here ? null : z.id);
-          sfx('pen');
-          g.toast(here ? `${info.name} vuelve a ayudarte donde haga falta.` : `${info.name} se encarga de ${z.name.toLowerCase()}. Lo cuidará cada mañana.`);
-          this.update(s, true);
-          g.hud.update(s);
-        }, { cls: 'small' + (here ? ' on' : '') }));
-      }
-      this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Encargar a…'),
-        h('p', { class: 'small muted' }, 'Quien se encarga de una zona la cuida sola cada mañana con sus jornales (★ = es su oficio).'), box));
-    }
+    if (s.volunteers.length) this._assign(s, z);
 
     // Recuerdos de la zona
     const found = ITEMS.filter((it) => it.zone === z.id && s.items.includes(it.id));
@@ -178,6 +167,25 @@ export class ZonePanel {
       this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Recuerdos'), box));
     }
     this.el.scrollTop = scroll;
+  }
+
+  _assign(s, z) {
+    const g = this.game;
+    const box = h('div', { class: 'pills' });
+    for (const v of s.volunteers) {
+      const info = VOLUNTEER_BY_ID[v.id];
+      const here = v.zone === z.id;
+      const star = z.tasks.some((t) => t.skill === info.skill) ? ' ★' : '';
+      box.append(btn(`${here ? '✓ ' : ''}${info.name}${star}`, () => {
+        assignVolunteer(s, v.id, here ? null : z.id);
+        sfx('pen');
+        g.toast(here ? `${info.name} vuelve a ayudarte donde haga falta.` : `${info.name} se encarga de ${z.name.toLowerCase()}. ${s.zones[z.id].unlocked ? 'La cuidará cada mañana.' : 'Seguirá con el trabajo cada mañana.'}`);
+        this.update(s, true);
+        g.hud.update(s);
+      }, { cls: 'small' + (here ? ' on' : '') }));
+    }
+    this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Encargar a…'),
+      h('p', { class: 'small muted' }, 'Quien se encarga de una zona trabaja en ella sola cada mañana con sus jornales (★ = es su oficio). Mientras, no suma jornales a los tuyos.'), box));
   }
 }
 

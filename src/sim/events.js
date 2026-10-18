@@ -217,12 +217,12 @@ export function resolveEvent(s, index = 0) {
   }
   const h = helpers(s);
   s.eventQueue.shift();
+  addLog(s, `${e.title}. ${opt.result || ''}`.trim(), 'event');
   if (opt.cost) payCost(s, opt.cost);
   if (opt.effects) applyEffects(s, opt.effects, h);
   if (opt.flag) s.flags[opt.flag] = true;
   if (opt.apply) opt.apply(s, h);
   s.stats.events++;
-  addLog(s, `${e.title}. ${opt.result || ''}`.trim(), 'event');
   signal(s, 'resolved', { id: e.id });
   return { title: e.title, result: opt.result || '' };
 }

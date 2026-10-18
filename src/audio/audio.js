@@ -17,10 +17,10 @@ export class AudioEngine {
     try { this.ctx = new AC({ latencyHint: 'playback' }); } catch { this.ctx = new AC(); }
     const c = this.ctx;
     this.master = c.createGain();
-    this.master.gain.value = 0.9;
+    this.master.gain.value = 2.0;
     // Compresor suave para que nada sature
     this.comp = c.createDynamicsCompressor();
-    this.comp.threshold.value = -18; this.comp.ratio.value = 3; this.comp.attack.value = 0.01; this.comp.release.value = 0.3;
+    this.comp.threshold.value = -14; this.comp.ratio.value = 3; this.comp.attack.value = 0.01; this.comp.release.value = 0.3;
     this.master.connect(this.comp).connect(c.destination);
     this.bus = {};
     for (const k of ['music', 'ambience', 'sfx']) {

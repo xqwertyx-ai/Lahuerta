@@ -3,7 +3,7 @@
 
 export const PRODUCTS = {
   huevos:     { name: 'Huevos', unit: 'docena', price: 3.5, season: [1, 1.05, 1, 1.1], food: 1, basket: true },
-  hortalizas: { name: 'Hortalizas', unit: 'cesta', price: 6, season: [1.1, 0.85, 1, 1.3], food: 1, basket: true },
+  hortalizas: { name: 'Hortalizas', unit: 'cesta', price: 7, season: [1.1, 0.85, 1, 1.3], food: 1, basket: true },
   higos:      { name: 'Higos', unit: 'kilo', price: 4, season: [1.4, 0.9, 1.0, 1.5], food: 1, basket: true },
   uvas:       { name: 'Uvas de la parra', unit: 'kilo', price: 2.8, season: [1.3, 1, 0.9, 1.3], food: 1, basket: true },
   miel:       { name: 'Miel', unit: 'tarro', price: 9, season: [1.05, 0.95, 1, 1.15], basket: true },

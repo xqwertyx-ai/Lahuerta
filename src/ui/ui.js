@@ -102,7 +102,7 @@ export class UI {
         this.game.settings.seenTips = this.tipIndex;
         this.game.persistSettings();
         this.tipTimer = 30;
-      } else if (!this.modalOpen && !this.book.isOpen) {
+      } else if (!this.modalOpen && !this.book.isOpen && !this.zone.isOpen) {
         this.hint.textContent = TIPS[this.tipIndex];
         this.hint.style.opacity = '1';
         this.tipTimer = 9;
@@ -111,6 +111,7 @@ export class UI {
   }
 
   update(s) {
+    if (this.zone.isOpen && this.hint.style.opacity === '1') { this.hint.style.opacity = '0'; this.tipTimer = 4; }
     this.hud.update(s);
     this.zone.update(s);
     this.book.update(s);

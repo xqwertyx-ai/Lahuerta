@@ -16,12 +16,13 @@ export function giveItem(s, id) {
   }
   addLog(s, `Encuentras ${lowerFirst(it.name)}. ${it.text}`, 'item');
   signal(s, 'item', { id });
-  // Hitos de cada hilo familiar
-  if (it.thread !== 'pianista') {
+  // Al completar el hilo de un familiar, una página con su recuerdo
+  if (it.thread !== 'pianista' && threadCount(s, it.thread) === threadTotal(it.thread)) {
     const fam = FAMILY_BY_ID[it.thread];
-    const n = threadCount(s, it.thread);
-    const line = fam && fam.milestones[Math.min(n, fam.milestones.length) - 1];
-    if (line) addLog(s, `✎ ${fam.name}: ${line}`, 'family');
+    if (fam && fam.complete) {
+      addLog(s, `✎ ${fam.name}: ${fam.complete}`, 'family');
+      signal(s, 'thread', { id: it.thread });
+    }
   }
   if (it.score) signal(s, 'theme', { full: false });
   checkRevelation(s);
@@ -60,6 +61,7 @@ export function hypothesesRanked(s) {
 export function revelationReady(s) {
   if (s.flags.revealed || s.flags.revelationQueued) return false;
   const r = REVELATION.requires;
+  if (r.minDay && s.day < r.minDay) return false;
   if (r.items && !r.items.every((id) => s.items.includes(id))) return false;
   if (r.zones) for (const [id, min] of Object.entries(r.zones)) if (s.zones[id].cons < min) return false;
   return true;

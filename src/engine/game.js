@@ -119,9 +119,10 @@ export class Game {
   }
 
   cacheScale() {
-    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const mobile = Math.min(window.innerWidth, window.innerHeight) < 600;
-    return Math.max(1, Math.min(mobile ? 1.4 : 2, dpr * this.cam.fit * 1.8));
+    // Resolución de la caché: la del zoom con el que se suele mirar (sin pasarse en móviles)
+    return Math.max(1, Math.min(mobile ? 1.6 : 2, dpr * Math.max(this.cam.zoom, this.cam.fit * 1.6)));
   }
 
   // ── Bucle ──
@@ -192,7 +193,8 @@ export class Game {
     if (!r.ok) { this.ui.toast(r.text, 'bad'); sfx('click'); return; }
     if (zoneId) {
       const z = ZONE_BY_ID[zoneId];
-      this.map.addWork(zoneId, r.delta > 0.5 ? `+${Math.round(r.delta)}` : '', r.skilled);
+      const label = r.delta > 0.5 ? `+${Math.round(r.delta)}` : (r.used && !r.done ? r.text.split(': ').pop() : '');
+      this.map.addWork(zoneId, label, r.skilled);
       sfx(sound || (z && /muro|rehacer|tejas|herramientas/.test(r.text) ? 'tools' : 'pen'));
     } else if (sound) sfx(sound);
     if (r.text && !zoneId) this.ui.toast(r.text, 'good');
@@ -288,7 +290,8 @@ export class Game {
   }
 
   resize(force = false) {
-    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    // El lienzo nunca pasa de 2× (en móviles de 3× no se nota en un dibujo a boceto y ahorra batería)
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = window.innerWidth, hgt = window.innerHeight;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(hgt * dpr);

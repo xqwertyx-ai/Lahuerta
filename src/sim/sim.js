@@ -5,14 +5,15 @@ import { SEASONS, WEATHER } from '../data/seasons.js';
 import { MILESTONES } from '../data/milestones.js';
 import { DIARY_LINES } from '../data/story.js';
 import { rand, pick, weighted } from './rng.js';
-import { seasonIndex, isSeasonStart, isMarketDay, yearOf } from './calendar.js';
+import { seasonIndex, isSeasonStart, isMarketDay, yearOf, weekday } from './calendar.js';
 import { addLog, signal, clamp } from './effects.js';
-import { decayHour, avgCons, autoMaintain, restoredCount } from './farm.js';
+import { decayHour, avgCons, autoMaintain, restoredCount, checkItems } from './farm.js';
 import { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices } from './economy.js';
 import { tryArrival, feedVolunteers, dailyVolunteers, departVolunteer, payEmployees, dailyJornales } from './people.js';
 import { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } from './events.js';
+import { checkRevelation } from './mystery.js';
 import { TRAITS, VOLUNTEER_BY_ID } from '../data/volunteers.js';
-import { tourismOpen, tourismDawn, tourismEvening, concertDue } from './tourism.js';
+import { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } from './tourism.js';
 
 // Horas de juego por segundo real a velocidad x1
 export const HOURS_PER_SECOND = 24 / BALANCE.realSecondsPerDay;
@@ -85,7 +86,8 @@ export function dawn(s) {
   // Gente
   const leaving = dailyVolunteers(s);
   for (const v of leaving) {
-    if (v.happy >= 72 && !v.extended && !s.pendingLeave) {
+    const recentAsk = s.eventLast.quedarse != null && s.day - s.eventLast.quedarse < 12;
+    if (v.happy >= 72 && !v.extended && !s.pendingLeave && !recentAsk) {
       s.pendingLeave = v.id;
       queueEvent(s, 'quedarse');
     } else if (v.id !== s.pendingLeave) {
@@ -93,8 +95,11 @@ export function dawn(s) {
     }
   }
   tryArrival(s);
-  const food = feedVolunteers(s);
-  if (food.paid > 0 && s.volunteers.length) addLog(s, `Compras comida para los voluntarios: ${food.paid} €.`, 'info');
+  feedVolunteers(s);
+  if (weekday(s) === 0 && s.foodWeek > 0) {
+    addLog(s, `Esta semana has gastado ${s.foodWeek} € en comida para los voluntarios. Con la huerta y las gallinas comerían de la finca.`, 'info');
+    s.foodWeek = 0;
+  }
   payEmployees(s);
 
   // Finca
@@ -113,6 +118,14 @@ export function dawn(s) {
   dm += restoredCount(s) * 0.15;
   for (const v of s.volunteers) dm += (VOL_MOOD(v));
   s.mood = clamp(s.mood + dm, 0, 100);
+
+  // Recuerdos que esperaban su momento, y quizá la revelación
+  checkItems(s);
+  checkRevelation(s);
+
+  // La fama no se sostiene sola: tiende a lo que la finca merece
+  const repTarget = 5 + avgCons(s) * 0.25 + restoredCount(s) + appeal(s) * 4 + s.items.length * 0.3;
+  if (s.rep > repTarget) s.rep = Math.max(repTarget, s.rep - BALANCE.repDecay - (s.rep - repTarget) * 0.02);
 
   // Jornales del día
   s.jornales = dailyJornales(s);

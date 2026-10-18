@@ -7,7 +7,7 @@ import { chance, roundP } from './rng.js';
 import { seasonIndex } from './calendar.js';
 import { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, costLabel, labelOf } from './effects.js';
 import { hasSkill, skillName, traitOf, volunteerJornales, infoOf, setZoneSkillMap } from './people.js';
-import { giveItem } from './mystery.js';
+import { giveItem, checkRevelation } from './mystery.js';
 
 // Qué oficios usa cada zona (para el ánimo de los voluntarios encargados)
 setZoneSkillMap(Object.fromEntries(ZONES.map((z) => [z.id, [...new Set(z.tasks.map((t) => t.skill).filter(Boolean))]])));
@@ -62,7 +62,8 @@ export function taskSkillBonus(s, task) {
 }
 
 export function taskJornales(s, task) {
-  const j = task.jornales - (taskSkillBonus(s, task) ? 1 : 0);
+  // Quien sabe del oficio ahorra un jornal en los trabajos largos
+  const j = task.jornales - (taskSkillBonus(s, task) && task.jornales >= 3 ? 1 : 0);
   return Math.max(1, j);
 }
 
@@ -105,12 +106,17 @@ export function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
 
   const st = s.zones[zoneId];
   const skilled = taskSkillBonus(s, task);
-  let mult = skilled ? 1.5 : 1;
+  let mult = skilled ? 1.4 : 1;
+  // Un voluntario solo, cuidando una zona que no es de su oficio, rinde algo menos
+  if (byVolunteer) {
+    const v = s.volunteers.find((x) => x.id === byVolunteer);
+    mult = v && infoOf(v).skill === task.skill ? 1.3 : 0.75;
+  }
   const si = seasonIndex(s);
   if (task.seasonBonus && task.seasonBonus[si]) mult *= task.seasonBonus[si];
   const before = st.cons;
   const eff = task.effect || {};
-  if (eff.cons) st.cons = clamp(st.cons + eff.cons * mult, 0, 100);
+  if (eff.cons) st.cons = clamp(st.cons + eff.cons * mult * diminish(st.cons), 0, 100);
   if (eff.weeds && st.weeds != null) st.weeds = clamp(st.weeds + eff.weeds * (skilled ? 1.3 : 1), 0, 100);
   if (eff.mood) s.mood = clamp(s.mood + eff.mood, 0, 100);
   const gains = [];
@@ -145,67 +151,122 @@ export function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   return { ok: true, text: `${task.name}${gainTxt}`, skilled, delta: st.cons - before };
 }
 
+// Rendimiento decreciente: lo que ya está bien cuidado sube poco
+export function diminish(cons) {
+  if (cons < BALANCE.diminishFrom) return 1;
+  return Math.max(BALANCE.diminishMin, 1 - (cons - BALANCE.diminishFrom) / BALANCE.diminishSpan);
+}
+
+// Cuánto subiría la conservación una tarea (para la interfaz)
+export function taskGain(s, zoneId, task) {
+  const st = s.zones[zoneId];
+  let mult = taskSkillBonus(s, task) ? 1.4 : 1;
+  const si = seasonIndex(s);
+  if (task.seasonBonus && task.seasonBonus[si]) mult *= task.seasonBonus[si];
+  return Math.min(100 - st.cons, (task.effect?.cons || 0) * mult * diminish(st.cons));
+}
+
 function countProduced(s, k, q) {
   if (s.stats.produced[k] !== undefined) s.stats.produced[k] += q;
 }
 
-// ── Desbloquear (volver a dibujar) ──
-export function unlockBlocker(s, zoneId) {
+// ── Desbloquear (volver a dibujar): un pequeño proyecto de varios jornales ──
+export function unlockRequirement(s, zoneId) {
   const z = ZONE_BY_ID[zoneId];
-  const st = s.zones[zoneId];
-  if (!z || st.unlocked) return 'Ya está en el plano';
-  const u = z.unlock || {};
-  const req = u.requires || {};
+  const req = (z.unlock || {}).requires || {};
   if (req.skill && !hasSkill(s, req.skill)) return `Hace falta alguien que sepa de ${skillName(req.skill)}`;
   if (req.zones) {
     for (const [id, min] of Object.entries(req.zones)) {
-      if (!s.zones[id].unlocked || s.zones[id].cons < min) return `Antes, ${ZONE_BY_ID[id].name.toLowerCase()} a ${min}`;
+      if (!s.zones[id].unlocked) return `Antes hay que recuperar ${ZONE_BY_ID[id].name.toLowerCase()}`;
+      if (s.zones[id].cons < min) return `Antes, ${ZONE_BY_ID[id].name.toLowerCase()} a ${min}`;
     }
   }
-  if (s.jornales < (u.jornales || 0)) return 'No quedan jornales hoy';
-  if (!canAfford(s, u.cost)) return 'Falta ' + missingOf(s, u.cost).map(labelOf).join(', ');
   return null;
 }
 
-export function unlockCostLabel(zoneId) {
-  const u = ZONE_BY_ID[zoneId].unlock || {};
-  return costLabel({ jornales: u.jornales, ...(u.cost || {}) });
+export function unlockBlocker(s, zoneId, jornales = s.jornales) {
+  const z = ZONE_BY_ID[zoneId];
+  const st = s.zones[zoneId];
+  if (!z || st.unlocked) return 'Ya está en el plano';
+  const r = unlockRequirement(s, zoneId);
+  if (r) return r;
+  const u = z.unlock || {};
+  if (!st.unlockWork && !canAfford(s, u.cost)) return 'Falta ' + missingOf(s, u.cost).map(labelOf).join(', ');
+  if (jornales < 1) return 'No quedan jornales hoy';
+  return null;
 }
 
-export function unlockZone(s, zoneId) {
-  const b = unlockBlocker(s, zoneId);
-  if (b) return { ok: false, text: b };
+export function unlockTotal(zoneId) { return (ZONE_BY_ID[zoneId].unlock || {}).jornales || 1; }
+
+export function unlockCostLabel(zoneId) {
+  const u = ZONE_BY_ID[zoneId].unlock || {};
+  const c = costLabel(u.cost || {});
+  return `${u.jornales} jornales de trabajo en total` + (c ? ` · al empezar: ${c}` : '');
+}
+
+// Aporta jornales al proyecto (todos los que queden hoy, hasta terminar). by = voluntario (opcional)
+export function unlockZone(s, zoneId, { by = null, budget = null } = {}) {
   const z = ZONE_BY_ID[zoneId];
-  const u = z.unlock || {};
-  s.jornales -= u.jornales || 0;
-  payCost(s, u.cost);
-  if (u.cost?.money) s.stats.spent += u.cost.money;
   const st = s.zones[zoneId];
+  const avail = budget != null ? budget : s.jornales;
+  const b = unlockBlocker(s, zoneId, avail);
+  if (b) return { ok: false, text: b };
+  const u = z.unlock || {};
+  if (!st.unlockWork) {
+    payCost(s, u.cost);
+    if (u.cost?.money) s.stats.spent += u.cost.money;
+  }
+  const total = unlockTotal(zoneId);
+  const need = total - (st.unlockWork || 0);
+  const put = Math.min(Math.floor(avail), need);
+  if (budget == null) s.jornales -= put;
+  st.unlockWork = (st.unlockWork || 0) + put;
+  if (st.unlockWork < total) {
+    signal(s, 'task', { zone: zoneId, task: 'unlock', skilled: false });
+    return { ok: true, done: false, used: put, text: `${u.text}: ${st.unlockWork}/${total}`, delta: 0 };
+  }
   st.unlocked = true;
   st.cons = z.start;
   if (st.weeds != null) st.weeds = 55;
-  s.mood = clamp(s.mood + 3, 0, 100);
+  s.mood = clamp(s.mood + 4, 0, 100);
   addLog(s, `${z.name} vuelve a estar en el plano. ${z.desc}`, 'good');
   signal(s, 'unlock', { zone: zoneId });
-  const it = ITEMS.find((i) => i.where === 'unlock' && i.zone === zoneId && !s.items.includes(i.id));
-  if (it) giveItem(s, it.id);
-  return { ok: true, text: `${z.name} vuelve al plano` };
+  checkItems(s, zoneId);
+  return { ok: true, done: true, used: put, text: `${z.name} vuelve al plano`, delta: 0 };
+}
+
+// ¿Está listo un objeto para aparecer? (su zona cumple la condición y ya es su momento)
+export function itemReady(s, it) {
+  if (s.items.includes(it.id) || !it.zone) return false;
+  if (it.minDay && s.day < it.minDay) return false;
+  const st = s.zones[it.zone];
+  if (it.where === 'unlock') return st.unlocked;
+  if (it.where === 'restore') return st.everRestored;
+  if (it.where === 'cons') return st.unlocked && (st.maxCons || st.cons) >= it.at;
+  return false;
+}
+
+// Da los objetos que ya tocan (de una zona o de todas). Se llama tras cada acción y cada amanecer.
+export function checkItems(s, zoneId = null) {
+  for (const it of ITEMS) {
+    if (zoneId && it.zone !== zoneId) continue;
+    if (itemReady(s, it)) giveItem(s, it.id);
+  }
 }
 
 export function checkRestored(s, zoneId) {
   const st = s.zones[zoneId];
-  for (const it of ITEMS) {
-    if (it.where === 'cons' && it.zone === zoneId && st.cons >= it.at && !s.items.includes(it.id)) giveItem(s, it.id);
+  st.maxCons = Math.max(st.maxCons || 0, st.cons);
+  if (!st.everRestored && st.cons >= BALANCE.restoredThreshold) {
+    st.everRestored = true;
+    s.stats.restored++;
+    s.mood = clamp(s.mood + BALANCE.moodPerRestoredZone * 3, 0, 100);
+    const z = ZONE_BY_ID[zoneId];
+    addLog(s, `${z.name} recupera el color. La tinta vuelve a ser negra y la acuarela, viva.`, 'good');
+    signal(s, 'restored', { zone: zoneId });
   }
-  if (st.everRestored || st.cons < BALANCE.restoredThreshold) return;
-  st.everRestored = true;
-  s.stats.restored++;
-  s.mood = clamp(s.mood + BALANCE.moodPerRestoredZone * 3, 0, 100);
-  const z = ZONE_BY_ID[zoneId];
-  addLog(s, `${z.name} recupera el color. La tinta vuelve a ser negra y la acuarela, viva.`, 'good');
-  signal(s, 'restored', { zone: zoneId });
-  const it = ITEMS.find((i) => i.where === 'restore' && i.zone === zoneId && !s.items.includes(i.id));
-  if (it && chance(s, BALANCE.itemChanceOnRestore)) giveItem(s, it.id);
+  checkItems(s, zoneId);
+  checkRevelation(s);
 }
 
 // ── Voluntarios con zona encargada: la cuidan solos ──
@@ -233,7 +294,13 @@ function bestTaskFor(s, zoneId) {
 
 export function autoMaintain(s) {
   for (const v of s.volunteers) {
-    if (!v.zone || !s.zones[v.zone]?.unlocked) continue;
+    if (!v.zone || !s.zones[v.zone]) continue;
+    if (!s.zones[v.zone].unlocked) {
+      // Encargado de recuperar una zona: aporta sus jornales al proyecto
+      const r = unlockZone(s, v.zone, { by: v.id, budget: volunteerJornales(v) });
+      if (r.ok) v.lastWork = r.done ? 'terminó de recuperar la zona' : 'trabajó en recuperar la zona';
+      continue;
+    }
     let budget = volunteerJornales(v);
     let guard = 0;
     const done = [];

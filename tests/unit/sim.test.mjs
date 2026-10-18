@@ -77,6 +77,7 @@ test('desbloquear una zona la vuelve a dibujar y puede dar un recuerdo', () => {
 
 test('restaurar una zona por encima de 70 da su objeto', () => {
   const s = fresh();
+  s.day = 30;
   s.zones.patio.cons = 69;
   s.jornales = 5;
   S.doTask(s, 'patio', 'barrer');
@@ -170,6 +171,7 @@ test('los objetos referencian zonas e hilos que existen', () => {
 
 test('la revelación llega con todas las partituras, el diario, la firma y el piano', () => {
   const s = fresh();
+  s.day = 120;
   for (const id of ['partitura1', 'partitura2', 'partitura3', 'partitura4', 'partitura5', 'partitura6', 'diario']) S.giveItem(s, id);
   assert.equal(s.eventQueue.includes('revelacion'), false);
   s.zones.piano.unlocked = true;
@@ -223,4 +225,49 @@ test('agroturismo: se abre con el cortijo cuidado y la reputación, y llegan hu�
   assert.ok(guests > 0);
   const m0 = s.money;
   if (S.guestCount(s)) { S.tourismEvening(s); assert.ok(s.money > m0); }
+});
+
+test('la revelación espera a su día aunque todo esté listo', () => {
+  const s = fresh();
+  for (const id of ['partitura1', 'partitura2', 'partitura3', 'partitura4', 'partitura5', 'partitura6', 'diario', 'firma']) S.giveItem(s, id);
+  s.zones.piano.unlocked = true; s.zones.piano.cons = 90;
+  assert.equal(s.eventQueue.includes('revelacion'), false);
+  s.day = 100;
+  S.checkRevelation(s);
+  assert.ok(s.eventQueue.includes('revelacion'));
+});
+
+test('todos los objetos se pueden encontrar', () => {
+  for (const it of ITEMS) {
+    assert.ok(['unlock', 'restore', 'cons', 'task', 'cat', 'event'].includes(it.where), it.id);
+    if (it.where === 'cons') assert.ok(it.at > 0 && it.zone, it.id);
+    if (['unlock', 'restore', 'cons', 'task'].includes(it.where)) assert.ok(it.zone, it.id);
+    if (it.where === 'unlock') assert.equal(ZONES.find((z) => z.id === it.zone).unlocked, false, it.id + ': su zona empieza desbloqueada');
+  }
+  const s = fresh(2);
+  s.day = 200;
+  for (const z of Object.values(s.zones)) { z.unlocked = true; z.cons = 100; z.maxCons = 100; z.everRestored = true; }
+  S.checkItems(s);
+  const pending = ITEMS.filter((i) => ['unlock', 'restore', 'cons'].includes(i.where) && !s.items.includes(i.id));
+  assert.deepEqual(pending.map((i) => i.id), []);
+});
+
+test('recuperar una zona es un proyecto de varios jornales', () => {
+  const s = fresh();
+  s.jornales = 3;
+  const r1 = S.unlockZone(s, 'almacen');
+  assert.ok(r1.ok && !r1.done);
+  assert.equal(s.zones.almacen.unlockWork, 3);
+  assert.equal(s.jornales, 0);
+  // Un voluntario encargado sigue el trabajo
+  S.arrive(s, 'jonas');
+  assert.ok(S.assignVolunteer(s, 'jonas', 'almacen'));
+  for (let i = 0; i < 4; i++) S.autoMaintain(s);
+  assert.ok(s.zones.almacen.unlocked);
+});
+
+test('rendimiento decreciente: lo bien cuidado sube menos', () => {
+  assert.equal(S.diminish(20), 1);
+  assert.ok(S.diminish(80) < 0.6);
+  assert.ok(S.diminish(100) >= 0.25);
 });
