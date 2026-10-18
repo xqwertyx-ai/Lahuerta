@@ -398,7 +398,15 @@ export class Game {
   }
 
   // ── Guardado ──
-  exportSave() { if (this.s) { Save.exportFile(this.s); this.ui.toast('Partida exportada.', 'good'); } }
+  exportSave() {
+    if (!this.s) return;
+    // Dentro de un marco (p. ej. publicado en claude.ai) las descargas no funcionan: se copia el texto
+    let framed = false;
+    try { framed = window.self !== window.top; } catch { framed = true; }
+    if (framed) { this.copySave(); return; }
+    Save.exportFile(this.s);
+    this.ui.toast('Partida exportada.', 'good');
+  }
 
   copySave() {
     if (!this.s) return;
