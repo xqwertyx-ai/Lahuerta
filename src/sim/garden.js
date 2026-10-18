@@ -5,6 +5,7 @@ import { seasonIndex } from './calendar.js';
 import { addLog, signal, clamp, addStock } from './effects.js';
 import { hasSkill } from './people.js';
 import { PRODUCTS } from '../data/products.js';
+import { damageOf } from './hardship.js';
 
 export function beds(s) {
   if (!Array.isArray(s.beds) || s.beds.length !== BEDS) {
@@ -21,6 +22,7 @@ export function seasonalCrops(s) {
 
 export function sowBlocker(s, i, cropId, budget = s.jornales) {
   if (!s.zones.huerta.unlocked) return 'Primero hay que recuperar la huerta';
+  if (damageOf(s, 'huerta')) return 'Los bancales están arrasados: hay que repararlos';
   const b = beds(s)[i];
   if (!b) return 'Ese bancal no existe';
   if (b.crop) return 'El bancal ya está sembrado';
@@ -43,6 +45,7 @@ export function sow(s, i, cropId, { budget = null } = {}) {
 export function harvestBlocker(s, i, budget = s.jornales) {
   const b = beds(s)[i];
   if (!b || !b.crop) return 'Bancal vacío';
+  if (damageOf(s, 'huerta')) return 'Averiado: primero hay que repararlo';
   if (b.ready == null) return 'Aún no está listo';
   if (budget < HARVEST_JORNALES) return 'No quedan jornales hoy';
   return null;

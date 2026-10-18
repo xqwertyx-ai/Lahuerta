@@ -16,9 +16,13 @@ import {
 } from '../sim/index.js';
 import { drawIcon } from '../art/illus.js';
 import { sfx } from '../audio/ambience.js';
+import {
+  troubles, damages, upcomingBills, heatingNeed, feedNeed, feedStock, winterEstimate, reserveDays, buyPrice, taxableProfit, DIFFICULTY, difficulty, seasonIndex,
+} from '../sim/index.js';
+import { repairCard } from './troubles.js';
 
 const TABS = [
-  ['diario', 'Diario'], ['despensa', 'Despensa'], ['gente', 'Gente'], ['recuerdos', 'Recuerdos'],
+  ['diario', 'Diario'], ['despensa', 'Despensa'], ['cuentas', 'Cuentas'], ['gente', 'Gente'], ['recuerdos', 'Recuerdos'],
   ['huespedes', 'Huéspedes'], ['album', 'Álbum'], ['ajustes', 'Ajustes'],
 ];
 
@@ -51,7 +55,7 @@ export class Notebook {
   update(s) {
     if (!this.el || this.tab === 'ajustes') return;
     const key = [this.tab, s.day, Math.round(s.money), s.jornales, s.log.length, s.items.length, s.volunteers.length,
-      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel].join('|');
+      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel, JSON.stringify(s.damages || {}), (s.mods || []).length].join('|');
     if (key === this.key) return;
     this.render();
   }
@@ -71,7 +75,7 @@ export class Notebook {
     try { this['page_' + this.tab](body, s); } catch (e) { console.error(e); body.append(h('p', {}, 'Esta página se ha emborronado.')); }
     body.scrollTop = scroll;
     this.key = [this.tab, s.day, Math.round(s.money), s.jornales, s.log.length, s.items.length, s.volunteers.length,
-      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel].join('|');
+      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel, JSON.stringify(s.damages || {}), (s.mods || []).length].join('|');
   }
 
   // ── Diario ──
@@ -120,14 +124,7 @@ export class Notebook {
 
     // Materiales
     const mt = h('table', { class: 'inv' }, h('tr', {}, h('th', {}, 'Material'), h('th', {}, 'Tienes'), h('th', {}, 'Comprar')));
-    for (const [k, m] of Object.entries(MATERIALS)) {
-      mt.append(h('tr', {},
-        h('td', {}, m.name),
-        h('td', { class: 'num' }, fmtNum(s.materials[k] || 0, (s.materials[k] % 1) ? 1 : 0)),
-        h('td', {}, h('div', { class: 'row' },
-          btn(`1 · ${m.buy} €`, () => { g.afterAction(buyMaterial(s, k, 1), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < m.buy ? 'No llega' : null }),
-          btn(`5 · ${m.buy * 5} €`, () => { g.afterAction(buyMaterial(s, k, 5), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < m.buy * 5 ? 'No llega' : null })))));
-    }
+    for (const [k, m] of Object.entries(MATERIALS)) mt.append(this._buyRow(s, k, m.name));
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Materiales (cooperativa)'), mt,
       h('p', { class: 'tiny muted' }, 'La piedra también se recoge gratis en la dehesa; la leña, podando.')));
 
@@ -135,6 +132,68 @@ export class Notebook {
     const an = h('div', { class: 'pills' }, Object.entries(ANIMALS).map(([k, a]) => h('span', { class: 'pill' }, `${a.name}: ${s.animals[k] || 0}`)));
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Animales'), an,
       h('p', { class: 'tiny muted' }, 'Se compran desde su zona en el plano (corral, dehesa, colmenar).')));
+  }
+
+  _buyRow(s, k, name) {
+    const g = this.game;
+    const p = buyPrice(s, k);
+    return h('tr', {},
+      h('td', {}, name),
+      h('td', { class: 'num' }, fmtNum(s.materials[k] || 0, (s.materials[k] % 1) ? 1 : 0)),
+      h('td', {}, h('div', { class: 'row' },
+        btn(`1 · ${fmtMoney(p)} €`, () => { g.afterAction(buyMaterial(s, k, 1), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < p ? 'No llega' : null }),
+        btn(`5 · ${fmtMoney(p * 5)} €`, () => { g.afterAction(buyMaterial(s, k, 5), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < p * 5 ? 'No llega' : null }))));
+  }
+
+  // ── Cuentas: lo roto, los avisos, las reservas y los pagos ──
+  page_cuentas(el, s) {
+    const g = this.game;
+    el.append(h('h2', {}, 'Cuentas y avisos'));
+    // Averías
+    const ds = damages(s);
+    const box = h('div', { class: 'tasks' });
+    for (const d of ds) box.append(repairCard(g, s, d.id, () => this.render()));
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Lo que está roto'),
+      ds.length ? box : h('p', { class: 'small muted' }, 'Nada roto, de momento. Atender los avisos a tiempo sale más barato que arreglar.')));
+    // Avisos de la economía
+    const mods = troubles(s).filter((t) => t.kind !== 'damage');
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Avisos'),
+      mods.length ? h('div', {}, mods.map((t) => h('div', { class: 'trouble ' + (t.bad === false ? 'good' : 'bad') },
+        h('b', {}, t.name), t.days ? h('span', { class: 'small muted' }, ` · ${t.days === 1 ? 'hoy acaba' : `${t.days} días más`}`) : null,
+        h('div', { class: 'small' }, t.text))))
+        : h('p', { class: 'small muted' }, 'Sin novedades en la comarca.')));
+    // Reservas para el invierno
+    const si = seasonIndex(s);
+    const w = winterEstimate(s);
+    const lenaNeed = heatingNeed(s);
+    const fNeed = feedNeed(s);
+    const lena = s.materials.lena || 0;
+    const feed = feedStock(s);
+    const foodKeys = Object.keys(PRODUCTS).filter((k) => PRODUCTS[k].food);
+    const food = foodKeys.reduce((a, k) => a + Math.floor(s.products[k] || 0) * PRODUCTS[k].food, 0);
+    const foodNeed = s.volunteers.length * BALANCE.foodFromFarmPerVolunteer;
+    const line = (label, have, need, extra) => {
+      const days = reserveDays(have, need);
+      return [h('span', {}, label, extra ? h('div', { class: 'tiny muted' }, extra) : null),
+        h('span', { class: 'num' + (need > 0 && days < 5 ? ' warn' : '') }, need > 0 ? `${fmtNum(have, 0)} · ${days === Infinity ? '∞' : days} días` : fmtNum(have, 0))];
+    };
+    const mt = h('table', { class: 'inv' });
+    mt.append(this._buyRow(s, 'lena', 'Leña'), this._buyRow(s, 'pienso', 'Pienso y paja'));
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Reservas para el invierno'),
+      h('div', { class: 'reserve small' },
+        ...line('Leña para la chimenea', lena, lenaNeed, lenaNeed ? `Se gastan ${fmtNum(lenaNeed, 1)} cargas al día` : `Para el invierno harán falta unas ${w.lena}`),
+        ...line('Heno y pienso para los animales', feed, fNeed, fNeed ? `Comen ${fmtNum(fNeed, 1)} al día (el campo no da)` : (w.feed ? `Para el invierno harán falta unas ${w.feed}` : 'Sin animales que alimentar')),
+        ...line('Comida de la finca para la gente', food, foodNeed, 'Conservas, embutido y queso aguantan; lo fresco se estropea')),
+      h('p', { class: 'tiny muted' }, si === 3 ? 'En invierno la leña y la comida se pagan caras.' : 'La leña se recoge en el bosquete y podando; el heno se siega en la dehesa en primavera. En invierno todo cuesta más.'),
+      mt));
+    // Pagos
+    const bills = upcomingBills(s);
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Próximos pagos'),
+      h('table', { class: 'inv' }, bills.map((b) => h('tr', {},
+        h('td', {}, b.name, h('div', { class: 'tiny muted' }, b.every)),
+        h('td', { class: 'num' }, b.days === 1 ? 'mañana' : `en ${b.days} días`),
+        h('td', { class: 'num' }, `${fmtMoney(b.amount)} €`)))),
+      h('p', { class: 'tiny muted' }, `Beneficio desde la última declaración: ${fmtMoney(Math.round(taxableProfit(s)))} €. Los gastos fijos suben con cada zona en marcha, cada habitación y cada animal.${s.flags.placas ? ' Las placas solares abaratan la luz.' : ''}`)));
   }
 
   // ── Gente ──
@@ -302,6 +361,9 @@ export class Notebook {
       check('names', 'Mostrar el nombre de los voluntarios en el plano'),
       check('bigText', 'Letra más grande'),
       h('div', { class: 'row', style: { margin: '8px 0' } }, btn('Pantalla completa', () => g.toggleFullscreen(), { cls: 'small' })),
+      h('h3', {}, 'Dificultad'),
+      h('div', { class: 'row' }, Object.entries(DIFFICULTY).map(([id, d]) => btn(d.name, () => { g.s.cfg.difficulty = id; sfx('pen'); this.render(); }, { cls: 'small' + ((g.s.cfg.difficulty || 'normal') === id ? ' on' : '') }))),
+      h('p', { class: 'small muted' }, difficulty(g.s).desc + ' Se puede cambiar en cualquier momento.'),
       h('h3', {}, 'Partida'),
       h('p', { class: 'small muted' }, 'Se guarda sola cada día de juego y al salir. Puedes llevarte una copia.'),
       h('div', { class: 'row' },

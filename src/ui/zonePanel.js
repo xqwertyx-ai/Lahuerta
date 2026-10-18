@@ -13,6 +13,8 @@ import { drawIcon } from '../art/illus.js';
 import { CROPS, RECIPES, SOW_JORNALES, HARVEST_JORNALES } from '../data/crops.js';
 import { beds, seasonalCrops, sow, sowBlocker, harvest, harvestBlocker, harvestAmount, recipeBlocker, recipeJornales, cook, ingredientLabel } from '../sim/index.js';
 import { sfx } from '../audio/ambience.js';
+import { damageOf } from '../sim/index.js';
+import { repairCard } from './troubles.js';
 
 export class ZonePanel {
   constructor(root, game) {
@@ -42,7 +44,7 @@ export class ZonePanel {
     if (!this.zone) return;
     const st = s.zones[this.zone];
     const key = [this.zone, Math.round(st.cons), st.weeds == null ? '' : Math.round(st.weeds / 2), st.unlocked, s.jornales, Math.round(s.money),
-      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length].join('|');
+      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length, JSON.stringify(s.damages || {}), (s.beds || []).map((b) => b.crop + (b.ready ?? '')).join()].join('|');
     if (!force && key === this.key) return;
     this.key = key;
     this.render(s);
@@ -82,6 +84,12 @@ export class ZonePanel {
       if (work && s.volunteers.length) this._assign(s, z);
       else if (s.volunteers.length) this.el.append(h('p', { class: 'small muted' }, 'Cuando empieces, podrás encargar el trabajo a un voluntario.'));
       return;
+    }
+    // Avería: lo primero
+    const dmg = damageOf(s, z.id);
+    if (dmg) {
+      this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Averiado'), h('div', { class: 'tasks' }, repairCard(g, s, dmg.id)),
+        h('p', { class: 'small muted' }, 'Puedes encargar la reparación a un voluntario: pondrá sus jornales cada mañana.')));
     }
     // Estado
     const consTxt = st.cons >= 85 ? 'Cuidada y con color' : st.cons >= 70 ? 'Restaurada' : st.cons >= 45 ? 'Aguanta' : st.cons >= 25 ? 'Se va borrando' : 'Casi borrada';

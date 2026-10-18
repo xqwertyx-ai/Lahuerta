@@ -22,6 +22,7 @@ export const PRODUCTS = {
   aceite:     { name: 'Aceite de los olivos', unit: 'litro', price: 9, season: [1, 1.05, 1.1, 0.95], basket: true, from: 'Olivos de la dehesa, en invierno' },
   lavanda:    { name: 'Lavanda', unit: 'ramillete', price: 4, season: [1, 0.9, 1.1, 1.2], basket: true, spoil: 0.03, from: 'Patio, en verano' },
   lena:       { name: 'Leña de encina', unit: 'carga', price: 6, season: [0.8, 0.7, 1.1, 1.35], material: true, from: 'Podando y recogiendo en el monte' },
+  heno:       { name: 'Heno', unit: 'paca', price: 3, season: [0.8, 1.1, 1.1, 1.4], from: 'Dehesa: segar en primavera y principios de verano' },
   carbon:     { name: 'Carbón de encina', unit: 'saco', price: 13, season: [0.85, 0.8, 1.1, 1.3], from: 'Dehesa: hacer carbón con leña' },
   // ── Animales ──
   huevos:     { name: 'Huevos', unit: 'docena', price: 3.5, season: [1, 1.05, 1, 1.1], food: 1, basket: true, spoil: 0.03, from: 'Corral, con gallinas' },
@@ -42,6 +43,7 @@ export const MATERIALS = {
   piedra:      { name: 'Piedra', buy: 4 },
   cal:         { name: 'Cal', buy: 6 },
   herramientas:{ name: 'Herramientas', buy: 15 },
+  pienso:      { name: 'Pienso y paja', buy: 4 },
 };
 
 // Animales: se compran en el mercado y viven en una zona

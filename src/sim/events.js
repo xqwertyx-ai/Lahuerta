@@ -7,7 +7,9 @@ import { PRODUCTS } from '../data/products.js';
 import { ITEM_BY_ID } from '../data/items.js';
 import { VOLUNTEER_BY_ID } from '../data/volunteers.js';
 import { rand, chance, randInt, pick, weighted } from './rng.js';
-import { seasonIndex } from './calendar.js';
+import { seasonIndex, isSeasonStart, yearOf } from './calendar.js';
+import { breakDown, canBreak, addMod, difficulty, taxDue, damageOf, stopped, takeLoan } from './hardship.js';
+import { BILLS, DAMAGES } from '../data/hardships.js';
 import { addLog, signal, clamp, canAfford, payCost, applyEffects, addStock, costLabel, missingOf, labelOf } from './effects.js';
 import { avgCons, avgWeeds } from './farm.js';
 import { giveItem, clue } from './mystery.js';
@@ -53,22 +55,37 @@ export function eligibleEvents(s) {
   return EVENTS.filter((e) => eligible(s, e, h));
 }
 
-// Al amanecer: ¿habrá evento hoy? ¿a qué hora?
+// Los contratiempos pesan más cada año y según la dificultad
+export function crisisFactor(s) {
+  return difficulty(s).crisis * (1 + (yearOf(s) - 1) * BALANCE.crisisGrowthPerYear);
+}
+
+function eventWeight(s, e) { return e.weight * (e.crisis ? crisisFactor(s) : 1); }
+
+// ¿Alguna opción cuesta jornales? Entonces llega al amanecer, con el día por delante
+export function needsJornales(e) { return e.options.some((o) => o.cost && o.cost.jornales); }
+
+// Al amanecer se decide el evento del día. Si pide jornales, sale ya; si no, a una hora cualquiera.
 export function planDay(s) {
   s.todayEvent = null;
   if (s.day - s.lastEventDay < BALANCE.eventMinGapDays) return;
   if (s.day < 2) return;
   if (!chance(s, BALANCE.eventChancePerDay)) return;
-  s.todayEvent = { hour: randInt(s, 9, 18) };
+  const h = helpers(s);
+  const list = EVENTS.filter((e) => eligible(s, e, h));
+  const id = weighted(s, list.map((e) => [e.id, eventWeight(s, e)]));
+  if (!id) return;
+  const e = EVENT_BY_ID[id];
+  const hour = e.when === 'tarde' ? 19 : needsJornales(e) ? BALANCE.dawnHour : randInt(s, 9, 17);
+  s.todayEvent = { hour, id };
 }
 
 export function hourEvents(s, hour) {
   if (s.todayEvent && hour >= s.todayEvent.hour) {
+    const { id } = s.todayEvent;
     s.todayEvent = null;
-    const h = helpers(s);
-    const list = EVENTS.filter((e) => eligible(s, e, h));
-    const id = weighted(s, list.map((e) => [e.id, e.weight]));
-    if (id) queueEvent(s, id);
+    const e = id && EVENT_BY_ID[id];
+    if (e && (!e.cond || e.cond(s, helpers(s)))) queueEvent(s, id);
   }
 }
 
@@ -100,7 +117,12 @@ export function systemEvents(s) {
     s.pendingCat = chooseCatGift(s);
     queueEvent(s, 'gato');
   }
-  // Programados (subvención, notario…)
+  // La declaración de la renta, cada primavera
+  if (isSeasonStart(s) && seasonIndex(s) === BILLS.tax.season && s.day > 1) {
+    if (taxDue(s) > 0) queueEvent(s, 'renta');
+    else s.taxBase = { earned: s.stats.earned, spent: s.stats.spent };
+  }
+  // Programados (subvención, notario, avisos que van a más…)
   const due = s.scheduled.filter((x) => x.day <= s.day);
   s.scheduled = s.scheduled.filter((x) => x.day > s.day);
   for (const x of due) queueEvent(s, x.id);
@@ -150,6 +172,7 @@ export function helpers(s) {
       }
       s.mood = clamp(s.mood - sev * 6, 0, 100);
       if (dmg > 8) addLog(s, 'Huele a ceniza durante días. La dehesa tardará en sanar.', 'bad');
+      if (dmg > 14) breakDown(s, 'dehesa_quemada');
     },
     catGift: () => {
       const g = CAT_GIFTS[s.pendingCat ?? 0];
@@ -184,6 +207,43 @@ export function helpers(s) {
       s.pendingLeave = null;
     },
     concert: () => concert(s),
+    // Contratiempos
+    breakDown: (id) => breakDown(s, id),
+    canBreak: (id) => canBreak(s, id),
+    damaged: (zoneId) => !!damageOf(s, zoneId),
+    stopped: (what, zoneId) => stopped(s, what, zoneId),
+    mod: (id, days) => addMod(s, id, days),
+    taxDue: () => taxDue(s),
+    takeLoan: (a, w, q) => takeLoan(s, a, w, q),
+    payTax: (extra = 0) => {
+      const v = taxDue(s) + extra;
+      addStock(s, 'money', -v); s.stats.spent += v; s.stats.bills = (s.stats.bills || 0) + v;
+      signal(s, 'coins', { amount: -v });
+      s.taxBase = { earned: s.stats.earned, spent: s.stats.spent };
+      addLog(s, `Pagas ${v} € a Hacienda.`, 'info');
+    },
+    loseAnimals: (k, frac) => {
+      const n = Math.min(s.animals[k] || 0, Math.max(1, Math.round((s.animals[k] || 0) * frac)));
+      s.animals[k] = (s.animals[k] || 0) - n;
+      return n;
+    },
+    loseProduct: (k, frac) => { const n = Math.floor((s.products[k] || 0) * frac); addStock(s, k, -n); return n; },
+    loseStock: (frac) => {
+      let n = 0;
+      for (const k of Object.keys(PRODUCTS)) { const q = Math.floor((s.products[k] || 0) * frac); if (q > 0 && !['cerdo', 'jamon'].includes(k)) { addStock(s, k, -q); n += q; } }
+      return n;
+    },
+    restVolunteer: (days) => {
+      const v = s.volunteers.filter((x) => !(x.rest > 0))[0];
+      if (!v) return null;
+      v.rest = days;
+      return infoOf(v);
+    },
+    chance: (p) => chance(s, p),
+    // Los vecinos echan una mano: adelantan trabajo de una reparación
+    helpRepair: (id, n) => { const d = s.damages && s.damages[id]; if (d) d.work = Math.min(DAMAGES[id].work - 1, d.work + n); },
+    clearBeds: () => { for (const b of s.beds || []) { b.crop = null; b.growth = 0; b.ready = null; } },
+    hurtBeds: (f) => { for (const b of s.beds || []) if (b.crop) { b.growth = Math.max(0, b.growth * (1 - f)); if (b.ready != null && f > 0.5) { b.crop = null; b.ready = null; b.growth = 0; } } },
   };
   return h;
 }

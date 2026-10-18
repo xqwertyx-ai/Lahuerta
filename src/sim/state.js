@@ -10,6 +10,7 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
   const cfg = {
     daysPerSeason: BALANCE.daysPerSeason,
     startSeason: BALANCE.startSeason,
+    difficulty: 'normal',
     ...overrides,
   };
   const zones = {};
@@ -59,6 +60,11 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
     upgrades: [],
     beds: [{ crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }],
     activityLast: {},
+    damages: {},             // averías en marcha: { id: { id, work, started, since } }
+    mods: [],                // avisos temporales: [{ id, until }]
+    taxBase: { earned: 0, spent: 0 },
+    loan: null,              // préstamo de la cooperativa: { weekly, left }
+    cold: false, coldDays: 0, hungry: false, hungryDays: 0,
     guests: [],              // [{ n, nights }]
     log: [],
     eventQueue: [],          // eventos pendientes de mostrar (el tiempo se detiene)
@@ -77,7 +83,7 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
       tasks: 0, sales: 0, marketSales: 0, earned: 0, spent: 0,
       produced: Object.fromEntries(Object.keys(PRODUCTS).map((k) => [k, 0])),
       volunteersArrived: 0, volunteersLeft: 0, guests: 0, concerts: 0, montaneras: 0,
-      events: 0, restored: 0, harvests: 0, activities: 0,
+      events: 0, restored: 0, harvests: 0, activities: 0, repairs: 0, bills: 0,
     },
   };
 }
@@ -101,6 +107,7 @@ export function migrate(s) {
   for (const k of Object.keys(fresh.stats)) if (s.stats[k] === undefined) s.stats[k] = fresh.stats[k];
   for (const k of Object.keys(fresh.stats.produced)) if (s.stats.produced[k] === undefined) s.stats.produced[k] = 0;
   for (const k of Object.keys(fresh.hyp)) if (s.hyp[k] === undefined) s.hyp[k] = fresh.hyp[k];
+  if (!s.cfg.difficulty) s.cfg.difficulty = 'normal';
   s.version = STATE_VERSION;
   return s;
 }

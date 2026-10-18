@@ -244,7 +244,29 @@ export class Game {
         }
         case 'season': this.ui.toast(`${SEASONS[g.season].name}. ${SEASONS[g.season].note}`, 'info'); sfx('page'); break;
         case 'coins': coins = true; break;
-        case 'warning': this.ui.toast(g.kind === 'ruin' ? 'Las cuentas no salen. Vende algo o gasta menos.' : 'La finca se está borrando. Necesita cuidados.', 'bad'); sfx('warn'); break;
+        case 'warning': {
+          const W = {
+            ruin: 'Las cuentas no salen. Vende algo, gasta menos o pide ayuda a la cooperativa.',
+            abandon: 'La finca se está borrando. Necesita cuidados.',
+            cold: 'No queda leña: en el cortijo hace frío. Mira «Cuentas» en el cuaderno.',
+            feed: 'Los animales no tienen qué comer. Compra pienso o siega heno.',
+          };
+          this.ui.toast(W[g.kind] || W.abandon, 'bad'); sfx('warn'); break;
+        }
+        case 'damage': {
+          const def = S.DAMAGES[g.id];
+          this.ui.toast(`⚠ ${def.name}. ${def.zone ? 'Toca la zona para repararla.' : 'Míralo en «Cuentas».'}`, 'bad');
+          if (def.zone) { const z = ZONE_BY_ID[def.zone]; this.map.addFloat(z.x + z.w / 2, z.y + z.h / 2, '¡Averiado!', '#a0382a'); }
+          sfx('warn');
+          break;
+        }
+        case 'repaired': {
+          const def = S.DAMAGES[g.id];
+          this.ui.toast(`Reparado: ${def.name.toLowerCase()}.`, 'good');
+          if (def.zone) { const z = ZONE_BY_ID[def.zone]; this.map.addFloat(z.x + z.w / 2, z.y + z.h / 2, '¡Arreglado!', '#4f7a35'); }
+          sfx('chime');
+          break;
+        }
         case 'sleep': this.goToSleep(g.kind); break;
         case 'theme': this.playTheme(!!g.full); break;
         case 'tourism': this.ui.toast('Ya puedes recibir huéspedes: mira «Huéspedes» en el cuaderno.', 'good'); sfx('stamp'); break;

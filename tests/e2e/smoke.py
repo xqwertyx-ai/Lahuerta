@@ -113,7 +113,7 @@ def run(url, tag, browser):
     dismiss(pg)
     pg.click('text=✎ Cuaderno')
     pg.wait_for_selector('.book', timeout=3000)
-    for i, name in enumerate(['Diario', 'Despensa', 'Gente', 'Recuerdos', 'Huéspedes', 'Álbum', 'Ajustes']):
+    for i, name in enumerate(['Diario', 'Despensa', 'Cuentas', 'Gente', 'Recuerdos', 'Huéspedes', 'Álbum', 'Ajustes']):
         pg.click(f'.book .tab:has-text("{name}")')
         time.sleep(0.25)
         ok = pg.locator('.book .page h2').count() > 0
@@ -132,6 +132,39 @@ def run(url, tag, browser):
     check('se siembra un bancal', pg.evaluate("() => !!__huerta.s.beds[0].crop"))
     pg.screenshot(path=f'{SHOTS}/{tag}-09-huerta.png')
     pg.click('.sheet .close')
+
+    # Avería: el tejado se hunde, aparece el aviso, se repara a mano y pagando
+    pg.evaluate("() => { const s = __huerta.s; s.damages = { tejado: { id: 'tejado', work: 0, started: false, since: s.day } }; s.materials.piedra = 5; s.materials.cal = 5; s.jornales = 5; s.money = 900; }")
+    time.sleep(0.4)
+    check('aviso de avería en el HUD', pg.locator('.hud .chip.alert').is_visible())
+    tap_zone(pg, 775, 650)
+    pg.wait_for_selector('.sheet.open .task.damage', timeout=3000)
+    check('la zona averiada muestra la reparación', 'Tejado hundido' in pg.locator('.sheet .task.damage').inner_text())
+    check('los cuidados quedan bloqueados', pg.locator('.sheet .why:has-text("Averiado")').count() > 0)
+    pg.screenshot(path=f'{SHOTS}/{tag}-10-averia.png')
+    pg.locator('.sheet .task.damage button.primary').click()
+    time.sleep(0.3)
+    check('reparar a mano avanza la obra', pg.evaluate("() => __huerta.s.damages.tejado && __huerta.s.damages.tejado.work") == 5)
+    pg.locator('.sheet .task.damage button:has-text("Llamar")').click()
+    time.sleep(0.3)
+    check('un profesional lo termina', pg.evaluate("() => !__huerta.s.damages.tejado"))
+    pg.click('.sheet .close')
+    # Evento de contratiempo al amanecer: con jornales para elegir
+    pg.evaluate("() => { const s = __huerta.s; s.jornales = 5; s.materials.herramientas = 2; s.eventQueue.push('temporal'); }")
+    pg.wait_for_selector('.modal .illus', timeout=3000)
+    check('contratiempo con opción de prevenir', pg.locator('.modal button:has-text("Apuntalar")').is_enabled())
+    pg.screenshot(path=f'{SHOTS}/{tag}-11-temporal.png')
+    pg.locator('.modal button:has-text("Apuntalar")').click()
+    time.sleep(0.3)
+    dismiss(pg)
+    check('prevenir evita la avería', pg.evaluate("() => !__huerta.s.damages.tejado && __huerta.s.jornales <= 2"))
+    pg.click('text=✎ Cuaderno')
+    pg.wait_for_selector('.book', timeout=3000)
+    pg.click('.book .tab:has-text("Cuentas")')
+    time.sleep(0.25)
+    check('cuentas: reservas y pagos', pg.locator('text=Reservas para el invierno').count() > 0 and pg.locator('text=Próximos pagos').count() > 0)
+    pg.screenshot(path=f'{SHOTS}/{tag}-12-cuentas.png')
+    pg.click('.book .close')
 
     # Guardar y recargar
     pg.evaluate("() => { __huerta.s.money = 777; window.dispatchEvent(new Event('pagehide')); }")

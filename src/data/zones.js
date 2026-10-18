@@ -87,6 +87,7 @@ export const ZONES = [
       { id: 'podar', name: 'Podar encinas', jornales: 3, effect: { cons: 14 }, gain: { lena: 3 }, seasons: [2, 3], skill: 'monte' },
       { id: 'desbrozar', name: 'Desbrozar el pasto', jornales: 2, effect: { cons: 6, weeds: -50 }, skill: 'monte' },
       { id: 'bellota', name: 'Varear y recoger bellota', jornales: 2, effect: { cons: 2 }, gainScaled: { bellota: 5 }, seasons: [2] },
+      { id: 'heno', name: 'Segar y empacar el heno', jornales: 2, effect: { cons: 3 }, gainScaled: { heno: 9 }, seasons: [0, 1], skill: 'ganado' },
       { id: 'piedra', name: 'Recoger piedra suelta', jornales: 1, effect: { cons: 2 }, gain: { piedra: 3 } },
       { id: 'carbon', name: 'Hacer carbón de encina', jornales: 2, cost: { lena: 3 }, effect: { cons: 1 }, gain: { carbon: 2 }, skill: 'monte' },
     ],

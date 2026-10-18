@@ -9,6 +9,7 @@ import { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, costLab
 import { hasSkill, skillName, traitOf, volunteerJornales, infoOf, setZoneSkillMap } from './people.js';
 import { giveItem, checkRevelation } from './mystery.js';
 import { growBeds, autoGarden } from './garden.js';
+import { damageOf, repair, stopped, agingFactor, difficulty } from './hardship.js';
 
 // Qué oficios usa cada zona (para el ánimo de los voluntarios encargados)
 setZoneSkillMap(Object.fromEntries(ZONES.map((z) => [z.id, [...new Set(z.tasks.map((t) => t.skill).filter(Boolean))]])));
@@ -41,13 +42,17 @@ export function restoredCount(s) {
 export function decayHour(s, hours = 1) {
   const season = SEASONS[seasonIndex(s)];
   const w = WEATHER[s.weather] || WEATHER.sol;
+  const global = agingFactor(s) * difficulty(s).decay;
   for (const z of ZONES) {
     const st = s.zones[z.id];
     if (!st.unlocked) continue;
     let care = 1;
     for (const v of s.volunteers) if (v.zone === z.id) care *= traitOf(v).decay || 1;
     const weedF = st.weeds != null ? 1 + st.weeds * BALANCE.weedDecayFactor : 1;
-    let d = BALANCE.baseDecayPerDay * z.decay * season.decayMult * w.decay * weedF * care;
+    // Lo que está impecable cuesta más mantenerlo; lo roto se estropea el doble
+    const high = 1 + Math.max(0, st.cons - BALANCE.highConsFrom) * BALANCE.highConsDecay;
+    const broken = damageOf(s, z.id) ? 1.8 : 1;
+    let d = BALANCE.baseDecayPerDay * z.decay * season.decayMult * w.decay * weedF * care * high * broken * global;
     // El agua escasa castiga la huerta y la fuente
     if ((z.id === 'huerta' || z.id === 'patio') && s.water < 20) d *= 1.4;
     st.cons = clamp(st.cons - d * hours / 24, 0, 100);
@@ -72,6 +77,9 @@ export function taskJornales(s, task) {
 export function taskBlocker(s, zoneId, task) {
   const st = s.zones[zoneId];
   if (!st.unlocked) return 'Zona borrada del plano';
+  const dmg = damageOf(s, zoneId);
+  if (dmg) return 'Averiado: primero hay que repararlo';
+  if (task.water && stopped(s, 'water', zoneId)) return 'No da agua: está averiado';
   const si = seasonIndex(s);
   if (task.seasons && !task.seasons.includes(si)) {
     return 'Fuera de temporada (' + task.seasons.map((i) => SEASONS[i].name.toLowerCase()).join(', ') + ')';
@@ -146,7 +154,7 @@ export function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   if (taskItems.length && st.cons >= 55 && s.day >= 4) {
     let p = 0.22;
     for (const v of s.volunteers) p += traitOf(v).findBonus || 0;
-    if (s.zones.ermita.everRestored) p += 0.1; // San Antonio, que encuentra lo perdido
+    if (s.zones.ermita.everRestored && !stopped(s, 'find')) p += 0.1; // San Antonio, que encuentra lo perdido
     if (chance(s, p)) giveItem(s, taskItems[0].id);
   }
 
@@ -299,6 +307,14 @@ function bestTaskFor(s, zoneId) {
 export function autoMaintain(s) {
   for (const v of s.volunteers) {
     if (!v.zone || !s.zones[v.zone]) continue;
+    if ((v.rest || 0) > 0) { v.lastWork = 'descansó'; continue; }
+    const dmg = damageOf(s, v.zone);
+    if (dmg) {
+      // Encargado de una zona averiada: arrima el hombro en la reparación
+      const r = repair(s, dmg.id, { by: v.id, budget: volunteerJornales(v) });
+      v.lastWork = r.ok ? (r.done ? 'terminó la reparación' : 'trabajó en la reparación') : 'no pudo empezar la reparación (faltan materiales)';
+      continue;
+    }
     if (!s.zones[v.zone].unlocked) {
       // Encargado de recuperar una zona: aporta sus jornales al proyecto
       const r = unlockZone(s, v.zone, { by: v.id, budget: volunteerJornales(v) });

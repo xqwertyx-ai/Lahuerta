@@ -204,6 +204,45 @@ function boar(d, x, y, s = 1) {
 }
 
 const MOTIFS = {
+  niebla(d) {
+    sky(d, '#c4c8c4', '#e4e6e0');
+    hills(d, 150, '#b8bcb0');
+    encina(d, 90, 172, 1.3); encina(d, 280, 166, 1.0);
+    for (let i = 0; i < 6; i++) d.washBlob(30 + i * 62, 120 + (i % 2) * 22, 70, 16, '#f4f4ee', { alpha: 0.55 });
+    d.pen.set({ width: 1.1 });
+    d.pen.path([[160, 190], [160, 150], [215, 150], [215, 190]], false);   // el piano tapado
+    d.pen.curve([[150, 152], [188, 138], [226, 152]]);
+  },
+  averia(d) {
+    sky(d, '#9aa4b0', '#d8dce0');
+    hills(d, 170, '#b8b498');
+    const { pen } = d;
+    d.wash([[90, 200], [90, 120], [270, 120], [270, 200]], '#f2ece0', { alpha: 0.9 });
+    pen.set({ width: 1.3 });
+    pen.path([[90, 200], [90, 120], [270, 120], [270, 200]], false);
+    // Tejado con un hueco
+    pen.path([[80, 122], [150, 78], [175, 92]], false);
+    pen.path([[205, 92], [210, 78], [280, 122]], false);
+    d.wash([[80, 122], [150, 78], [175, 92], [205, 92], [210, 78], [280, 122]], '#b06a48', { alpha: 0.45 });
+    pen.set({ width: 0.9 });
+    for (let i = 0; i < 5; i++) pen.line(176 + i * 7, 96 + (i % 2) * 6, 180 + i * 7, 110 + (i % 3) * 4); // vigas rotas
+    // Escalera apoyada
+    pen.set({ width: 1 });
+    pen.line(300, 200, 262, 104); pen.line(314, 200, 276, 104);
+    for (let k = 1; k < 7; k++) { const t = k / 7; pen.line(300 - 38 * t, 200 - 96 * t, 314 - 38 * t, 200 - 96 * t); }
+    pen.path([[150, 200], [150, 160], [178, 160], [178, 200]], false);
+    rain(d, 30, 150, 40, 120, 100);
+  },
+  furgoneta(d) {
+    hills(d, 150);
+    const { pen } = d;
+    d.wash([[80, 180], [80, 120], [210, 120], [250, 145], [270, 150], [270, 180]], '#e8e2d0', { alpha: 0.9 });
+    pen.set({ width: 1.3 });
+    pen.path([[80, 180], [80, 120], [210, 120], [250, 145], [270, 150], [270, 180], [80, 180]], false);
+    pen.path([[212, 126], [244, 146], [212, 146]], true);
+    for (const x of [118, 232]) { d.washBlob(x, 182, 15, 15, '#3a3a3a', { alpha: 0.6 }); pen.ellipse(x, 182, 15, 15); }
+    for (let i = 0; i < 5; i++) d.washBlob(60 - i * 10, 170 - i * 14, 10 + i * 5, 8 + i * 4, '#8890a8', { alpha: 0.3 - i * 0.04 });
+  },
   helada(d) {
     sky(d, '#c8d6e2', '#eef2f4');
     hills(d, 150, '#c6ccc8');

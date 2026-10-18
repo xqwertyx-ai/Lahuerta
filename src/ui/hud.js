@@ -3,6 +3,7 @@ import { h, fmtMoney } from './dom.js';
 import { WEATHER } from '../data/seasons.js';
 import { dateLabel, clockLabel, daysToMarket, isMarketDay } from '../sim/calendar.js';
 import { dailyJornales } from '../sim/people.js';
+import { troubles } from '../sim/hardship.js';
 
 export class Hud {
   constructor(root, game) {
@@ -16,7 +17,11 @@ export class Hud {
     this.jorn = this._chip('', 'jornales');
     this.mood = this._chip('', 'ánimo');
     this.rep = this._chip('', 'reputación');
-    this.res = h('div', { class: 'res' }, this.money.el, this.jorn.el, this.mood.el, this.rep.el);
+    this.alertB = h('b');
+    this.alertLab = h('span', { class: 'lab' }, 'avisos');
+    this.alert = h('button', { class: 'chip alert', title: 'Averías y avisos', 'aria-label': 'Ver averías y avisos', onclick: () => game.ui.openBook('cuentas') }, this.alertB, this.alertLab);
+    this.alert.hidden = true;
+    this.res = h('div', { class: 'res' }, this.money.el, this.jorn.el, this.mood.el, this.rep.el, this.alert);
     this.speedBtns = [0, 1, 2, 3].map((v) => h('button', {
       'aria-label': v ? `Velocidad x${v}` : 'Pausa',
       onclick: () => { game.setSpeed(v); },
@@ -38,7 +43,8 @@ export class Hud {
   update(s) {
     const w = WEATHER[s.weather] || WEATHER.sol;
     const market = isMarketDay(s) ? ' · hoy hay mercado' : daysToMarket(s) === 1 ? ' · mañana, mercado' : '';
-    const key = [Math.floor(s.hour * 6), s.day, s.weather, Math.round(s.money), s.jornales, Math.round(s.mood), Math.round(s.rep), this.game.speed, this.game.paused].join('|');
+    const tr = troubles(s).filter((t) => t.kind !== 'mod' || t.bad);
+    const key = [tr.length, Object.keys(s.damages || {}).join(), Math.floor(s.hour * 6), s.day, s.weather, Math.round(s.money), s.jornales, Math.round(s.mood), Math.round(s.rep), this.game.speed, this.game.paused].join('|');
     if (key === this.last) return;
     this.last = key;
     this.clock.textContent = clockLabel(s.hour);
@@ -54,6 +60,11 @@ export class Hud {
     this.mood.b.textContent = Math.round(s.mood);
     this.mood.el.classList.toggle('neg', s.mood < 30);
     this.rep.b.textContent = Math.round(s.rep);
+    this.alert.hidden = !tr.length;
+    if (tr.length) {
+      this.alertB.textContent = `⚠ ${tr.length}`;
+      this.alertLab.textContent = tr.length === 1 ? tr[0].name.toLowerCase() : 'problemas';
+    }
     const sp = this.game.paused ? 0 : this.game.speed;
     this.speedBtns.forEach((b, i) => b.classList.toggle('on', i === sp));
   }

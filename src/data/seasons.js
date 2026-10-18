@@ -29,7 +29,7 @@ export const SEASONS = [
 
 // Efectos de cada tiempo sobre el día
 export const WEATHER = {
-  sol:      { name: 'Despejado', icon: '☀', decay: 1.0, weeds: 1.0, prod: 1.0, mood: 0.5, visitors: 1.1 },
+  sol:      { name: 'Despejado', icon: '☀', decay: 1.0, weeds: 1.0, prod: 1.0, mood: 0.25, visitors: 1.1 },
   nubes:    { name: 'Nublado', icon: '☁', decay: 1.0, weeds: 1.0, prod: 0.95, mood: 0, visitors: 1.0 },
   lluvia:   { name: 'Lluvia', icon: '☂', decay: 1.25, weeds: 1.4, prod: 1.05, mood: -0.3, visitors: 0.7, water: 12 },
   tormenta: { name: 'Tormenta', icon: '⚡', decay: 1.8, weeds: 1.2, prod: 0.9, mood: -1, visitors: 0.5, water: 18 },

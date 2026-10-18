@@ -14,7 +14,7 @@ export const BALANCE = {
     money: 150,
     mood: 60,          // ánimo
     reputation: 5,
-    materials: { lena: 6, piedra: 4, cal: 2, herramientas: 3 },
+    materials: { lena: 8, piedra: 4, cal: 2, herramientas: 3, pienso: 0 },
     products: { huevos: 0 },
   },
 
@@ -25,9 +25,12 @@ export const BALANCE = {
   employeeWagePerDay: 22,
 
   // ── Ánimo ──
-  moodDailyDrift: 0.6,          // tiende a 55 poco a poco
+  moodDailyDrift: 1.2,          // vuelve a su punto de reposo (≈ 10 % de la diferencia al día)
   moodRestTarget: 55,
-  moodPerRestoredZone: 1.5,
+  moodPerRestoredZone: 1.5,     // al restaurar una zona por primera vez (×3, de golpe)
+  moodPerRestoredTarget: 0.8,   // cada zona restaurada sube el ánimo «normal» de la casa
+  happyRest: 55,                // la alegría de los voluntarios tiende aquí…
+  happyDrift: 0.08,             // …a este ritmo por día
   moodLowConservation: -2,      // por día si la conservación media es baja
   moodDebt: -1.5,
 
@@ -36,13 +39,15 @@ export const BALANCE = {
   baseDecayPerDay: 1.0,
   weedGrowthPerDay: 2.2,        // maleza por día (primavera más)
   weedDecayFactor: 0.012,       // la maleza acelera el deterioro: decay *= 1 + maleza*factor
-  restoredThreshold: 70,        // a partir de aquí una zona cuenta como «restaurada»
+  restoredThreshold: 70,
+  highConsFrom: 60,             // por encima, mantenerla cuesta más…
+  highConsDecay: 0.006,         // …+0,6 % de deterioro por punto (a 100: ×1,24)        // a partir de aquí una zona cuenta como «restaurada»
   // Rendimiento decreciente: cuanto mejor está una zona, menos sube con cada cuidado
   diminishFrom: 30,             // por debajo, cada tarea rinde entero
   diminishSpan: 90,             // a 30 + 90 = 120 el rendimiento sería 0 (con un mínimo)
   diminishMin: 0.25,
   // Reputación: no puede quedarse muy por encima de lo que la finca merece
-  repDecay: 0.25,               // por día si está por encima del objetivo
+  repDecay: 0.4,                // por día si está por encima del objetivo (+5 % de la diferencia)
 
   // ── Fuego ──
   fireBaseRisk: 0.004,          // probabilidad diaria base en verano
@@ -71,17 +76,18 @@ export const BALANCE = {
   tourismUnlock: { cortijo: 65, reputation: 20 },
   visitorBase: 0.1,
   visitorPerRep: 0.006,
-  nightPrice: 32,
-  guestCostPerNight: 8,          // desayuno, sábanas y luz
+  nightPrice: 30,
+  guestCostPerNight: 12,         // desayuno, sábanas y luz
 
   // ── Derrota suave ──
   ruinDaysToWarn: 5,
-  ruinDaysToSleep: 14,          // una estación entera en números rojos
+  ruinDaysToSleep: 21,          // tres semanas seguidas en números rojos
   abandonThreshold: 22,         // conservación media
   abandonDaysToSleep: 14,
 
   // ── Eventos ──
-  eventChancePerDay: 0.42,
+  eventChancePerDay: 0.45,
+  crisisGrowthPerYear: 0.25,    // los contratiempos son más frecuentes cada año (la finca envejece)
   eventMinGapDays: 1,
 
   // ── Misterio ──

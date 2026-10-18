@@ -6,6 +6,7 @@ import { WEATHER } from '../data/seasons.js';
 import { rand, roundP, randRange } from './rng.js';
 import { seasonIndex, isMarketDay } from './calendar.js';
 import { addLog, signal, clamp, addStock } from './effects.js';
+import { damageOf, stopped, modFactor, marketClosed, buyPrice } from './hardship.js';
 
 // ── Producción diaria ──
 export function produceDay(s) {
@@ -15,11 +16,14 @@ export function produceDay(s) {
   for (const z of ZONES) {
     const st = s.zones[z.id];
     if (!st.unlocked || !z.produce) continue;
+    if (damageOf(s, z.id)) continue;            // lo roto no produce
     const q = st.cons / 100;
     for (const [k, arr] of Object.entries(z.produce)) {
       if (!Array.isArray(arr)) continue;
       let base = arr[si];
       if (!base) continue;
+      if (s.hungry && (k === 'huevos' || k === 'queso')) continue; // sin comida no hay huevos ni leche
+      base *= modFactor(s, 'prod', k);
       if (k === 'queso') base *= s.animals[z.produce.perQueso] || 0;
       else if (z.produce.per && k !== 'queso') base *= s.animals[z.produce.per] || 0;
       if (z.id === 'huerta') {
@@ -42,7 +46,7 @@ export function produceDay(s) {
     }
   }
   // Gurumelos: en otoño, tras la lluvia, si la dehesa está cuidada
-  if (si === 2 && s.zones.dehesa.unlocked && (s.weather === 'lluvia' || s.water > 60) && rand(s) < 0.35 * s.zones.dehesa.cons / 100) {
+  if (si === 2 && s.zones.dehesa.unlocked && !damageOf(s, 'dehesa') && (s.weather === 'lluvia' || s.water > 60) && rand(s) < 0.35 * s.zones.dehesa.cons / 100) {
     const n = 1 + Math.floor(rand(s) * 2);
     addStock(s, 'gurumelos', n);
     out.gurumelos = n;
@@ -57,6 +61,7 @@ export function montaneraDay(s) {
   if (!s.animals.cerdos) { s._bellotaEaten = 0; return; }
   const si = seasonIndex(s);
   if (si !== 2 && si !== 3) { s._bellotaEaten = 0; return; }
+  if (stopped(s, 'montanera')) { s._bellotaEaten = 0; return; }   // con el muro roto o la dehesa quemada no hay montanera
   const need = s.animals.cerdos * 0.5;
   let got = s._bellotaEaten || 0;
   // Si falta, comen de los sacos guardados
@@ -86,8 +91,8 @@ export function waterDay(s) {
   const w = WEATHER[s.weather] || WEATHER.sol;
   let d = w.water || 0;
   d += [-1, -6, -2, 0][si];
-  if (s.zones.alberca.unlocked) d += (s.zones.alberca.cons - 40) / 25;
-  if (s.zones.pozo.unlocked) d += (s.zones.pozo.cons - 30) / 25;
+  if (s.zones.alberca.unlocked) d += stopped(s, 'water', 'alberca') ? -1.5 : (s.zones.alberca.cons - 40) / 25;
+  if (s.zones.pozo.unlocked && !stopped(s, 'water', 'pozo')) d += (s.zones.pozo.cons - 30) / 25;
   s.water = clamp(s.water + d, 0, 100);
 }
 
@@ -123,7 +128,7 @@ const CHANNEL_FACTOR = {
 
 export function channelOpen(s, ch) {
   if (ch === 'coop') return true;
-  if (ch === 'market') return isMarketDay(s);
+  if (ch === 'market') return isMarketDay(s) && !marketClosed(s);
   if (ch === 'basket') return s.guests.length > 0;
   return false;
 }
@@ -139,13 +144,14 @@ export function unitPrice(s, product, ch) {
   const sat = s.saturation[ch]?.[product] || 0;
   const noise = s.priceNoise[product] || 1;
   const repBonus = ch === 'basket' ? 1 + s.rep / 400 : 1;
-  const v = p.price * p.season[si] * CHANNEL_FACTOR[ch]() * noise * repBonus * Math.max(0.35, 1 - sat);
+  const mods = modFactor(s, ch) * modFactor(s, 'price', product);
+  const v = p.price * p.season[si] * CHANNEL_FACTOR[ch]() * noise * repBonus * mods * Math.max(0.35, 1 - sat);
   return Math.round(v * 100) / 100;
 }
 
 export function sellBlocker(s, product, ch, qty = 1) {
   if (!channelOpen(s, ch)) {
-    if (ch === 'market') return 'El mercado abre los jueves';
+    if (ch === 'market') return marketClosed(s) || 'El mercado abre los jueves';
     if (ch === 'basket') return 'No hay huéspedes';
   }
   if (ch === 'basket' && !PRODUCTS[product].basket) return 'No va en cesta';
@@ -180,7 +186,7 @@ export function sellAllAt(s, mult) {
   let total = 0;
   for (const k of Object.keys(PRODUCTS)) {
     const q = Math.floor(s.products[k] || 0);
-    if (!q || k === 'cerdo') continue;
+    if (!q || k === 'cerdo' || k === 'heno') continue;
     const each = PRODUCTS[k].price * PRODUCTS[k].season[seasonIndex(s)] * mult;
     total += each * q;
     s.products[k] = 0;
@@ -196,7 +202,7 @@ export function sellAllAt(s, mult) {
 export function buyMaterial(s, key, qty = 1) {
   const m = MATERIALS[key];
   if (!m) return { ok: false, text: '¿Qué es eso?' };
-  const cost = m.buy * qty;
+  const cost = Math.round(buyPrice(s, key) * qty * 100) / 100;
   if (s.money < cost) return { ok: false, text: 'No llega el dinero' };
   addStock(s, 'money', -cost);
   addStock(s, key, qty);

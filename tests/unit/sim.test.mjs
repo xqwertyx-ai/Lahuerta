@@ -192,11 +192,11 @@ test('la finca se duerme si se abandona, pero no antes de tiempo', () => {
   assert.equal(s.asleep, 'abandon');
 });
 
-test('en números rojos durante una estación, la finca se duerme por ruina', () => {
+test('en números rojos tres semanas seguidas, la finca se duerme por ruina', () => {
   const s = fresh(5);
   for (const z of Object.values(s.zones)) if (z.unlocked) z.cons = 90;
   s.money = -500;
-  for (let i = 0; i < 20 && !s.asleep; i++) S.checkSleep(s);
+  for (let i = 0; i < 30 && !s.asleep; i++) S.checkSleep(s);
   assert.equal(s.asleep, 'ruin');
 });
 
@@ -333,4 +333,173 @@ test('el pozo da agua', () => {
 
 test('todas las zonas con maleza tienen una tarea para quitarla', () => {
   for (const z of ZONES) if (z.weeds) assert.ok(z.tasks.some((t) => t.effect?.weeds < 0), z.id);
+});
+
+// ── Contratiempos ──
+const unlockAll = (s) => { for (const z of ZONES) { s.zones[z.id].unlocked = true; s.zones[z.id].cons = 70; } };
+
+test('los eventos que piden jornales llegan al amanecer, con el día por delante', () => {
+  let dawnOnes = 0, total = 0;
+  for (let seed = 1; seed < 400 && total < 60; seed++) {
+    const s = fresh(seed);
+    s.day = 20;
+    S.planDay(s);
+    if (!s.todayEvent) continue;
+    total++;
+    const e = EVENTS.find((x) => x.id === s.todayEvent.id);
+    if (S.needsJornales(e)) { assert.equal(s.todayEvent.hour, 6, e.id); dawnOnes++; }
+  }
+  assert.ok(total > 20 && dawnOnes > 0);
+});
+
+test('una avería para la zona: no produce, no se cuida y se repara con jornales', () => {
+  const s = fresh(3);
+  unlockAll(s);
+  s.animals.gallinas = 10;
+  assert.ok(S.breakDown(s, 'gallinero'));
+  assert.ok(S.isDamaged(s, 'corral'));
+  const t = S.findTask('corral', 'limpiar');
+  assert.match(S.taskBlocker(s, 'corral', t), /Averiado/);
+  const before = s.products.huevos;
+  S.produceDay(s);
+  assert.equal(s.products.huevos, before);
+  s.materials.piedra = 5; s.jornales = 2;
+  let r = S.repair(s, 'gallinero');
+  assert.ok(r.ok && !r.done);
+  s.jornales = 5;
+  r = S.repair(s, 'gallinero');
+  assert.ok(r.done);
+  assert.ok(!S.isDamaged(s, 'corral'));
+  assert.equal(S.taskBlocker(s, 'corral', t), null);
+});
+
+test('se puede pagar a un profesional para reparar de golpe', () => {
+  const s = fresh(4);
+  unlockAll(s);
+  S.breakDown(s, 'bomba');
+  assert.ok(S.stopped(s, 'water', 'pozo'));
+  s.money = 1000;
+  const cost = S.proTotal(s, 'bomba');
+  assert.ok(cost > 90);
+  const r = S.hireRepair(s, 'bomba');
+  assert.ok(r.ok);
+  assert.equal(Math.round(s.money), 1000 - cost);
+  assert.ok(!S.stopped(s, 'water', 'pozo'));
+});
+
+test('el tejado hundido deja una cama y cierra el agroturismo', () => {
+  const s = fresh(5);
+  s.zones.cortijo.cons = 90;
+  assert.ok(S.bedsTotal(s) > 1);
+  S.breakDown(s, 'tejado');
+  assert.equal(S.bedsTotal(s), 1);
+  assert.ok(S.stopped(s, 'tourism'));
+});
+
+test('lo roto sin atender va a peor', () => {
+  const s = fresh(6);
+  unlockAll(s);
+  S.breakDown(s, 'muro');
+  const c = s.zones.muros.cons;
+  s.day += 6;
+  S.hardshipDawn(s);
+  assert.ok(s.zones.muros.cons < c);
+});
+
+test('los lunes se pagan los gastos fijos y crecen con la finca', () => {
+  const s = fresh(8);
+  const small = S.weeklyBill(s);
+  unlockAll(s);
+  assert.ok(S.weeklyBill(s) > small);
+  s.day = 8;                      // lunes
+  assert.equal(S.weekday(s), 0);
+  const m = s.money;
+  S.hardshipDawn(s);
+  assert.ok(s.money < m);
+});
+
+test('en invierno la chimenea gasta leña; sin leña hace frío', () => {
+  const s = fresh(9);
+  s.day = 16;                     // invierno (empieza en otoño, 14 días por estación)
+  assert.equal(S.seasonIndex(s), 3);
+  s.materials.lena = 5;
+  S.hardshipDawn(s);
+  assert.ok(s.materials.lena < 5 && !s.cold);
+  s.materials.lena = 0;
+  const mood = s.mood;
+  S.hardshipDawn(s);
+  assert.ok(s.cold && s.mood < mood);
+});
+
+test('sin heno ni pienso, los animales dejan de producir', () => {
+  const s = fresh(10);
+  unlockAll(s);
+  s.day = 16;
+  s.animals.gallinas = 12;
+  s.products.heno = 0; s.materials.pienso = 0;
+  S.hardshipDawn(s);
+  assert.ok(s.hungry);
+  const h = s.products.huevos;
+  for (let i = 0; i < 5; i++) S.produceDay(s);
+  assert.equal(s.products.huevos, h);
+  s.materials.pienso = 20;
+  S.hardshipDawn(s);
+  assert.ok(!s.hungry);
+});
+
+test('los avisos cambian precios y cierran el mercado', () => {
+  const s = fresh(11);
+  const p = S.unitPrice(s, 'lechugas', 'coop');
+  S.addMod(s, 'coop_baja', 5);
+  assert.ok(S.unitPrice(s, 'lechugas', 'coop') < p * 0.7);
+  s.day = 4;                     // jueves
+  assert.ok(S.channelOpen(s, 'market'));
+  S.addMod(s, 'carretera', 3);
+  assert.ok(!S.channelOpen(s, 'market'));
+  s.day += 10;
+  S.hardshipDawn(s);
+  assert.equal(S.activeMods(s).length, 0);
+});
+
+test('el préstamo de la cooperativa se devuelve los lunes', () => {
+  const s = fresh(12);
+  s.money = -80;
+  assert.ok(S.takeLoan(s, 300, 2, 30));
+  assert.equal(s.money, 220);
+  s.day = 8; S.hardshipDawn(s);
+  s.day = 15; S.hardshipDawn(s);
+  assert.equal(s.loan, null);
+});
+
+test('todas las averías y avisos que usan los eventos existen', () => {
+  const src = EVENTS.map((e) => e.options.map((o) => String(o.apply || '')).join(' ')).join(' ');
+  for (const m of src.matchAll(/breakDown\('([a-z_]+)'\)/g)) assert.ok(S.DAMAGES[m[1]], m[1]);
+  for (const m of src.matchAll(/h\.mod\('([a-z_]+)'/g)) assert.ok(S.MODS[m[1]], m[1]);
+});
+
+test('una partida guardada antigua se completa con los contratiempos', () => {
+  const s = fresh(13);
+  delete s.damages; delete s.mods; delete s.taxBase; delete s.cfg.difficulty;
+  const m = S.migrate(JSON.parse(JSON.stringify(s)));
+  assert.deepEqual(m.damages, {});
+  assert.deepEqual(m.mods, []);
+  assert.equal(m.cfg.difficulty, 'normal');
+  S.runDays(m, 20);
+  assert.ok(m.day >= 21);
+});
+
+test('la dificultad cambia la frecuencia de contratiempos y los gastos', () => {
+  const a = fresh(14, { difficulty: 'tranquila' }), b = fresh(14, { difficulty: 'dura' });
+  assert.ok(S.weeklyBill(a) < S.weeklyBill(b));
+  assert.ok(S.crisisFactor(a) < S.crisisFactor(b));
+});
+
+test('un año entero con contratiempos sin errores', () => {
+  const s = fresh(15);
+  unlockAll(s);
+  s.animals = { gallinas: 8, ovejas: 3, cerdos: 2, colmenas: 3 };
+  s.money = 2000;
+  S.runDays(s, 56, (st) => S.resolveEvent(st, 1));
+  assert.ok(s.day >= 57 || s.asleep);
+  assert.ok(Number.isFinite(s.money));
 });

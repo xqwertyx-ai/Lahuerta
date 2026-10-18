@@ -11,4 +11,5 @@ export * from './mystery.js';
 export * from './events.js';
 export * from './garden.js';
 export * from './kitchen.js';
+export * from './hardship.js';
 export { rand } from './rng.js';

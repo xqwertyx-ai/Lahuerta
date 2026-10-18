@@ -9,6 +9,11 @@
 //   effects: { money, mood, rep, materials:{}, products:{}, zones:{ id|all: delta }, weeds:{ id|all: delta },
 //              flag, item, water }
 //   result: texto que se escribe en el diario tras elegir
+// crisis: true → contratiempo (más frecuente cada año y en dificultad dura)
+// when: 'tarde' → sale al atardecer. Si alguna opción cuesta jornales, el evento llega al amanecer
+//   (con el día por delante); si no, a cualquier hora.
+// Ayudas de contratiempos (ver sim/events.js): h.breakDown(id) rompe algo (data/hardships.js),
+//   h.mod(id, días) pone un aviso económico, h.hurtBeds(f), h.loseAnimals(k, f), h.restVolunteer(días)…
 
 export const EVENTS = [
   // ───────────── Clima ─────────────
@@ -16,8 +21,8 @@ export const EVENTS = [
     id: 'helada', title: 'Helada', illus: 'helada', weight: 5, seasons: [3], cooldown: 4,
     text: 'Amanece blanco. La escarcha ha mordido los muros y la huerta cruje como papel.',
     options: [
-      { label: 'Tapar la huerta con paja', cost: { jornales: 1 }, effects: { zones: { huerta: -3 } }, result: 'La paja abriga los bancales. Lo peor pasa de largo.' },
-      { label: 'Encender la chimenea y esperar', effects: { zones: { huerta: -12, muros: -6 }, mood: 3 }, result: 'Un día de manta y leña. La huerta lo nota.' },
+      { label: 'Tapar la huerta con paja', cost: { jornales: 1 }, effects: { zones: { huerta: -3 } }, apply: (s, h) => h.hurtBeds(0.1), result: 'La paja abriga los bancales. Lo peor pasa de largo.' },
+      { label: 'Encender la chimenea y esperar', effects: { zones: { huerta: -12, muros: -6 }, mood: 2 }, apply: (s, h) => { h.hurtBeds(0.6); if (h.chance(0.3)) h.breakDown('tuberia'); }, result: 'Un día de manta y leña. La huerta lo nota.' },
     ],
   },
   {
@@ -25,7 +30,7 @@ export const EVENTS = [
     text: 'El aire tiembla sobre la dehesa. Las gallinas se esconden bajo la yuca y la alberca baja un palmo.',
     options: [
       { label: 'Regar al alba y sombrear', cost: { jornales: 2 }, effects: { zones: { huerta: 4 }, mood: -1 }, result: 'Madrugón y riego. La huerta aguanta.' },
-      { label: 'Siesta larga, como manda la tradición', effects: { zones: { huerta: -10, alberca: -6 }, mood: 4, water: -10 }, result: 'Persianas bajadas hasta las siete. Algo se seca, pero el ánimo descansa.' },
+      { label: 'Siesta larga, como manda la tradición', effects: { zones: { huerta: -10, alberca: -6 }, mood: 4, water: -10 }, apply: (s, h) => h.hurtBeds(0.35), result: 'Persianas bajadas hasta las siete. Algo se seca, pero el ánimo descansa.' },
     ],
   },
   {
@@ -33,7 +38,7 @@ export const EVENTS = [
     text: 'Truena detrás del pueblo. En un momento el patio es un río y el cielo, morado.',
     options: [
       { label: 'Salir a asegurar las tejas', cost: { jornales: 1 }, effects: { zones: { cortijo: -2 } }, result: 'Empapado, pero el tejado aguanta.' },
-      { label: 'Mirarla desde la ventana', effects: { zones: { cortijo: -9, paseo: -5 }, mood: 2, water: 15 }, result: 'Una tormenta preciosa. Mañana habrá goteras.' },
+      { label: 'Mirarla desde la ventana', effects: { zones: { cortijo: -9, paseo: -5 }, mood: 2, water: 15 }, apply: (s, h) => { if (h.zoneCons('cortijo') < 65 && h.chance(0.5)) h.breakDown('tejado'); }, result: 'Una tormenta preciosa. Mañana habrá goteras.' },
     ],
   },
   {
@@ -46,11 +51,11 @@ export const EVENTS = [
     ],
   },
   {
-    id: 'dana', title: 'Gota fría', illus: 'dana', weight: 2, seasons: [2], cooldown: 30,
+    id: 'dana', title: 'Gota fría', illus: 'dana', weight: 2, crisis: true, seasons: [2], cooldown: 30,
     text: 'Llueve como si el cielo se hubiera roto. El arroyo se desborda y arrastra parte del muro.',
     options: [
-      { label: 'Hacer zanjas para desviar el agua', cost: { jornales: 3 }, effects: { zones: { muros: -6, huerta: -4 }, water: 25 }, result: 'Barro hasta las rodillas, pero el agua se va por donde debe.' },
-      { label: 'Ponerse a salvo y esperar', effects: { zones: { muros: -18, huerta: -14, paseo: -8 }, water: 30 }, result: 'Cuando escampa, el paseo es un barrizal y el muro tiene un hueco nuevo.' },
+      { label: 'Hacer zanjas para desviar el agua', cost: { jornales: 3 }, effects: { zones: { muros: -6, huerta: -4 }, water: 25 }, apply: (s, h) => h.hurtBeds(0.3), result: 'Barro hasta las rodillas, pero el agua se va por donde debe.' },
+      { label: 'Ponerse a salvo y esperar', effects: { zones: { muros: -10, huerta: -8, paseo: -8 }, water: 30 }, apply: (s, h) => { h.breakDown('muro'); h.breakDown('bancales'); }, result: 'Cuando escampa, el paseo es un barrizal y el muro tiene un hueco nuevo.' },
     ],
   },
   {
@@ -76,11 +81,11 @@ export const EVENTS = [
   },
   {
     id: 'jabalies', title: 'Jabalíes', illus: 'jabali', weight: 4, seasons: [2, 3], cooldown: 8,
-    cond: (s) => s.zones.huerta.unlocked,
+    cond: (s) => s.zones.huerta.unlocked && !s.flags.vallaJabali,
     text: 'Esta noche han entrado jabalíes. Han hozado los bancales y han dejado la valla como un acordeón.',
     options: [
-      { label: 'Reforzar la valla con piedra', cost: { jornales: 2, piedra: 2 }, effects: { zones: { huerta: -6 } }, flag: 'vallaJabali', result: 'Una valla que hasta un jabalí respetaría.' },
-      { label: 'Resignarse y replantar', effects: { zones: { huerta: -15 }, mood: -2 }, result: 'Se han comido lo mejor. Ya crecerá.' },
+      { label: 'Reforzar la valla con piedra', cost: { jornales: 2, piedra: 2 }, effects: { zones: { huerta: -6 } }, apply: (s, h) => h.hurtBeds(0.2), flag: 'vallaJabali', result: 'Una valla que hasta un jabalí respetaría.' },
+      { label: 'Resignarse y replantar', effects: { zones: { huerta: -15 }, mood: -2 }, apply: (s, h) => h.hurtBeds(0.8), result: 'Se han comido lo mejor. Ya crecerá.' },
     ],
   },
   {
@@ -89,7 +94,7 @@ export const EVENTS = [
     text: 'Las hojas de la huerta y de la parra amanecen pegajosas. Pulgón, y mucho.',
     options: [
       { label: 'Jabón potásico, hoja a hoja', cost: { jornales: 2, money: 5 }, effects: { zones: { huerta: -2, bosquete: -2 } }, result: 'Paciencia de monje. La plaga se rinde.' },
-      { label: 'Esperar a las mariquitas', effects: { zones: { huerta: -10, bosquete: -6 } }, result: 'Las mariquitas llegan… tarde.' },
+      { label: 'Esperar a las mariquitas', effects: { zones: { huerta: -10, bosquete: -6 } }, apply: (s, h) => h.hurtBeds(0.5), result: 'Las mariquitas llegan… tarde.' },
     ],
   },
   {
@@ -109,13 +114,13 @@ export const EVENTS = [
     ],
   },
   {
-    id: 'ciervos', title: 'Ciervos al atardecer', illus: 'ciervos', weight: 3, seasons: [0, 2, 3], cooldown: 9,
+    id: 'ciervos', title: 'Ciervos al atardecer', illus: 'ciervos', weight: 3, seasons: [0, 2, 3], cooldown: 9, when: 'tarde',
     text: (s) => s.items.includes('firma')
       ? 'Un ciervo y una cierva bajan a beber a la alberca. Es exactamente el cuadro de Transi, como si lo hubiera pintado esta tarde.'
       : 'Un ciervo y una cierva bajan a beber a la alberca. La escena te resulta extrañamente familiar.',
     options: [
       { label: 'Quedarse muy quieto mirando', effects: { mood: 6 }, apply: (s, h) => h.clue('transi', 0.5), result: 'Diez minutos sin respirar apenas. Luego se van entre las encinas.' },
-      { label: 'Intentar dibujarlos', cost: { jornales: 1 }, effects: { mood: 4, rep: 1 }, apply: (s, h) => h.clue('transi', 1), result: 'El dibujo no se parece a nada. Pero entiendes por qué alguien pintaba esto.' },
+      { label: 'Intentar dibujarlos', effects: { mood: 4, rep: 1 }, apply: (s, h) => h.clue('transi', 1), result: 'El dibujo no se parece a nada. Pero entiendes por qué alguien pintaba esto.' },
     ],
   },
   {
@@ -125,6 +130,230 @@ export const EVENTS = [
     options: [
       { label: 'Darle las gracias (y una sardina)', apply: (s, h) => h.catGift().apply(), result: 'El gato acepta la sardina como un pago justo.' },
     ],
+  },
+
+  // ───────────── Contratiempos ─────────────
+  // Avisos: si se atienden a tiempo cuestan unos jornales; si no, algo se rompe y hay que repararlo.
+  {
+    id: 'temporal', title: 'Temporal', illus: 'averia', weight: 3, seasons: [2, 3], cooldown: 20, crisis: true,
+    cond: (s, h) => h.canBreak('tejado'),
+    text: 'Tres días de agua y viento. Esta noche la viga maestra del tejado ha crujido como un barco viejo.',
+    options: [
+      { label: 'Apuntalar la viga ya', cost: { jornales: 3, herramientas: 0.5 }, effects: { zones: { cortijo: -4 } }, result: 'Puntales, cuñas y mucho cuidado. La viga aguanta.' },
+      { label: 'Esperar a que escampe', apply: (s, h) => h.breakDown('tejado'), result: 'De madrugada, un estruendo. Se ha hundido un trozo del tejado.' },
+    ],
+  },
+  {
+    id: 'helada_negra', title: 'Helada negra', illus: 'helada', weight: 3, seasons: [3], cooldown: 25, crisis: true,
+    cond: (s, h) => h.canBreak('tuberia') || h.canBreak('alberca_grieta'),
+    text: 'Anuncian ocho bajo cero. De las que revientan tuberías y abren piedras.',
+    options: [
+      { label: 'Vaciar tuberías, tapar la huerta y la alberca', cost: { jornales: 3 }, apply: (s, h) => h.hurtBeds(0.2), result: 'Un día entero de mantas, paja y grifos abiertos. Amanece blanco, pero todo entero.' },
+      { label: 'Encender la chimenea y cruzar los dedos', apply: (s, h) => { h.hurtBeds(1); if (!h.breakDown('tuberia')) h.breakDown('alberca_grieta'); else if (h.chance(0.4)) h.breakDown('alberca_grieta'); }, result: 'Por la mañana, el patio es una pista de hielo y el agua sale por donde no debe.' },
+    ],
+  },
+  {
+    id: 'rayo', title: 'Tormenta seca', illus: 'tormenta', weight: 2, seasons: [1, 2], cooldown: 40, crisis: true,
+    cond: (s, h) => h.canBreak('espadana'),
+    text: 'Truena sin llover. Un rayo cae con un chasquido en la espadaña de la ermita y la campana rueda por el suelo.',
+    options: [
+      { label: 'Pedir ayuda a los vecinos para recoger', cost: { money: 15 }, apply: (s, h) => { h.breakDown('espadana'); h.helpRepair('espadana', 3); h.addRep(1); }, result: 'Suben con carretillas y un bocadillo. San Antonio tiene muchos devotos.' },
+      { label: 'Recoger la campana y ver qué se puede hacer', apply: (s, h) => h.breakDown('espadana'), result: 'La campana está entera. La espadaña, no.' },
+    ],
+  },
+  {
+    id: 'granizo', title: 'Pedrisco', illus: 'tormenta', weight: 3, seasons: [0, 1], cooldown: 25, crisis: true,
+    text: 'Cae granizo del tamaño de garbanzos durante diez minutos eternos. Suena como si tiraran piedras al tejado.',
+    options: [
+      { label: 'Salvar lo que se pueda de la huerta', cost: { jornales: 2 }, apply: (s, h) => { h.hurtBeds(0.5); h.mod('granizo', 7); }, result: 'Se salva la mitad. Los frutales, apedreados.' },
+      { label: 'Esperar dentro a que pase', apply: (s, h) => { h.hurtBeds(1); h.mod('granizo', 14); }, effects: { zones: { huerta: -10, pozo: -6, bosquete: -5 } }, result: 'La huerta está hecha trizas y la parra, deshojada.' },
+    ],
+  },
+  {
+    id: 'pozo_ruido', title: 'El pozo hace un ruido raro', illus: 'sequia', weight: 3, seasons: [1, 2], cooldown: 30, crisis: true,
+    cond: (s, h) => h.canBreak('bomba'),
+    text: 'La bomba del pozo traquetea y escupe agua con barro. Así no va a durar mucho.',
+    options: [
+      { label: 'Bajar a mirarla ya', cost: { jornales: 2, money: 15 }, result: 'Una junta gastada y una piedrecita en el filtro. Arreglado a tiempo.' },
+      { label: 'Ya aguantará', apply: (s, h) => h.breakDown('bomba'), result: 'Aguantó dos días. Ahora no da ni una gota.' },
+    ],
+  },
+  {
+    id: 'varroa_aviso', title: 'Abejas torpes', illus: 'enjambre', weight: 3, seasons: [0, 1, 2], cooldown: 30, crisis: true,
+    cond: (s, h) => h.canBreak('varroa'),
+    text: 'En la piquera hay abejas que no vuelan bien. Puede ser varroa, y si es, se extiende rápido.',
+    options: [
+      { label: 'Tratar todas las colmenas ya', cost: { jornales: 2, money: 25 }, effects: { zones: { colmenar: -4 } }, result: 'Ácido oxálico, humo y paciencia. Las colmenas se recuperan.' },
+      { label: 'Esperar a ver', apply: (s, h) => h.breakDown('varroa'), result: 'Era varroa. Y se ha extendido.' },
+    ],
+  },
+  {
+    id: 'zorro', title: 'Huellas de zorro', illus: 'jabali', weight: 3, cooldown: 25, crisis: true,
+    cond: (s, h) => s.animals.gallinas > 0 && h.canBreak('gallinero'),
+    text: 'Junto al gallinero hay huellas finas y un agujero bajo la tela. Las gallinas no han querido salir.',
+    options: [
+      { label: 'Enterrar tela y reforzar el gallinero', cost: { jornales: 2, piedra: 1 }, result: 'Tela enterrada un palmo y piedras encima. Que lo intente ahora.' },
+      { label: 'Cerrar bien la puerta esta noche', apply: (s, h) => { if (h.chance(0.75)) h.breakDown('gallinero'); }, result: 'Por la mañana se sabrá si ha bastado.' },
+    ],
+  },
+  {
+    id: 'humedad', title: 'Semana de niebla', illus: 'niebla', weight: 3, seasons: [2, 3], cooldown: 30, crisis: true,
+    cond: (s, h) => s.zones.piano.unlocked && s.zones.piano.cons >= 35 && h.canBreak('piano_humedad'),
+    text: 'La niebla se queda pegada a la dehesa una semana entera. En el cenador, el piano suda.',
+    options: [
+      { label: 'Taparlo y poner un brasero cerca', cost: { jornales: 1, lena: 2 }, result: 'Mantas, brasero y una vigilancia de abuela. El piano aguanta seco.' },
+      { label: 'Ya se secará', apply: (s, h) => h.breakDown('piano_humedad'), result: 'Las teclas se han hinchado. Suena «tun» donde debía sonar un la.' },
+    ],
+  },
+  {
+    id: 'procesionaria', title: 'Bolsones en los pinos', illus: 'plaga', weight: 2, seasons: [3, 0], cooldown: 40, crisis: true,
+    cond: (s, h) => h.canBreak('procesionaria'),
+    text: 'En las copas de los pinos del bosquete hay bolsones blancos. Procesionaria. En unas semanas bajarán en fila.',
+    options: [
+      { label: 'Quitarlos con la pértiga', cost: { jornales: 2, money: 10 }, result: 'Con guantes, gafas y mucho cuidado. Al fuego, todos.' },
+      { label: 'Dejarlo para la primavera', apply: (s, h) => h.breakDown('procesionaria'), result: 'Las orugas bajan antes de lo previsto. Nadie entra en el bosquete.' },
+    ],
+  },
+  {
+    id: 'camino', title: 'El camino se viene abajo', illus: 'dana', weight: 2, seasons: [2, 3], cooldown: 40, crisis: true,
+    cond: (s, h) => s.flags.tourism && h.canBreak('camino'),
+    text: 'Con tanta lluvia, el talud del camino junto a las adelfas se ha descalzado. Una rueda más y se hunde.',
+    options: [
+      { label: 'Echar piedra y apisonar hoy', cost: { jornales: 3, piedra: 3 }, effects: { zones: { paseo: 3 } }, result: 'Piedra, pisón y una carretilla que no para. El camino aguanta.' },
+      { label: 'Poner un cartel de «despacio»', apply: (s, h) => h.breakDown('camino'), result: 'El cartel no ha servido de mucho. El camino se ha hundido.' },
+    ],
+  },
+  {
+    id: 'furgoneta', title: 'La furgoneta tose', illus: 'furgoneta', weight: 3, cooldown: 35, minDay: 8, crisis: true,
+    cond: (s, h) => h.canBreak('furgoneta'),
+    text: 'La furgoneta arranca a la tercera y echa un humo azul que no gusta nada.',
+    options: [
+      { label: 'Llevarla al taller del pueblo', cost: { money: 55 }, result: 'Bujías, filtro y un mecánico que habla mucho. Como nueva (casi).' },
+      { label: 'Ya aguantará', apply: (s, h) => h.breakDown('furgoneta'), result: 'Aguantó hasta la cuesta del cortijo.' },
+    ],
+  },
+  {
+    id: 'ladrones', title: 'Han entrado en el cobertizo', illus: 'averia', weight: 2, cooldown: 40, minDay: 20, crisis: true,
+    text: 'Esta noche alguien ha forzado el candado del cobertizo. Faltan herramientas y algún saco.',
+    options: [
+      { label: 'Poner cerradura nueva y apuntarlo todo', cost: { money: 25 }, effects: { materials: { herramientas: -1 } }, result: 'Una cerradura de las buenas. Y el perro de la vecina, que ladra a todo.' },
+      { label: 'Preguntar en el bar del pueblo', apply: (s, h) => { if (h.chance(0.5)) h.log('Aparecen las herramientas junto a la cancela. Nadie sabe nada.'); else { h.addProduct('herramientas', -2); h.log('Nadie ha visto nada. Faltan dos juegos de herramientas.'); } }, result: 'En los pueblos todo se sabe… o no.' },
+    ],
+  },
+  {
+    id: 'gripe', title: 'Gripe en la casa', illus: 'voluntario', weight: 3, seasons: [2, 3], cooldown: 20, crisis: true,
+    cond: (s) => s.volunteers.some((v) => !(v.rest > 0)),
+    text: (s) => `Tos, mantas y caldo. Alguien de la casa tiene fiebre y no se puede levantar.`,
+    options: [
+      { label: 'Ir a la farmacia del pueblo y cuidarle', cost: { jornales: 1, money: 10 }, apply: (s, h) => { const v = h.restVolunteer(3); if (v) h.log(`${v.name} guarda cama tres días.`); }, result: 'Caldo de gallina, miel y paciencia.' },
+      { label: 'Reposo y mucha agua', apply: (s, h) => { const v = h.restVolunteer(6); if (v) h.log(`${v.name} guarda cama casi una semana.`); }, result: 'La gripe se toma su tiempo.' },
+    ],
+  },
+
+  // Economía: cambios que no se pueden evitar, solo aguantar o aprovechar
+  {
+    id: 'coop_baja', title: 'Carta de la cooperativa', illus: 'papeles', weight: 3, cooldown: 35, minDay: 10, crisis: true,
+    text: 'Hay excedente en toda la comarca. La cooperativa avisa: durante dos semanas pagará mucho menos.',
+    options: [
+      { label: 'Guardar lo que aguante y vender en el mercado', apply: (s, h) => h.mod('coop_baja', 14), result: 'Lo fresco no espera. Lo demás, a la despensa.' },
+    ],
+  },
+  {
+    id: 'mercado_flojo', title: 'Camiones de fuera', illus: 'feria', weight: 2, cooldown: 35, minDay: 12, crisis: true,
+    text: 'Llegan camiones con fruta y verdura de fuera, a precio de saldo. En el mercado nadie mira el puesto de la finca.',
+    options: [
+      { label: 'Aguantar', apply: (s, h) => h.mod('mercado_flojo', 10), result: 'Ya pasará. Lo de aquí sabe a otra cosa.' },
+    ],
+  },
+  {
+    id: 'luz_cara', title: 'La factura de la luz', illus: 'papeles', weight: 2, cooldown: 60, minDay: 25, crisis: true,
+    cond: (s) => !s.flags.placas,
+    text: 'Suben la luz y el gasoil. Los recibos de la finca van a pesar bastante más durante un mes.',
+    options: [
+      { label: 'Poner placas solares en el tejado del corral', cost: { money: 320, jornales: 2 }, flag: 'placas', apply: (s, h) => h.mod('luz_cara', 7), result: 'Placas al sol de Córdoba. Desde ahora, los recibos bajan para siempre.' },
+      { label: 'Apretarse el cinturón', effects: { mood: -3 }, apply: (s, h) => h.mod('luz_cara', 28), result: 'Velas en la cena, que también es bonito.' },
+    ],
+  },
+  {
+    id: 'carretera', title: 'Obras en la carretera', illus: 'papeles', weight: 2, cooldown: 50, minDay: 20, crisis: true,
+    text: 'Cortan la carretera de Fuente Obejuna una semana para asfaltar. Ni huéspedes ni mercado.',
+    options: [
+      { label: 'Aprovechar para trabajar en la finca', apply: (s, h) => h.mod('carretera', 7), result: 'Una semana de silencio total. Solo se oyen las máquinas, a lo lejos.' },
+    ],
+  },
+  {
+    id: 'lengua_azul', title: 'Lengua azul', illus: 'inspector', weight: 2, cooldown: 60, crisis: true,
+    cond: (s) => s.animals.ovejas > 0,
+    text: (s) => `Hay lengua azul en la comarca. La Junta obliga a vacunar y a tener las ovejas en cuarentena. Vacunar las ${s.animals.ovejas} cuesta ${s.animals.ovejas * 12} €.`,
+    options: [
+      { label: 'Vacunar a todas', apply: (s, h) => { h.addMoney(-12 * s.animals.ovejas); h.mod('lengua_azul', 8); }, result: 'Pinchazo a pinchazo. Una semana sin queso, pero todas sanas.' },
+      { label: 'Solo cuarentena', apply: (s, h) => { h.mod('lengua_azul', 20); const n = h.loseAnimals('ovejas', 0.25); h.log(`Se pierden ${n === 1 ? 'una oveja' : n + ' ovejas'}.`); }, result: 'La cuarentena se alarga y alguna oveja no lo supera.' },
+    ],
+  },
+  {
+    id: 'peste', title: 'Alerta sanitaria porcina', illus: 'inspector', weight: 2, seasons: [2, 3], cooldown: 60, crisis: true,
+    cond: (s) => s.animals.cerdos > 0 || s.products.cerdo > 0,
+    text: 'Han detectado un brote en otra provincia. Los mataderos pagan la mitad hasta que se aclare.',
+    options: [
+      { label: 'Esperar sin vender', apply: (s, h) => h.mod('peste', 14), result: 'Los cerdos, a seguir comiendo bellota. Ya se venderán.' },
+    ],
+  },
+  {
+    id: 'pienso_caro', title: 'El pienso, por las nubes', illus: 'sequia', weight: 2, seasons: [1], cooldown: 40, crisis: true,
+    cond: (s) => s.animals.ovejas + s.animals.gallinas > 0,
+    text: 'Con la sequía, el pienso y la paja cuestan el doble en la cooperativa. Quien guardó heno en primavera respira.',
+    options: [
+      { label: 'Racionar', apply: (s, h) => h.mod('sequia_precio', 21), result: 'A partir de hoy, cada paca cuenta.' },
+    ],
+  },
+  {
+    id: 'mala_resena', title: 'Una estrella', illus: 'influencer', weight: 3, cooldown: 30, crisis: true,
+    cond: (s, h) => s.flags.tourism && s.stats.guests > 4 && (s.zones.cortijo.cons < 75 || s.cold || h.damaged('cortijo') || h.damaged('paseo')),
+    text: (s) => `Alguien ha dejado una reseña de una estrella: «${s.cold ? 'Pasamos un frío horrible, la chimenea apagada.' : 'Bonito, pero la casa se cae a trozos.'}»`,
+    options: [
+      { label: 'Contestar con cariño e invitarles a volver', cost: { jornales: 1 }, effects: { rep: -2 }, result: 'Una respuesta larga y sincera. Alguien escribe debajo: «Yo sí volvería».' },
+      { label: 'Ignorarla', effects: { rep: -5 }, apply: (s, h) => h.mod('cancelaciones', 10), result: 'La reseña sube como la espuma. Llegan cancelaciones.' },
+    ],
+  },
+  {
+    id: 'prestamo', title: 'Números rojos', illus: 'papeles', weight: 8, cooldown: 45,
+    cond: (s) => s.money < -40 && !s.loan,
+    text: 'El director de la cooperativa te ve en la báscula y baja la voz: «Si os hace falta, os adelantamos algo. Ya lo devolvéis poco a poco».',
+    options: [
+      { label: 'Aceptar 300 € (11 cuotas de 30 €)', apply: (s, h) => h.takeLoan(300, 11, 30), result: 'Un apretón de manos y un papel firmado. Respiro.' },
+      { label: 'No, ya saldremos', effects: { mood: -2 }, result: 'Toca vender lo que haya y apretarse.' },
+    ],
+  },
+  {
+    id: 'renta', title: 'La declaración de la renta', illus: 'papeles', weight: 0,
+    // La dispara la simulación cada primavera si el año ha dado beneficio
+    text: (s, h) => `Llega la primavera y, con ella, Hacienda. Por lo ganado este año toca pagar ${h.taxDue()} €.`,
+    options: [
+      { label: 'Llevársela al gestor (+40 €)', apply: (s, h) => h.payTax(40), result: 'El gestor lo deja todo en orden en media hora.' },
+      { label: 'Hacerla una misma, a lápiz', cost: { jornales: 2 }, apply: (s, h) => h.payTax(0), result: 'Una mañana entera de papeles. Pero sale bien.' },
+    ],
+  },
+
+  // Rachas buenas
+  {
+    id: 'puente', title: 'Puente festivo', illus: 'feria', weight: 3, seasons: [0, 2], cooldown: 30,
+    cond: (s, h) => s.flags.tourism && !h.stopped('tourism'),
+    text: 'Viene un puente largo. Llaman preguntando si queda alguna habitación libre.',
+    options: [
+      { label: 'Preparar las habitaciones', cost: { jornales: 1 }, apply: (s, h) => h.mod('puente', 5), result: 'Sábanas tendidas al sol y flores en cada mesilla.' },
+      { label: 'Que vengan los que vengan', apply: (s, h) => h.mod('puente', 3) },
+    ],
+  },
+  {
+    id: 'aceite_caro', title: 'Mal año en Jaén', illus: 'bellota', weight: 2, seasons: [3], cooldown: 60,
+    text: 'La sequía ha dejado los olivares de Jaén a medias. El aceite se paga como nunca.',
+    options: [ { label: 'Que suba', apply: (s, h) => h.mod('aceite_caro', 21), result: 'Los olivos de la dehesa valen hoy su peso en oro.' } ],
+  },
+  {
+    id: 'feria_queso', title: 'Feria del queso y la miel', illus: 'feria', weight: 2, seasons: [0], cooldown: 60,
+    cond: (s) => s.animals.ovejas > 0 || s.animals.colmenas > 0,
+    text: 'La comarca celebra su feria del queso y la miel. Llegan compradores de Córdoba y de Badajoz.',
+    options: [ { label: 'Aprovecharla', apply: (s, h) => h.mod('feria_queso', 10), result: 'Quesos y tarros, mejor pagados estos días.' } ],
   },
 
   // ───────────── Pueblo ─────────────
@@ -173,7 +402,7 @@ export const EVENTS = [
     ],
   },
   {
-    id: 'inspeccion', title: 'Inspección', illus: 'inspector', weight: 2, cooldown: 30, minDay: 10,
+    id: 'inspeccion', title: 'Inspección', illus: 'inspector', weight: 2, crisis: true, cooldown: 30, minDay: 10,
     cond: (s) => s.zones.corral.unlocked || s.guests.length > 0,
     text: (s) => `Un inspector de la Junta pregunta por ${s.guests.length ? 'los papeles de los huéspedes' : 'el corral y los animales'}. Mira todo con su carpeta.`,
     options: [

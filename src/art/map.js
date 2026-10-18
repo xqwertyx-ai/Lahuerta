@@ -9,6 +9,7 @@ import { SKETCHES, village, compass, encina as encinaFree, arbusto as matorral }
 import { Cat } from './cat.js';
 import { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } from './critters.js';
 import { CROPS } from '../data/crops.js';
+import { DAMAGES } from '../data/hardships.js';
 
 export const WORLD = { w: 1600, h: 1000 };
 const PAD = 46;
@@ -317,6 +318,7 @@ export class FarmMap {
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(this.static, 0, 0, this.static.width / S, this.static.height / S);
     this._live(ctx, s, dt);
+    this._damage(ctx, s);
     this._light(ctx, s);
     this._weather(ctx, s, dt);
     this._selection(ctx);
@@ -430,6 +432,47 @@ export class FarmMap {
         ctx.arc(cx + Math.sin(t * 4 + i) * 6 + t * 14, cy - t * 50, 3 + t * 9, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+  }
+
+  // Averías: tachones en rojo óxido sobre la zona y una etiqueta con lo que falta
+  _damage(ctx, s) {
+    if (!s.damages) return;
+    for (const d of Object.values(s.damages)) {
+      const def = DAMAGES[d.id];
+      if (!def || !def.zone) continue;
+      const z = ZONE_BY_ID[def.zone];
+      const r = makeRng(hashStr(d.id) + 3);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(160,52,30,0.55)';
+      ctx.lineCap = 'round';
+      const cx = z.x + z.w * (0.3 + r() * 0.4), cy = z.y + z.h * (0.35 + r() * 0.3);
+      const rw = Math.min(70, z.w * 0.3), rh = Math.min(50, z.h * 0.3);
+      ctx.lineWidth = 2.2;
+      for (let i = 0; i < 7; i++) {
+        const y = cy - rh + (i / 6) * rh * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - rw + r() * 10, y + r() * 4);
+        ctx.lineTo(cx + rw - r() * 10, y - 8 + r() * 4);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx - rw * 0.7, cy - rh * 0.7); ctx.lineTo(cx + rw * 0.7, cy + rh * 0.7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + rw * 0.7, cy - rh * 0.7); ctx.lineTo(cx - rw * 0.7, cy + rh * 0.7); ctx.stroke();
+      // Etiqueta
+      const pulse = 0.75 + 0.25 * Math.sin(this.time * 3);
+      const txt = `⚠ ${def.name}${d.work ? ` · ${d.work}/${def.work}` : ''}`;
+      ctx.font = `700 17px ${this.labelFont}`;
+      const tw = ctx.measureText(txt).width;
+      ctx.fillStyle = `rgba(250,240,220,${0.85 * pulse})`;
+      ctx.fillRect(cx - tw / 2 - 6, cy + rh + 6, tw + 12, 22);
+      ctx.strokeStyle = 'rgba(160,52,30,0.8)';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(cx - tw / 2 - 6, cy + rh + 6, tw + 12, 22);
+      ctx.fillStyle = 'rgba(140,40,22,0.95)';
+      ctx.textAlign = 'center';
+      ctx.fillText(txt, cx, cy + rh + 23);
+      ctx.restore();
     }
   }
 

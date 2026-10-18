@@ -139,6 +139,16 @@ h1, h2, h3, .title { font-family: var(--title); font-weight: 700; margin: 0; lin
 .task .meta { font-size: 0.78em; color: var(--ink2); }
 .task .why { font-size: 0.75em; color: var(--red); }
 .task .btn { flex: none; }
+.task .col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex: none; }
+.task.damage { border-color: rgba(160, 56, 42, 0.6); background: rgba(190, 90, 60, 0.08); }
+.task.damage .name { color: var(--red); }
+.chip.alert { cursor: pointer; border: 1.5px solid rgba(160, 56, 42, 0.6); border-radius: 12px; padding: 0 8px; background: rgba(190, 90, 60, 0.1); font: inherit; color: inherit; }
+.chip.alert b { color: var(--red); }
+.trouble { padding: 6px 0; border-bottom: 1px dashed rgba(59, 42, 28, 0.25); }
+.trouble.bad b { color: var(--red); }
+.trouble.good b { color: var(--green); }
+.reserve { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; }
+.reserve .warn { color: var(--red); }
 .section { margin-top: 14px; }
 .section > h3 { font-size: 1.45em; margin-bottom: 4px; border-bottom: 1.5px solid rgba(59, 42, 28, 0.3); }
 .pills { display: flex; flex-wrap: wrap; gap: 6px; }

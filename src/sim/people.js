@@ -4,6 +4,7 @@ import { VOLUNTEERS, VOLUNTEER_BY_ID, TRAITS, SKILLS } from '../data/volunteers.
 import { PRODUCTS } from '../data/products.js';
 import { rand, chance, randInt, pick } from './rng.js';
 import { addLog, signal, clamp, addStock } from './effects.js';
+import { stopped, foodCostFactor } from './hardship.js';
 
 // Concordancia: adj(v, 'contento') → contenta / contento
 export function adj(info, word) { return info.g === 'f' ? word.replace(/o$/, 'a') : word; }
@@ -18,10 +19,12 @@ export function hasSkill(s, skill) {
 export function skillName(skill) { return SKILLS[skill] || skill; }
 
 export function bedsTotal(s) {
+  if (stopped(s, 'beds')) return 1;   // con el tejado hundido solo queda una cama seca
   return BALANCE.bedsBase + Math.floor(s.zones.cortijo.cons * BALANCE.bedsPerCortijo);
 }
 
 export function volunteerJornales(v) {
+  if ((v.rest || 0) > 0) return 0;     // de reposo
   return BALANCE.volunteerJornales + (traitOf(v).jornales || 0);
 }
 
@@ -102,10 +105,11 @@ export function feedVolunteers(s) {
       }
     }
     if (need > 0) {
-      const cost = Math.ceil(need) * BALANCE.foodCostPerVolunteer;
+      const cost = Math.round(Math.ceil(need) * BALANCE.foodCostPerVolunteer * foodCostFactor(s));
       addStock(s, 'money', -cost);
       s.stats.spent += cost;
       s.foodWeek = (s.foodWeek || 0) + cost;
+      s.stats.food = (s.stats.food || 0) + cost;
       paid += cost;
       v._fed = 0;
     } else {
@@ -122,12 +126,15 @@ export function dailyVolunteers(s) {
   const leaving = [];
   for (const v of s.volunteers) {
     const info = infoOf(v);
-    let d = (s.zones.cortijo.cons - 50) / 25;   // la cama
-    d += v._fed ? 1.2 : 0;                      // comer de la huerta
-    d += cook;
-    d += (s.mood - 50) / 40;
-    if (v.zone && infoOf(v).skill && zoneUsesSkill(v.zone, info.skill)) d += 1.2;
+    // La alegría tiende a un punto medio: hay que cuidarla (buena cama, comida de la finca, ratos libres)
+    let d = (BALANCE.happyRest - v.happy) * BALANCE.happyDrift;
+    d += (s.zones.cortijo.cons - 60) / 40;      // la cama
+    d += v._fed ? 0.6 : -0.8;                   // comer de la huerta (o de lata comprada)
+    d += cook * 0.5;
+    d += (s.mood - 55) / 40;
+    if (v.zone && infoOf(v).skill && zoneUsesSkill(v.zone, info.skill)) d += 0.6;
     if (s.weather === 'tormenta' || s.weather === 'helada') d -= 0.5;
+    if ((v.rest || 0) > 0) v.rest--;
     v.happy = clamp(v.happy + d + (rand(s) - 0.5), 0, 100);
     if (s.day >= v.leaves) leaving.push(v);
   }

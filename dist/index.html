@@ -155,6 +155,16 @@ h1, h2, h3, .title { font-family: var(--title); font-weight: 700; margin: 0; lin
 .task .meta { font-size: 0.78em; color: var(--ink2); }
 .task .why { font-size: 0.75em; color: var(--red); }
 .task .btn { flex: none; }
+.task .col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; flex: none; }
+.task.damage { border-color: rgba(160, 56, 42, 0.6); background: rgba(190, 90, 60, 0.08); }
+.task.damage .name { color: var(--red); }
+.chip.alert { cursor: pointer; border: 1.5px solid rgba(160, 56, 42, 0.6); border-radius: 12px; padding: 0 8px; background: rgba(190, 90, 60, 0.1); font: inherit; color: inherit; }
+.chip.alert b { color: var(--red); }
+.trouble { padding: 6px 0; border-bottom: 1px dashed rgba(59, 42, 28, 0.25); }
+.trouble.bad b { color: var(--red); }
+.trouble.good b { color: var(--green); }
+.reserve { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: baseline; }
+.reserve .warn { color: var(--red); }
 .section { margin-top: 14px; }
 .section > h3 { font-size: 1.45em; margin-bottom: 4px; border-bottom: 1.5px solid rgba(59, 42, 28, 0.3); }
 .pills { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -308,7 +318,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610181930
+// La Huerta del Pianista · build 202610182211
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
@@ -327,7 +337,7 @@ const BALANCE = {
     money: 150,
     mood: 60,          // ánimo
     reputation: 5,
-    materials: { lena: 6, piedra: 4, cal: 2, herramientas: 3 },
+    materials: { lena: 8, piedra: 4, cal: 2, herramientas: 3, pienso: 0 },
     products: { huevos: 0 },
   },
 
@@ -338,9 +348,12 @@ const BALANCE = {
   employeeWagePerDay: 22,
 
   // ── Ánimo ──
-  moodDailyDrift: 0.6,          // tiende a 55 poco a poco
+  moodDailyDrift: 1.2,          // vuelve a su punto de reposo (≈ 10 % de la diferencia al día)
   moodRestTarget: 55,
-  moodPerRestoredZone: 1.5,
+  moodPerRestoredZone: 1.5,     // al restaurar una zona por primera vez (×3, de golpe)
+  moodPerRestoredTarget: 0.8,   // cada zona restaurada sube el ánimo «normal» de la casa
+  happyRest: 55,                // la alegría de los voluntarios tiende aquí…
+  happyDrift: 0.08,             // …a este ritmo por día
   moodLowConservation: -2,      // por día si la conservación media es baja
   moodDebt: -1.5,
 
@@ -349,13 +362,15 @@ const BALANCE = {
   baseDecayPerDay: 1.0,
   weedGrowthPerDay: 2.2,        // maleza por día (primavera más)
   weedDecayFactor: 0.012,       // la maleza acelera el deterioro: decay *= 1 + maleza*factor
-  restoredThreshold: 70,        // a partir de aquí una zona cuenta como «restaurada»
+  restoredThreshold: 70,
+  highConsFrom: 60,             // por encima, mantenerla cuesta más…
+  highConsDecay: 0.006,         // …+0,6 % de deterioro por punto (a 100: ×1,24)        // a partir de aquí una zona cuenta como «restaurada»
   // Rendimiento decreciente: cuanto mejor está una zona, menos sube con cada cuidado
   diminishFrom: 30,             // por debajo, cada tarea rinde entero
   diminishSpan: 90,             // a 30 + 90 = 120 el rendimiento sería 0 (con un mínimo)
   diminishMin: 0.25,
   // Reputación: no puede quedarse muy por encima de lo que la finca merece
-  repDecay: 0.25,               // por día si está por encima del objetivo
+  repDecay: 0.4,                // por día si está por encima del objetivo (+5 % de la diferencia)
 
   // ── Fuego ──
   fireBaseRisk: 0.004,          // probabilidad diaria base en verano
@@ -384,17 +399,18 @@ const BALANCE = {
   tourismUnlock: { cortijo: 65, reputation: 20 },
   visitorBase: 0.1,
   visitorPerRep: 0.006,
-  nightPrice: 32,
-  guestCostPerNight: 8,          // desayuno, sábanas y luz
+  nightPrice: 30,
+  guestCostPerNight: 12,         // desayuno, sábanas y luz
 
   // ── Derrota suave ──
   ruinDaysToWarn: 5,
-  ruinDaysToSleep: 14,          // una estación entera en números rojos
+  ruinDaysToSleep: 21,          // tres semanas seguidas en números rojos
   abandonThreshold: 22,         // conservación media
   abandonDaysToSleep: 14,
 
   // ── Eventos ──
-  eventChancePerDay: 0.42,
+  eventChancePerDay: 0.45,
+  crisisGrowthPerYear: 0.25,    // los contratiempos son más frecuentes cada año (la finca envejece)
   eventMinGapDays: 1,
 
   // ── Misterio ──
@@ -497,6 +513,7 @@ const ZONES = [
       { id: 'podar', name: 'Podar encinas', jornales: 3, effect: { cons: 14 }, gain: { lena: 3 }, seasons: [2, 3], skill: 'monte' },
       { id: 'desbrozar', name: 'Desbrozar el pasto', jornales: 2, effect: { cons: 6, weeds: -50 }, skill: 'monte' },
       { id: 'bellota', name: 'Varear y recoger bellota', jornales: 2, effect: { cons: 2 }, gainScaled: { bellota: 5 }, seasons: [2] },
+      { id: 'heno', name: 'Segar y empacar el heno', jornales: 2, effect: { cons: 3 }, gainScaled: { heno: 9 }, seasons: [0, 1], skill: 'ganado' },
       { id: 'piedra', name: 'Recoger piedra suelta', jornales: 1, effect: { cons: 2 }, gain: { piedra: 3 } },
       { id: 'carbon', name: 'Hacer carbón de encina', jornales: 2, cost: { lena: 3 }, effect: { cons: 1 }, gain: { carbon: 2 }, skill: 'monte' },
     ],
@@ -620,6 +637,7 @@ const PRODUCTS = {
   aceite:     { name: 'Aceite de los olivos', unit: 'litro', price: 9, season: [1, 1.05, 1.1, 0.95], basket: true, from: 'Olivos de la dehesa, en invierno' },
   lavanda:    { name: 'Lavanda', unit: 'ramillete', price: 4, season: [1, 0.9, 1.1, 1.2], basket: true, spoil: 0.03, from: 'Patio, en verano' },
   lena:       { name: 'Leña de encina', unit: 'carga', price: 6, season: [0.8, 0.7, 1.1, 1.35], material: true, from: 'Podando y recogiendo en el monte' },
+  heno:       { name: 'Heno', unit: 'paca', price: 3, season: [0.8, 1.1, 1.1, 1.4], from: 'Dehesa: segar en primavera y principios de verano' },
   carbon:     { name: 'Carbón de encina', unit: 'saco', price: 13, season: [0.85, 0.8, 1.1, 1.3], from: 'Dehesa: hacer carbón con leña' },
   // ── Animales ──
   huevos:     { name: 'Huevos', unit: 'docena', price: 3.5, season: [1, 1.05, 1, 1.1], food: 1, basket: true, spoil: 0.03, from: 'Corral, con gallinas' },
@@ -640,6 +658,7 @@ const MATERIALS = {
   piedra:      { name: 'Piedra', buy: 4 },
   cal:         { name: 'Cal', buy: 6 },
   herramientas:{ name: 'Herramientas', buy: 15 },
+  pienso:      { name: 'Pienso y paja', buy: 4 },
 };
 
 // Animales: se compran en el mercado y viven en una zona
@@ -737,6 +756,7 @@ function createState(seed = Date.now() % 2147483647, overrides = {}) {
   const cfg = {
     daysPerSeason: BALANCE.daysPerSeason,
     startSeason: BALANCE.startSeason,
+    difficulty: 'normal',
     ...overrides,
   };
   const zones = {};
@@ -786,6 +806,11 @@ function createState(seed = Date.now() % 2147483647, overrides = {}) {
     upgrades: [],
     beds: [{ crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }, { crop: null, growth: 0, ready: null, left: 1 }],
     activityLast: {},
+    damages: {},             // averías en marcha: { id: { id, work, started, since } }
+    mods: [],                // avisos temporales: [{ id, until }]
+    taxBase: { earned: 0, spent: 0 },
+    loan: null,              // préstamo de la cooperativa: { weekly, left }
+    cold: false, coldDays: 0, hungry: false, hungryDays: 0,
     guests: [],              // [{ n, nights }]
     log: [],
     eventQueue: [],          // eventos pendientes de mostrar (el tiempo se detiene)
@@ -804,7 +829,7 @@ function createState(seed = Date.now() % 2147483647, overrides = {}) {
       tasks: 0, sales: 0, marketSales: 0, earned: 0, spent: 0,
       produced: Object.fromEntries(Object.keys(PRODUCTS).map((k) => [k, 0])),
       volunteersArrived: 0, volunteersLeft: 0, guests: 0, concerts: 0, montaneras: 0,
-      events: 0, restored: 0, harvests: 0, activities: 0,
+      events: 0, restored: 0, harvests: 0, activities: 0, repairs: 0, bills: 0,
     },
   };
 }
@@ -828,6 +853,7 @@ function migrate(s) {
   for (const k of Object.keys(fresh.stats)) if (s.stats[k] === undefined) s.stats[k] = fresh.stats[k];
   for (const k of Object.keys(fresh.stats.produced)) if (s.stats.produced[k] === undefined) s.stats.produced[k] = 0;
   for (const k of Object.keys(fresh.hyp)) if (s.hyp[k] === undefined) s.hyp[k] = fresh.hyp[k];
+  if (!s.cfg.difficulty) s.cfg.difficulty = 'normal';
   s.version = STATE_VERSION;
   return s;
 }
@@ -868,7 +894,7 @@ const SEASONS = [
 
 // Efectos de cada tiempo sobre el día
 const WEATHER = {
-  sol:      { name: 'Despejado', icon: '☀', decay: 1.0, weeds: 1.0, prod: 1.0, mood: 0.5, visitors: 1.1 },
+  sol:      { name: 'Despejado', icon: '☀', decay: 1.0, weeds: 1.0, prod: 1.0, mood: 0.25, visitors: 1.1 },
   nubes:    { name: 'Nublado', icon: '☁', decay: 1.0, weeds: 1.0, prod: 0.95, mood: 0, visitors: 1.0 },
   lluvia:   { name: 'Lluvia', icon: '☂', decay: 1.25, weeds: 1.4, prod: 1.05, mood: -0.3, visitors: 0.7, water: 12 },
   tormenta: { name: 'Tormenta', icon: '⚡', decay: 1.8, weeds: 1.2, prod: 0.9, mood: -1, visitors: 0.5, water: 18 },
@@ -1328,6 +1354,606 @@ const VOLUNTEER_BY_ID = Object.fromEntries(VOLUNTEERS.map((v) => [v.id, v]));
 return { SKILLS, TRAITS, VOLUNTEERS, VOLUNTEER_BY_ID };
 })();
 
+// ── src/data/hardships.js ──
+const __m19 = (() => {
+// Contratiempos: averías que paran zonas, avisos que trastocan la economía, gastos fijos
+// y las reservas que hay que guardar para el invierno. Todo por datos.
+
+// ── Averías ──
+// Una avería deja su zona parada (no produce y no admite cuidados) hasta que se repara.
+// La reparación es un proyecto de varios jornales (puedes encargárselo a un voluntario),
+// o se le puede pagar a un profesional del pueblo `pro` € por cada jornal que falte.
+//   zone: zona afectada (null = no es de una zona: la furgoneta)
+//   hit: conservación que pierde la zona al romperse
+//   work: jornales de trabajo · cost: materiales y dinero al empezar
+//   stops: además de la producción de su zona, qué más se para
+//     beds (solo una cama), tourism (no hay huéspedes), water (no da agua), market (no se puede ir al mercado),
+//     concerts, montanera, sow (no se puede sembrar), find (San Antonio deja de ayudar a encontrar)
+//   worse: cada día sin empezar a repararla, la zona pierde esta conservación de más
+const DAMAGES = {
+  tejado: {
+    zone: 'cortijo', name: 'Tejado hundido', hit: 14, work: 8, cost: { piedra: 2, cal: 2 }, pro: 30,
+    stops: { beds: true, tourism: true }, worse: 0.8,
+    text: 'Se ha venido abajo un trozo del tejado. Llueve en la alcoba de arriba y no se puede dormir allí.',
+  },
+  muro: {
+    zone: 'muros', name: 'Brecha en el muro', hit: 18, work: 6, cost: { piedra: 5 }, pro: 26,
+    stops: { montanera: true }, worse: 0.6,
+    text: 'Un tramo largo del muro está en el suelo. Los cerdos se escapan al monte de los vecinos.',
+  },
+  bancales: {
+    zone: 'huerta', name: 'Bancales arrasados', hit: 16, work: 4, cost: {}, pro: 22,
+    stops: { sow: true }, worse: 0.5,
+    text: 'De los bancales no queda nada: barro, piedras y las cañas tumbadas. Hay que volver a levantarlos.',
+  },
+  dehesa_quemada: {
+    zone: 'dehesa', name: 'Dehesa quemada', hit: 22, work: 10, cost: { herramientas: 1 }, pro: 24,
+    stops: { montanera: true }, worse: 0.4,
+    text: 'Medio pasto es ceniza. Hay que retirar lo quemado, abrir surcos y esperar que rebrote.',
+  },
+  bomba: {
+    zone: 'pozo', name: 'Bomba del pozo rota', hit: 10, work: 3, cost: { money: 90 }, pro: 40,
+    stops: { water: true }, worse: 0.3,
+    text: 'La bomba del pozo ha dicho basta. Hace falta una pieza nueva y una tarde entera con la llave inglesa.',
+  },
+  tuberia: {
+    zone: 'patio', name: 'Tubería reventada', hit: 10, work: 3, cost: { money: 25, herramientas: 0.5 }, pro: 30,
+    stops: { water: true }, worse: 0.5,
+    text: 'La helada ha reventado la tubería de la fuente. El patio está encharcado y la fuente, muda.',
+  },
+  alberca_grieta: {
+    zone: 'alberca', name: 'Grieta en la alberca', hit: 14, work: 5, cost: { cal: 3 }, pro: 28,
+    stops: { water: true }, worse: 0.6,
+    text: 'Se ha abierto una grieta en el vaso de la alberca. El agua se va por debajo como por un colador.',
+  },
+  varroa: {
+    zone: 'colmenar', name: 'Varroa en las colmenas', hit: 12, work: 4, cost: { money: 40 }, pro: 30,
+    stops: {}, worse: 0.5, needsAnimals: 'colmenas',
+    text: 'Las abejas salen torpes y con las alas arrugadas. Varroa. Hay que tratar colmena por colmena.',
+  },
+  gallinero: {
+    zone: 'corral', name: 'Gallinero destrozado', hit: 12, work: 3, cost: { piedra: 2, herramientas: 0.25 }, pro: 26,
+    stops: {}, worse: 0.5,
+    text: 'El zorro ha entrado por debajo de la tela. Hay plumas por todo el corral y la valla está rota.',
+  },
+  espadana: {
+    zone: 'ermita', name: 'Rayo en la espadaña', hit: 18, work: 7, cost: { cal: 3, piedra: 2 }, pro: 30,
+    stops: { find: true }, worse: 0.4,
+    text: 'Un rayo ha partido la espadaña de la ermita. La campana está en el suelo, entera de milagro.',
+  },
+  piano_humedad: {
+    zone: 'piano', name: 'Humedad en el piano', hit: 14, work: 5, cost: { herramientas: 0.5 }, pro: 45,
+    stops: { concerts: true }, worse: 0.6,
+    text: 'Con tanta humedad, las teclas se han hinchado y se quedan hundidas. El piano no suena.',
+  },
+  procesionaria: {
+    zone: 'bosquete', name: 'Procesionaria', hit: 10, work: 4, cost: { money: 15 }, pro: 24,
+    stops: {}, worse: 0.4,
+    text: 'Bolsones blancos en los pinos y filas de orugas por el suelo. Ni el gato se acerca.',
+  },
+  camino: {
+    zone: 'paseo', name: 'Camino de acceso hundido', hit: 12, work: 6, cost: { piedra: 4 }, pro: 25,
+    stops: { tourism: true }, worse: 0.4,
+    text: 'El agua se ha comido el camino junto a las adelfas. Ningún coche sube hasta la casa.',
+  },
+  furgoneta: {
+    zone: null, name: 'Furgoneta averiada', hit: 0, work: 3, cost: { money: 60 }, pro: 45,
+    stops: { market: true }, worse: 0,
+    text: 'La furgoneta no arranca. Sin ella no hay manera de bajar al mercado con los cajones.',
+  },
+};
+
+// ── Avisos: cambios temporales en la economía ──
+// coop/market/basket: multiplican el precio de ese canal · price: { producto: factor }
+// bills: multiplica los gastos fijos · tourism: multiplica la llegada de huéspedes (0 = ninguno)
+// market: false cierra el mercado · prod: { producto: factor } de producción
+const MODS = {
+  coop_baja:   { name: 'La cooperativa paga poco', desc: 'Hay excedente en la comarca: la cooperativa baja un 40 % lo que paga.', coop: 0.6, bad: true },
+  mercado_flojo: { name: 'Mercado flojo', desc: 'Ha llegado fruta y verdura de fuera, muy barata. En el mercado se vende peor.', market: 0.7, bad: true },
+  luz_cara:    { name: 'Sube la luz y el gasoil', desc: 'Los gastos fijos de la finca suben a la mitad más.', bills: 1.5, bad: true },
+  carretera:   { name: 'Carretera cortada', desc: 'Obras en la carretera de Fuente Obejuna: no llegan huéspedes y no se puede bajar al mercado.', tourism: 0, market: false, bad: true },
+  lengua_azul: { name: 'Lengua azul en la comarca', desc: 'Las ovejas, vacunadas y en cuarentena: no se hace queso.', prod: { queso: 0 }, bad: true },
+  peste:       { name: 'Alerta sanitaria porcina', desc: 'Los mataderos compran el cerdo a la mitad mientras dure la alerta.', price: { cerdo: 0.5, jamon: 0.8, embutido: 0.8 }, bad: true },
+  sequia_precio: { name: 'Pienso por las nubes', desc: 'Con la sequía, el pienso y la paja cuestan el doble.', buy: { pienso: 2 }, bad: true },
+  cancelaciones: { name: 'Racha de cancelaciones', desc: 'Una mala reseña circula por internet. Llegan la mitad de huéspedes.', tourism: 0.5, bad: true },
+  granizo:     { name: 'Frutales apedreados', desc: 'El granizo ha dejado la higuera y la parra sin fruta por un tiempo.', prod: { higos: 0, uvas: 0 }, bad: true },
+  puente:      { name: 'Puente festivo', desc: 'Medio Córdoba busca casa rural: llegan muchos más huéspedes.', tourism: 1.7 },
+  aceite_caro: { name: 'Buen precio del aceite', desc: 'Ha sido mal año en Jaén: el aceite se paga mucho mejor.', price: { aceite: 1.5 } },
+  feria_queso: { name: 'Feria del queso', desc: 'El queso y la miel se venden mejor estos días.', price: { queso: 1.35, miel: 1.3 } },
+};
+
+// ── Gastos fijos ──
+const BILLS = {
+  // Cada lunes: luz, agua, teléfono, gasoil y seguro. Sube con lo que tienes en marcha.
+  weekly: { base: 6, perZone: 1.3, perRoom: 10, perAnimal: 0.2 },
+  // Al empezar el verano: contribución (IBI), seguro agrario y cuota de la cooperativa
+  yearly: { season: 1, base: 40, perZone: 7, perRoom: 25 },
+  // Al empezar la primavera: la declaración de la renta (sobre lo ganado el año anterior)
+  tax: { season: 0, rate: 0.18, gestor: 40 },
+};
+
+// ── El invierno ──
+// Leña para la chimenea: cargas por día [primavera, verano, otoño, invierno]
+// (más con voluntarios y huéspedes). Sin leña hace frío: baja el ánimo y la gente se queja.
+const HEATING = { perDay: [0, 0, 0.3, 0.75], perPerson: [0, 0, 0.05, 0.12] };
+// Comida para los animales cuando el campo no da (verano seco e invierno): heno o pienso por cabeza y día.
+// Si no hay, dejan de producir; si dura, hay que vender alguno.
+const FEED = {
+  seasons: [1, 3],
+  perHead: { gallinas: 0.03, ovejas: 0.22 },
+  hungryDaysToSell: 4,
+};
+// Comida comprada para los voluntarios: más cara en invierno (la huerta da poco)
+const FOOD_SEASON = [1, 1, 1.15, 1.5];
+// Precio de compra de materiales según estación (la leña en invierno, cara)
+const BUY_SEASON = { lena: [0.9, 0.8, 1.15, 1.7], pienso: [0.9, 1.2, 1, 1.25] };
+
+// ── Dificultad ──
+// crisis: frecuencia de los contratiempos · bills: gastos · decay: deterioro · aging: cuánto más
+// se deteriora la finca cada año que pasa (la casa envejece)
+const DIFFICULTY = {
+  tranquila: { name: 'Tranquila', desc: 'Pocos sustos y gastos pequeños.', crisis: 0.45, bills: 0.6, decay: 0.85, aging: 0.02 },
+  normal:    { name: 'Normal', desc: 'La vida en el campo: hay años buenos y años de pedrisco.', crisis: 1, bills: 1, decay: 1, aging: 0.06 },
+  dura:      { name: 'Dura', desc: 'Más averías, más gastos, menos margen.', crisis: 1.5, bills: 1.35, decay: 1.12, aging: 0.1 },
+};
+
+return { DAMAGES, MODS, BILLS, HEATING, FEED, FOOD_SEASON, BUY_SEASON, DIFFICULTY };
+})();
+
+// ── src/data/tourism.js ──
+const __m20 = (() => {
+// Agroturismo (fase 2). Mejoras que se construyen y actividades que se ofrecen.
+// requires.zones: conservación mínima; requires.animals; requires.items; requires.skill
+// capacity: plazas para huéspedes · appeal: atractivo · price: lo que paga cada huésped por día
+// cost: lo que cuesta construirla (dinero, materiales y jornales)
+
+const UPGRADES = [
+  { id: 'hab1', name: 'Primera habitación', kind: 'room', capacity: 2, appeal: 1,
+    cost: { money: 140, cal: 2, jornales: 3 }, requires: { zones: { cortijo: 65 } },
+    desc: 'La alcoba de arriba, encalada y con colcha de ganchillo.' },
+  { id: 'hab2', name: 'Segunda habitación', kind: 'room', capacity: 2, appeal: 1,
+    cost: { money: 240, cal: 2, piedra: 2, jornales: 4 }, requires: { zones: { cortijo: 75 }, upgrades: ['hab1'] },
+    desc: 'La del patio, con ventana a la fuente.' },
+  { id: 'hab3', name: 'Habitación del desván', kind: 'room', capacity: 2, appeal: 1.5,
+    cost: { money: 380, cal: 3, herramientas: 1, jornales: 5 }, requires: { zones: { cortijo: 85 }, upgrades: ['hab2'] },
+    desc: 'Vigas a la vista y una claraboya para ver estrellas sin salir de la cama.' },
+  { id: 'glamping', name: 'Glamping bajo las encinas', kind: 'room', capacity: 3, appeal: 2,
+    cost: { money: 320, lena: 3, jornales: 4 }, requires: { zones: { dehesa: 60 } },
+    desc: 'Tres tiendas de lona cruda entre encinas centenarias.' },
+
+  { id: 'taller_queso', name: 'Taller de queso', kind: 'activity', appeal: 1, price: 18,
+    cost: { money: 60, jornales: 2 }, requires: { zones: { corral: 60 }, animals: { ovejas: 2 } },
+    desc: 'Cuajo, paciencia y un queso que te llevas a casa.' },
+  { id: 'taller_miel', name: 'Taller de miel', kind: 'activity', appeal: 1, price: 15,
+    cost: { money: 50, jornales: 2 }, requires: { zones: { colmenar: 60 }, animals: { colmenas: 2 } },
+    desc: 'Con careta y ahumador. La miel se prueba del panal.' },
+  { id: 'taller_pan', name: 'Taller de pan', kind: 'activity', appeal: 1, price: 14,
+    cost: { money: 70, lena: 2, jornales: 2 }, requires: { zones: { cortijo: 70 } },
+    desc: 'Masa madre y horno de leña de encina.' },
+  { id: 'taller_acuarela', name: 'Taller de acuarela', kind: 'activity', appeal: 1.5, price: 20,
+    cost: { money: 40, jornales: 2 }, requires: { items: ['acuarelas'] },
+    desc: 'Con la caja de Transi en la mesa, como homenaje. Se pinta el paseo de las adelfas.' },
+  { id: 'ruta', name: 'Ruta por la dehesa', kind: 'activity', appeal: 1, price: 10,
+    cost: { money: 30, jornales: 2 }, requires: { zones: { dehesa: 60, muros: 50 } },
+    desc: 'Entre muros de piedra seca hasta el berrocal grande, con el pueblo al fondo.' },
+  { id: 'estrellas', name: 'Observación de estrellas', kind: 'activity', appeal: 1.2, price: 12,
+    cost: { money: 90, jornales: 1 }, requires: { zones: { dehesa: 50 } },
+    desc: 'Un telescopio viejo y mantas sobre la hierba. Aquí la Vía Láctea se ve entera.' },
+  { id: 'concierto', name: 'Conciertos al atardecer', kind: 'activity', appeal: 3, price: 25,
+    cost: { money: 50, jornales: 2 }, requires: { zones: { piano: 80 } },
+    desc: 'El piano del cenador vuelve a sonar cuando bajan los ciervos.' },
+];
+
+const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
+
+// Cuánto atrae cada estación (primavera, verano, otoño, invierno)
+const TOURISM_SEASON = [1.2, 1.0, 1.1, 0.6];
+
+return { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON };
+})();
+
+// ── src/sim/hardship.js ──
+const __m18 = (() => {
+// Contratiempos: averías y su reparación, avisos temporales de la economía, gastos fijos,
+// leña para el invierno y comida para los animales.
+const { DAMAGES, MODS, BILLS, HEATING, FEED, FOOD_SEASON, BUY_SEASON, DIFFICULTY } = __m19;
+const { ZONES, ZONE_BY_ID } = __m5;
+const { UPGRADE_BY_ID } = __m20;
+const { MATERIALS } = __m6;
+const { seasonIndex, isSeasonStart, weekday, yearOf } = __m12;
+const { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, labelOf, costLabel } = __m13;
+
+
+
+function difficulty(s) { return DIFFICULTY[s.cfg?.difficulty] || DIFFICULTY.normal; }
+
+// La finca envejece: cada año todo se estropea un poco más deprisa
+function agingFactor(s) {
+  return 1 + Math.min(0.45, (yearOf(s) - 1) * difficulty(s).aging);
+}
+
+// ── Averías ──
+function damages(s) { return Object.values(s.damages || {}); }
+
+function damageOf(s, zoneId) {
+  if (!s.damages) return null;
+  for (const d of Object.values(s.damages)) if (DAMAGES[d.id].zone === zoneId) return d;
+  return null;
+}
+
+function isDamaged(s, zoneId) { return !!damageOf(s, zoneId); }
+
+// ¿Hay alguna avería que pare esto? (beds, tourism, water, market, concerts, montanera, sow, find)
+function stopped(s, what, zoneId = null) {
+  if (!s.damages) return false;
+  for (const d of Object.values(s.damages)) {
+    const def = DAMAGES[d.id];
+    if (zoneId && def.zone !== zoneId) continue;
+    if (def.stops[what]) return true;
+  }
+  return false;
+}
+
+function canBreak(s, id) {
+  const def = DAMAGES[id];
+  if (!def || (s.damages && s.damages[id])) return false;
+  if (def.zone && !s.zones[def.zone].unlocked) return false;
+  if (def.zone && damageOf(s, def.zone)) return false;
+  if (def.needsAnimals && !(s.animals[def.needsAnimals] > 0)) return false;
+  return true;
+}
+
+function breakDown(s, id) {
+  if (!canBreak(s, id)) return false;
+  const def = DAMAGES[id];
+  if (!s.damages) s.damages = {};
+  s.damages[id] = { id, work: 0, started: false, since: s.day };
+  if (def.zone) {
+    const z = s.zones[def.zone];
+    z.cons = clamp(z.cons - def.hit, 0, 100);
+  }
+  // Consecuencias inmediatas
+  if (id === 'tejado' && s.guests.length) {
+    s.guests = [];
+    s.rep = clamp(s.rep - 3, 0, 100);
+    addLog(s, 'Los huéspedes se van antes de tiempo: no se puede dormir con goteras.', 'bad');
+  }
+  if (id === 'bancales' && Array.isArray(s.beds)) {
+    for (const b of s.beds) { b.crop = null; b.growth = 0; b.ready = null; }
+  }
+  if (id === 'varroa' && s.animals.colmenas > 1) {
+    const lost = Math.max(1, Math.round(s.animals.colmenas * 0.3));
+    s.animals.colmenas -= lost;
+    addLog(s, `Se pierden ${lost} ${lost === 1 ? 'colmena' : 'colmenas'}.`, 'bad');
+  }
+  if (id === 'gallinero' && s.animals.gallinas > 0) {
+    const lost = Math.max(1, Math.round(s.animals.gallinas * 0.4));
+    s.animals.gallinas -= lost;
+    addLog(s, `El zorro se ha llevado ${lost} ${lost === 1 ? 'gallina' : 'gallinas'}.`, 'bad');
+  }
+  if (id === 'dehesa_quemada' && s.montanera > 0) s.montanera = Math.max(0, s.montanera - 0.25);
+  addLog(s, `⚠ ${def.name}. ${def.text}`, 'bad');
+  signal(s, 'damage', { id, zone: def.zone });
+  return true;
+}
+
+function repairTotal(id) { return DAMAGES[id].work; }
+function repairLeft(s, id) { const d = s.damages?.[id]; return d ? DAMAGES[id].work - d.work : 0; }
+function proCost(s, id) { return Math.round(repairLeft(s, id) * DAMAGES[id].pro * (0.85 + 0.15 * difficulty(s).bills)); }
+
+function repairBlocker(s, id, jornales = s.jornales) {
+  const d = s.damages?.[id];
+  if (!d) return 'No hay nada roto';
+  const def = DAMAGES[id];
+  if (!d.started && !canAfford(s, def.cost)) return 'Falta ' + missingOf(s, def.cost).map(labelOf).join(', ');
+  if (jornales < 1) return 'No quedan jornales hoy';
+  return null;
+}
+
+function finishRepair(s, id) {
+  const def = DAMAGES[id];
+  delete s.damages[id];
+  if (def.zone) {
+    const z = s.zones[def.zone];
+    z.cons = clamp(z.cons + 6, 0, 100);
+  }
+  s.mood = clamp(s.mood + 5, 0, 100);
+  s.stats.repairs = (s.stats.repairs || 0) + 1;
+  addLog(s, `Reparado: ${def.name.toLowerCase()}. ${def.zone ? ZONE_BY_ID[def.zone].name + ' vuelve a funcionar.' : 'Todo vuelve a funcionar.'}`, 'good');
+  signal(s, 'repaired', { id, zone: def.zone });
+}
+
+// Pone jornales en la reparación (todos los que queden hoy, hasta terminar). by = voluntario
+function repair(s, id, { by = null, budget = null } = {}) {
+  const avail = budget != null ? budget : s.jornales;
+  const b = repairBlocker(s, id, avail);
+  if (b) return { ok: false, text: b };
+  const def = DAMAGES[id];
+  const d = s.damages[id];
+  if (!d.started) {
+    payCost(s, def.cost);
+    if (def.cost.money) s.stats.spent += def.cost.money;
+    d.started = true;
+  }
+  const put = Math.min(Math.floor(avail), def.work - d.work);
+  if (budget == null) s.jornales -= put;
+  d.work += put;
+  if (d.work >= def.work) {
+    finishRepair(s, id);
+    return { ok: true, done: true, used: put, text: `${def.name}: reparado`, delta: 0 };
+  }
+  signal(s, 'task', { zone: def.zone || 'cortijo', task: 'repair', skilled: false });
+  return { ok: true, done: false, used: put, text: `Reparando ${def.name.toLowerCase()}: ${d.work}/${def.work}`, delta: 0 };
+}
+
+// Lo que cuesta en total llamar a un profesional (incluido el material si aún no se ha comprado)
+function proTotal(s, id) {
+  const d = s.damages?.[id];
+  if (!d) return 0;
+  return proCost(s, id) + (d.started ? 0 : DAMAGES[id].cost.money || 0);
+}
+
+function hireBlocker(s, id) {
+  const d = s.damages?.[id];
+  if (!d) return 'No hay nada roto';
+  const def = DAMAGES[id];
+  const extra = d.started ? {} : def.cost;
+  if (s.money < proTotal(s, id)) return 'No llega el dinero';
+  const { money: _m, ...mats } = extra;
+  if (!canAfford(s, mats)) return 'Falta ' + missingOf(s, mats).map(labelOf).join(', ');
+  return null;
+}
+
+// Llamar a un profesional: lo termina hoy, pero cuesta
+function hireRepair(s, id) {
+  const b = hireBlocker(s, id);
+  if (b) return { ok: false, text: b };
+  const def = DAMAGES[id];
+  const d = s.damages[id];
+  const cost = proCost(s, id);
+  if (!d.started) { payCost(s, def.cost); if (def.cost.money) s.stats.spent += def.cost.money; }
+  addStock(s, 'money', -cost);
+  s.stats.spent += cost;
+  signal(s, 'coins', { amount: -cost });
+  finishRepair(s, id);
+  return { ok: true, done: true, text: `Un profesional del pueblo lo arregla por ${cost} €`, delta: 0 };
+}
+
+function repairCostLabel(s, id) {
+  const def = DAMAGES[id];
+  const d = s.damages?.[id];
+  const c = costLabel(def.cost);
+  return `${def.work} jornales de trabajo` + (c && !(d && d.started) ? ` · al empezar: ${c}` : '');
+}
+
+// ── Avisos (modificadores temporales) ──
+function addMod(s, id, days) {
+  if (!MODS[id]) return;
+  if (!s.mods) s.mods = [];
+  const cur = s.mods.find((m) => m.id === id);
+  if (cur) cur.until = Math.max(cur.until, s.day + days);
+  else s.mods.push({ id, until: s.day + days });
+  signal(s, 'mod', { id });
+}
+
+function activeMods(s) { return (s.mods || []).filter((m) => m.until >= s.day); }
+
+// Producto de un factor (coop, market, basket, bills, tourism) en todos los avisos activos
+function modFactor(s, key, sub = null) {
+  let f = 1;
+  for (const m of activeMods(s)) {
+    const def = MODS[m.id];
+    let v = def[key];
+    if (sub != null) v = v && typeof v === 'object' ? v[sub] : undefined;
+    if (typeof v === 'number') f *= v;
+  }
+  return f;
+}
+
+function marketClosed(s) {
+  if (stopped(s, 'market')) return 'La furgoneta está averiada';
+  if (activeMods(s).some((m) => MODS[m.id].market === false)) return 'La carretera está cortada';
+  return null;
+}
+
+// ── Gastos fijos ──
+function rooms(s) { return s.upgrades.filter((id) => UPGRADE_BY_ID[id]?.kind === 'room').length; }
+function unlockedZones(s) { return ZONES.filter((z) => s.zones[z.id].unlocked).length; }
+function heads(s) { return Object.values(s.animals).reduce((a, n) => a + n, 0); }
+
+// Préstamo de la cooperativa: dinero ahora, cuotas los lunes
+function takeLoan(s, amount = 300, weeks = 11, weekly = 30) {
+  if (s.loan) return false;
+  s.loan = { weekly, left: weeks };
+  addStock(s, 'money', amount);
+  signal(s, 'coins', { amount });
+  addLog(s, `La cooperativa te presta ${amount} €. Se devuelven en ${weeks} cuotas de ${weekly} €, los lunes.`, 'info');
+  return true;
+}
+
+function weeklyBill(s) {
+  const b = BILLS.weekly;
+  const solar = s.flags && s.flags.placas ? 0.7 : 1;
+  const v = (b.base + b.perZone * unlockedZones(s) + b.perRoom * rooms(s) + b.perAnimal * heads(s)) * difficulty(s).bills * modFactor(s, 'bills') * solar;
+  return Math.round(v);
+}
+
+function yearlyBill(s) {
+  const b = BILLS.yearly;
+  return Math.round((b.base + b.perZone * unlockedZones(s) + b.perRoom * rooms(s)) * difficulty(s).bills);
+}
+
+// Lo que se ha ganado limpio desde la última declaración
+function taxableProfit(s) {
+  const t = s.taxBase || { earned: 0, spent: 0 };
+  return Math.max(0, (s.stats.earned - t.earned) - (s.stats.spent - t.spent));
+}
+
+function taxDue(s) { return Math.round(taxableProfit(s) * BILLS.tax.rate); }
+
+function pay(s, amount, text) {
+  addStock(s, 'money', -amount);
+  s.stats.spent += amount;
+  s.stats.bills = (s.stats.bills || 0) + amount;
+  signal(s, 'coins', { amount: -amount });
+  addLog(s, text, s.money < 0 ? 'bad' : 'info');
+}
+
+// Próximos pagos (para la interfaz)
+function upcomingBills(s) {
+  const out = [];
+  const toMonday = (7 - weekday(s)) % 7 || 7;
+  out.push({ name: 'Luz, agua, gasoil y seguro', days: toMonday, amount: weeklyBill(s), every: 'cada lunes' });
+  if (s.loan) out.push({ name: `Préstamo (quedan ${s.loan.left} cuotas)`, days: toMonday, amount: s.loan.weekly, every: 'cada lunes' });
+  const dps = s.cfg.daysPerSeason;
+  const left = dps - ((s.day - 1) % dps);
+  const si = seasonIndex(s);
+  const toSeason = (target) => left + ((target - si - 1 + 4) % 4) * dps;
+  out.push({ name: 'Contribución, seguro agrario y cooperativa', days: toSeason(BILLS.yearly.season), amount: yearlyBill(s), every: 'cada verano' });
+  out.push({ name: 'Declaración de la renta (estimada)', days: toSeason(BILLS.tax.season), amount: taxDue(s), every: 'cada primavera' });
+  return out.sort((a, b) => a.days - b.days);
+}
+
+// ── Invierno: leña y comida de los animales ──
+function heatingNeed(s, si = seasonIndex(s)) {
+  const people = s.volunteers.length + s.guests.reduce((a, g) => a + g.n, 0);
+  return HEATING.perDay[si] + HEATING.perPerson[si] * people;
+}
+
+function feedNeed(s, si = seasonIndex(s)) {
+  if (!FEED.seasons.includes(si)) return 0;
+  let n = 0;
+  for (const [k, v] of Object.entries(FEED.perHead)) n += (s.animals[k] || 0) * v;
+  return n;
+}
+
+function feedStock(s) { return (s.products.heno || 0) + (s.materials.pienso || 0); }
+
+// Días que aguantan las reservas (para la interfaz)
+function reserveDays(stock, need) { return need > 0 ? Math.floor(stock / need) : Infinity; }
+
+// Lo que hará falta en toda la próxima estación fría (para avisar con tiempo)
+function winterEstimate(s) {
+  const dps = s.cfg.daysPerSeason;
+  const people = s.volunteers.length + 1;
+  const lena = Math.round((HEATING.perDay[3] + HEATING.perPerson[3] * people) * dps + HEATING.perDay[2] * dps / 2);
+  let feed = 0;
+  for (const [k, v] of Object.entries(FEED.perHead)) feed += (s.animals[k] || 0) * v * dps;
+  return { lena, feed: Math.round(feed) };
+}
+
+function buyPrice(s, key) {
+  const m = MATERIALS[key];
+  const f = BUY_SEASON[key] ? BUY_SEASON[key][seasonIndex(s)] : 1;
+  return Math.round(m.buy * f * modFactor(s, 'buy', key) * 100) / 100;
+}
+
+function foodCostFactor(s) { return FOOD_SEASON[seasonIndex(s)]; }
+
+function heatDay(s) {
+  const need = heatingNeed(s);
+  s.cold = false;
+  if (need <= 0) return;
+  const have = s.materials.lena || 0;
+  if (have >= need) { addStock(s, 'lena', -need); s.coldDays = 0; return; }
+  addStock(s, 'lena', -have);
+  s.cold = true;
+  s.coldDays = (s.coldDays || 0) + 1;
+  s.mood = clamp(s.mood - 3, 0, 100);
+  for (const v of s.volunteers) v.happy = clamp(v.happy - 2.5, 0, 100);
+  if (s.coldDays === 1 || s.coldDays % 4 === 0) {
+    addLog(s, 'No queda leña: la chimenea está apagada y en el cortijo hace un frío que pela. Hay que recoger o comprar leña.', 'bad');
+    signal(s, 'warning', { kind: 'cold' });
+  }
+}
+
+function feedDay(s) {
+  const need = feedNeed(s);
+  s.hungry = false;
+  if (need <= 0) { s.hungryDays = 0; return; }
+  let left = need;
+  const fromHeno = Math.min(left, s.products.heno || 0);
+  addStock(s, 'heno', -fromHeno); left -= fromHeno;
+  const fromPienso = Math.min(left, s.materials.pienso || 0);
+  addStock(s, 'pienso', -fromPienso); left -= fromPienso;
+  if (left < need * 0.25) { s.hungryDays = 0; return; }
+  s.hungry = true;
+  s.hungryDays = (s.hungryDays || 0) + 1;
+  if (s.hungryDays === 1) {
+    addLog(s, 'Los animales no tienen qué comer: el campo está seco y no queda heno ni pienso. Dejan de dar huevos y leche.', 'bad');
+    signal(s, 'warning', { kind: 'feed' });
+  }
+  if (s.hungryDays >= FEED.hungryDaysToSell) {
+    s.hungryDays = 0;
+    if (s.animals.ovejas > 0) {
+      s.animals.ovejas--; addStock(s, 'money', 35);
+      addLog(s, 'Sin comida para todas, hay que vender una oveja a un ganadero del pueblo, por poco dinero (35 €).', 'bad');
+    } else if (s.animals.gallinas > 1) {
+      const n = Math.min(s.animals.gallinas, 3);
+      s.animals.gallinas -= n;
+      addLog(s, `Sin pienso, hay que regalar ${n} gallinas a una vecina que sí tiene.`, 'bad');
+    }
+  }
+}
+
+// ── Al amanecer ──
+function hardshipDawn(s) {
+  if (!s.damages) s.damages = {};
+  if (!s.mods) s.mods = [];
+  // Avisos que caducan
+  const ending = s.mods.filter((m) => m.until < s.day);
+  s.mods = s.mods.filter((m) => m.until >= s.day);
+  for (const m of ending) addLog(s, `Se acabó: ${MODS[m.id].name.toLowerCase()}.`, MODS[m.id].bad ? 'good' : 'info');
+  // Lo roto, si no se empieza a arreglar, va a peor
+  for (const d of damages(s)) {
+    const def = DAMAGES[d.id];
+    if (def.zone && !d.started && s.day - d.since > 3) {
+      const z = s.zones[def.zone];
+      z.cons = clamp(z.cons - def.worse, 0, 100);
+    }
+  }
+  s.mood = clamp(s.mood - damages(s).length * 0.5, 0, 100);
+  // Gastos
+  if (weekday(s) === 0 && s.day > 1) {
+    pay(s, weeklyBill(s), `Lunes: luz, agua, gasoil y seguro. Pagas ${weeklyBill(s)} €.`);
+    if (s.loan && s.loan.left > 0) {
+      s.loan.left--;
+      pay(s, s.loan.weekly, `Cuota del préstamo de la cooperativa: ${s.loan.weekly} € (${s.loan.left ? `quedan ${s.loan.left}` : 'era la última'}).`);
+      if (!s.loan.left) s.loan = null;
+    }
+  }
+  const si = seasonIndex(s);
+  if (isSeasonStart(s) && s.day > 1) {
+    if (si === BILLS.yearly.season) pay(s, yearlyBill(s), `Llega el recibo de la contribución, el seguro agrario y la cuota de la cooperativa: ${yearlyBill(s)} €.`);
+    if (si === 2) {
+      const w = winterEstimate(s);
+      addLog(s, `Llega el otoño. Para pasar el invierno harán falta unas ${w.lena} cargas de leña${w.feed ? ` y ${w.feed} de heno o pienso para los animales` : ''}. Mejor guardarlo antes del frío: en invierno todo es más caro.`, 'info');
+    }
+  }
+  heatDay(s);
+  feedDay(s);
+}
+
+// Para la interfaz: lista de problemas en marcha
+function troubles(s) {
+  const out = [];
+  for (const d of damages(s)) {
+    const def = DAMAGES[d.id];
+    out.push({ kind: 'damage', id: d.id, zone: def.zone, name: def.name, text: def.text, work: d.work, total: def.work });
+  }
+  for (const m of activeMods(s)) {
+    const def = MODS[m.id];
+    out.push({ kind: 'mod', id: m.id, name: def.name, text: def.desc, days: m.until - s.day + 1, bad: !!def.bad });
+  }
+  if (s.cold) out.push({ kind: 'cold', name: 'Sin leña', text: 'La chimenea está apagada. Recoge leña en el bosquete o cómprala.' });
+  if (s.hungry) out.push({ kind: 'feed', name: 'Animales sin comida', text: 'Siega heno en primavera o compra pienso en la cooperativa.' });
+  return out;
+}
+
+
+return { difficulty, agingFactor, damages, damageOf, isDamaged, stopped, canBreak, breakDown, repairTotal, repairLeft, proCost, repairBlocker, repair, proTotal, hireBlocker, hireRepair, repairCostLabel, addMod, activeMods, modFactor, marketClosed, takeLoan, weeklyBill, yearlyBill, taxableProfit, taxDue, upcomingBills, heatingNeed, feedNeed, feedStock, reserveDays, winterEstimate, buyPrice, foodCostFactor, hardshipDawn, troubles, DAMAGES, MODS, DIFFICULTY };
+})();
+
 // ── src/sim/people.js ──
 const __m16 = (() => {
 // Voluntarios y empleados: llegadas, ánimo, comida, despedidas y encargos de zona.
@@ -1336,6 +1962,7 @@ const { VOLUNTEERS, VOLUNTEER_BY_ID, TRAITS, SKILLS } = __m17;
 const { PRODUCTS } = __m6;
 const { rand, chance, randInt, pick } = __m11;
 const { addLog, signal, clamp, addStock } = __m13;
+const { stopped, foodCostFactor } = __m18;
 
 // Concordancia: adj(v, 'contento') → contenta / contento
 function adj(info, word) { return info.g === 'f' ? word.replace(/o$/, 'a') : word; }
@@ -1350,10 +1977,12 @@ function hasSkill(s, skill) {
 function skillName(skill) { return SKILLS[skill] || skill; }
 
 function bedsTotal(s) {
+  if (stopped(s, 'beds')) return 1;   // con el tejado hundido solo queda una cama seca
   return BALANCE.bedsBase + Math.floor(s.zones.cortijo.cons * BALANCE.bedsPerCortijo);
 }
 
 function volunteerJornales(v) {
+  if ((v.rest || 0) > 0) return 0;     // de reposo
   return BALANCE.volunteerJornales + (traitOf(v).jornales || 0);
 }
 
@@ -1434,10 +2063,11 @@ function feedVolunteers(s) {
       }
     }
     if (need > 0) {
-      const cost = Math.ceil(need) * BALANCE.foodCostPerVolunteer;
+      const cost = Math.round(Math.ceil(need) * BALANCE.foodCostPerVolunteer * foodCostFactor(s));
       addStock(s, 'money', -cost);
       s.stats.spent += cost;
       s.foodWeek = (s.foodWeek || 0) + cost;
+      s.stats.food = (s.stats.food || 0) + cost;
       paid += cost;
       v._fed = 0;
     } else {
@@ -1454,12 +2084,15 @@ function dailyVolunteers(s) {
   const leaving = [];
   for (const v of s.volunteers) {
     const info = infoOf(v);
-    let d = (s.zones.cortijo.cons - 50) / 25;   // la cama
-    d += v._fed ? 1.2 : 0;                      // comer de la huerta
-    d += cook;
-    d += (s.mood - 50) / 40;
-    if (v.zone && infoOf(v).skill && zoneUsesSkill(v.zone, info.skill)) d += 1.2;
+    // La alegría tiende a un punto medio: hay que cuidarla (buena cama, comida de la finca, ratos libres)
+    let d = (BALANCE.happyRest - v.happy) * BALANCE.happyDrift;
+    d += (s.zones.cortijo.cons - 60) / 40;      // la cama
+    d += v._fed ? 0.6 : -0.8;                   // comer de la huerta (o de lata comprada)
+    d += cook * 0.5;
+    d += (s.mood - 55) / 40;
+    if (v.zone && infoOf(v).skill && zoneUsesSkill(v.zone, info.skill)) d += 0.6;
     if (s.weather === 'tormenta' || s.weather === 'helada') d -= 0.5;
+    if ((v.rest || 0) > 0) v.rest--;
     v.happy = clamp(v.happy + d + (rand(s) - 0.5), 0, 100);
     if (s.day >= v.leaves) leaving.push(v);
   }
@@ -1530,7 +2163,7 @@ return { adj, traitOf, infoOf, hasSkill, skillName, bedsTotal, volunteerJornales
 })();
 
 // ── src/data/family.js ──
-const __m19 = (() => {
+const __m22 = (() => {
 // La familia de la finca. Siempre como recuerdo: nunca aparecen vivos en pantalla.
 //
 // ✎ AUTOR: los textos son provisionales y deliberadamente cotidianos. Cámbialos por
@@ -1576,10 +2209,10 @@ return { FAMILY, GRANDCHILDREN, FAMILY_BY_ID };
 })();
 
 // ── src/sim/mystery.js ──
-const __m18 = (() => {
+const __m21 = (() => {
 // La familia y el misterio del pianista: objetos, hilos, hipótesis y el tema.
 const { ITEMS, ITEM_BY_ID } = __m15;
-const { FAMILY, FAMILY_BY_ID } = __m19;
+const { FAMILY, FAMILY_BY_ID } = __m22;
 const { HYPOTHESES, THEME, THEME_START, REVELATION } = __m7;
 const { addLog, signal } = __m13;
 const { traitOf } = __m16;
@@ -1659,7 +2292,7 @@ return { giveItem, clue, threadCount, threadTotal, threads, themeNotesKnown, hyp
 })();
 
 // ── src/data/crops.js ──
-const __m21 = (() => {
+const __m24 = (() => {
 // Cultivos de la huerta. Cada temporada se siembra lo suyo en los bancales y se recoge a los días.
 // seasons: en qué estaciones se puede sembrar (0 primavera, 1 verano, 2 otoño, 3 invierno)
 // days: días hasta estar listo con buena agua y la huerta cuidada · yield: lo que da un bancal
@@ -1694,14 +2327,15 @@ return { CROPS, BEDS, SOW_JORNALES, HARVEST_JORNALES, OVERRIPE_DAYS, RECIPES };
 })();
 
 // ── src/sim/garden.js ──
-const __m20 = (() => {
+const __m23 = (() => {
 // La huerta por bancales: se siembra lo de cada temporada y se recoge a los días.
-const { CROPS, BEDS, SOW_JORNALES, HARVEST_JORNALES, OVERRIPE_DAYS } = __m21;
+const { CROPS, BEDS, SOW_JORNALES, HARVEST_JORNALES, OVERRIPE_DAYS } = __m24;
 const { roundP } = __m11;
 const { seasonIndex } = __m12;
 const { addLog, signal, clamp, addStock } = __m13;
 const { hasSkill } = __m16;
 const { PRODUCTS } = __m6;
+const { damageOf } = __m18;
 
 function beds(s) {
   if (!Array.isArray(s.beds) || s.beds.length !== BEDS) {
@@ -1718,6 +2352,7 @@ function seasonalCrops(s) {
 
 function sowBlocker(s, i, cropId, budget = s.jornales) {
   if (!s.zones.huerta.unlocked) return 'Primero hay que recuperar la huerta';
+  if (damageOf(s, 'huerta')) return 'Los bancales están arrasados: hay que repararlos';
   const b = beds(s)[i];
   if (!b) return 'Ese bancal no existe';
   if (b.crop) return 'El bancal ya está sembrado';
@@ -1740,6 +2375,7 @@ function sow(s, i, cropId, { budget = null } = {}) {
 function harvestBlocker(s, i, budget = s.jornales) {
   const b = beds(s)[i];
   if (!b || !b.crop) return 'Bancal vacío';
+  if (damageOf(s, 'huerta')) return 'Averiado: primero hay que repararlo';
   if (b.ready == null) return 'Aún no está listo';
   if (budget < HARVEST_JORNALES) return 'No quedan jornales hoy';
   return null;
@@ -1835,8 +2471,9 @@ const { chance, roundP } = __m11;
 const { seasonIndex } = __m12;
 const { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, costLabel, labelOf } = __m13;
 const { hasSkill, skillName, traitOf, volunteerJornales, infoOf, setZoneSkillMap } = __m16;
-const { giveItem, checkRevelation } = __m18;
-const { growBeds, autoGarden } = __m20;
+const { giveItem, checkRevelation } = __m21;
+const { growBeds, autoGarden } = __m23;
+const { damageOf, repair, stopped, agingFactor, difficulty } = __m18;
 
 // Qué oficios usa cada zona (para el ánimo de los voluntarios encargados)
 setZoneSkillMap(Object.fromEntries(ZONES.map((z) => [z.id, [...new Set(z.tasks.map((t) => t.skill).filter(Boolean))]])));
@@ -1869,13 +2506,17 @@ function restoredCount(s) {
 function decayHour(s, hours = 1) {
   const season = SEASONS[seasonIndex(s)];
   const w = WEATHER[s.weather] || WEATHER.sol;
+  const global = agingFactor(s) * difficulty(s).decay;
   for (const z of ZONES) {
     const st = s.zones[z.id];
     if (!st.unlocked) continue;
     let care = 1;
     for (const v of s.volunteers) if (v.zone === z.id) care *= traitOf(v).decay || 1;
     const weedF = st.weeds != null ? 1 + st.weeds * BALANCE.weedDecayFactor : 1;
-    let d = BALANCE.baseDecayPerDay * z.decay * season.decayMult * w.decay * weedF * care;
+    // Lo que está impecable cuesta más mantenerlo; lo roto se estropea el doble
+    const high = 1 + Math.max(0, st.cons - BALANCE.highConsFrom) * BALANCE.highConsDecay;
+    const broken = damageOf(s, z.id) ? 1.8 : 1;
+    let d = BALANCE.baseDecayPerDay * z.decay * season.decayMult * w.decay * weedF * care * high * broken * global;
     // El agua escasa castiga la huerta y la fuente
     if ((z.id === 'huerta' || z.id === 'patio') && s.water < 20) d *= 1.4;
     st.cons = clamp(st.cons - d * hours / 24, 0, 100);
@@ -1900,6 +2541,9 @@ function taskJornales(s, task) {
 function taskBlocker(s, zoneId, task) {
   const st = s.zones[zoneId];
   if (!st.unlocked) return 'Zona borrada del plano';
+  const dmg = damageOf(s, zoneId);
+  if (dmg) return 'Averiado: primero hay que repararlo';
+  if (task.water && stopped(s, 'water', zoneId)) return 'No da agua: está averiado';
   const si = seasonIndex(s);
   if (task.seasons && !task.seasons.includes(si)) {
     return 'Fuera de temporada (' + task.seasons.map((i) => SEASONS[i].name.toLowerCase()).join(', ') + ')';
@@ -1974,7 +2618,7 @@ function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   if (taskItems.length && st.cons >= 55 && s.day >= 4) {
     let p = 0.22;
     for (const v of s.volunteers) p += traitOf(v).findBonus || 0;
-    if (s.zones.ermita.everRestored) p += 0.1; // San Antonio, que encuentra lo perdido
+    if (s.zones.ermita.everRestored && !stopped(s, 'find')) p += 0.1; // San Antonio, que encuentra lo perdido
     if (chance(s, p)) giveItem(s, taskItems[0].id);
   }
 
@@ -2127,6 +2771,14 @@ function bestTaskFor(s, zoneId) {
 function autoMaintain(s) {
   for (const v of s.volunteers) {
     if (!v.zone || !s.zones[v.zone]) continue;
+    if ((v.rest || 0) > 0) { v.lastWork = 'descansó'; continue; }
+    const dmg = damageOf(s, v.zone);
+    if (dmg) {
+      // Encargado de una zona averiada: arrima el hombro en la reparación
+      const r = repair(s, dmg.id, { by: v.id, budget: volunteerJornales(v) });
+      v.lastWork = r.ok ? (r.done ? 'terminó la reparación' : 'trabajó en la reparación') : 'no pudo empezar la reparación (faltan materiales)';
+      continue;
+    }
     if (!s.zones[v.zone].unlocked) {
       // Encargado de recuperar una zona: aporta sus jornales al proyecto
       const r = unlockZone(s, v.zone, { by: v.id, budget: volunteerJornales(v) });
@@ -2159,7 +2811,7 @@ return { avgCons, avgWeeds, restoredCount, decayHour, taskSkillBonus, taskJornal
 })();
 
 // ── src/sim/economy.js ──
-const __m22 = (() => {
+const __m25 = (() => {
 // Producción, agua, montanera, mercado y compras.
 const { BALANCE } = __m4;
 const { ZONES } = __m5;
@@ -2168,6 +2820,7 @@ const { WEATHER } = __m9;
 const { rand, roundP, randRange } = __m11;
 const { seasonIndex, isMarketDay } = __m12;
 const { addLog, signal, clamp, addStock } = __m13;
+const { damageOf, stopped, modFactor, marketClosed, buyPrice } = __m18;
 
 // ── Producción diaria ──
 function produceDay(s) {
@@ -2177,11 +2830,14 @@ function produceDay(s) {
   for (const z of ZONES) {
     const st = s.zones[z.id];
     if (!st.unlocked || !z.produce) continue;
+    if (damageOf(s, z.id)) continue;            // lo roto no produce
     const q = st.cons / 100;
     for (const [k, arr] of Object.entries(z.produce)) {
       if (!Array.isArray(arr)) continue;
       let base = arr[si];
       if (!base) continue;
+      if (s.hungry && (k === 'huevos' || k === 'queso')) continue; // sin comida no hay huevos ni leche
+      base *= modFactor(s, 'prod', k);
       if (k === 'queso') base *= s.animals[z.produce.perQueso] || 0;
       else if (z.produce.per && k !== 'queso') base *= s.animals[z.produce.per] || 0;
       if (z.id === 'huerta') {
@@ -2204,7 +2860,7 @@ function produceDay(s) {
     }
   }
   // Gurumelos: en otoño, tras la lluvia, si la dehesa está cuidada
-  if (si === 2 && s.zones.dehesa.unlocked && (s.weather === 'lluvia' || s.water > 60) && rand(s) < 0.35 * s.zones.dehesa.cons / 100) {
+  if (si === 2 && s.zones.dehesa.unlocked && !damageOf(s, 'dehesa') && (s.weather === 'lluvia' || s.water > 60) && rand(s) < 0.35 * s.zones.dehesa.cons / 100) {
     const n = 1 + Math.floor(rand(s) * 2);
     addStock(s, 'gurumelos', n);
     out.gurumelos = n;
@@ -2219,6 +2875,7 @@ function montaneraDay(s) {
   if (!s.animals.cerdos) { s._bellotaEaten = 0; return; }
   const si = seasonIndex(s);
   if (si !== 2 && si !== 3) { s._bellotaEaten = 0; return; }
+  if (stopped(s, 'montanera')) { s._bellotaEaten = 0; return; }   // con el muro roto o la dehesa quemada no hay montanera
   const need = s.animals.cerdos * 0.5;
   let got = s._bellotaEaten || 0;
   // Si falta, comen de los sacos guardados
@@ -2248,8 +2905,8 @@ function waterDay(s) {
   const w = WEATHER[s.weather] || WEATHER.sol;
   let d = w.water || 0;
   d += [-1, -6, -2, 0][si];
-  if (s.zones.alberca.unlocked) d += (s.zones.alberca.cons - 40) / 25;
-  if (s.zones.pozo.unlocked) d += (s.zones.pozo.cons - 30) / 25;
+  if (s.zones.alberca.unlocked) d += stopped(s, 'water', 'alberca') ? -1.5 : (s.zones.alberca.cons - 40) / 25;
+  if (s.zones.pozo.unlocked && !stopped(s, 'water', 'pozo')) d += (s.zones.pozo.cons - 30) / 25;
   s.water = clamp(s.water + d, 0, 100);
 }
 
@@ -2285,7 +2942,7 @@ const CHANNEL_FACTOR = {
 
 function channelOpen(s, ch) {
   if (ch === 'coop') return true;
-  if (ch === 'market') return isMarketDay(s);
+  if (ch === 'market') return isMarketDay(s) && !marketClosed(s);
   if (ch === 'basket') return s.guests.length > 0;
   return false;
 }
@@ -2301,13 +2958,14 @@ function unitPrice(s, product, ch) {
   const sat = s.saturation[ch]?.[product] || 0;
   const noise = s.priceNoise[product] || 1;
   const repBonus = ch === 'basket' ? 1 + s.rep / 400 : 1;
-  const v = p.price * p.season[si] * CHANNEL_FACTOR[ch]() * noise * repBonus * Math.max(0.35, 1 - sat);
+  const mods = modFactor(s, ch) * modFactor(s, 'price', product);
+  const v = p.price * p.season[si] * CHANNEL_FACTOR[ch]() * noise * repBonus * mods * Math.max(0.35, 1 - sat);
   return Math.round(v * 100) / 100;
 }
 
 function sellBlocker(s, product, ch, qty = 1) {
   if (!channelOpen(s, ch)) {
-    if (ch === 'market') return 'El mercado abre los jueves';
+    if (ch === 'market') return marketClosed(s) || 'El mercado abre los jueves';
     if (ch === 'basket') return 'No hay huéspedes';
   }
   if (ch === 'basket' && !PRODUCTS[product].basket) return 'No va en cesta';
@@ -2342,7 +3000,7 @@ function sellAllAt(s, mult) {
   let total = 0;
   for (const k of Object.keys(PRODUCTS)) {
     const q = Math.floor(s.products[k] || 0);
-    if (!q || k === 'cerdo') continue;
+    if (!q || k === 'cerdo' || k === 'heno') continue;
     const each = PRODUCTS[k].price * PRODUCTS[k].season[seasonIndex(s)] * mult;
     total += each * q;
     s.products[k] = 0;
@@ -2358,7 +3016,7 @@ function sellAllAt(s, mult) {
 function buyMaterial(s, key, qty = 1) {
   const m = MATERIALS[key];
   if (!m) return { ok: false, text: '¿Qué es eso?' };
-  const cost = m.buy * qty;
+  const cost = Math.round(buyPrice(s, key) * qty * 100) / 100;
   if (s.money < cost) return { ok: false, text: 'No llega el dinero' };
   addStock(s, 'money', -cost);
   addStock(s, key, qty);
@@ -2393,7 +3051,7 @@ return { produceDay, montaneraDay, waterDay, spoilDay, rollPriceNoise, recoverPr
 })();
 
 // ── src/data/events.js ──
-const __m24 = (() => {
+const __m27 = (() => {
 // Eventos de la finca. Todo por datos.
 //
 // weight: probabilidad relativa · seasons: estaciones en que puede pasar (0-3)
@@ -2405,6 +3063,11 @@ const __m24 = (() => {
 //   effects: { money, mood, rep, materials:{}, products:{}, zones:{ id|all: delta }, weeds:{ id|all: delta },
 //              flag, item, water }
 //   result: texto que se escribe en el diario tras elegir
+// crisis: true → contratiempo (más frecuente cada año y en dificultad dura)
+// when: 'tarde' → sale al atardecer. Si alguna opción cuesta jornales, el evento llega al amanecer
+//   (con el día por delante); si no, a cualquier hora.
+// Ayudas de contratiempos (ver sim/events.js): h.breakDown(id) rompe algo (data/hardships.js),
+//   h.mod(id, días) pone un aviso económico, h.hurtBeds(f), h.loseAnimals(k, f), h.restVolunteer(días)…
 
 const EVENTS = [
   // ───────────── Clima ─────────────
@@ -2412,8 +3075,8 @@ const EVENTS = [
     id: 'helada', title: 'Helada', illus: 'helada', weight: 5, seasons: [3], cooldown: 4,
     text: 'Amanece blanco. La escarcha ha mordido los muros y la huerta cruje como papel.',
     options: [
-      { label: 'Tapar la huerta con paja', cost: { jornales: 1 }, effects: { zones: { huerta: -3 } }, result: 'La paja abriga los bancales. Lo peor pasa de largo.' },
-      { label: 'Encender la chimenea y esperar', effects: { zones: { huerta: -12, muros: -6 }, mood: 3 }, result: 'Un día de manta y leña. La huerta lo nota.' },
+      { label: 'Tapar la huerta con paja', cost: { jornales: 1 }, effects: { zones: { huerta: -3 } }, apply: (s, h) => h.hurtBeds(0.1), result: 'La paja abriga los bancales. Lo peor pasa de largo.' },
+      { label: 'Encender la chimenea y esperar', effects: { zones: { huerta: -12, muros: -6 }, mood: 2 }, apply: (s, h) => { h.hurtBeds(0.6); if (h.chance(0.3)) h.breakDown('tuberia'); }, result: 'Un día de manta y leña. La huerta lo nota.' },
     ],
   },
   {
@@ -2421,7 +3084,7 @@ const EVENTS = [
     text: 'El aire tiembla sobre la dehesa. Las gallinas se esconden bajo la yuca y la alberca baja un palmo.',
     options: [
       { label: 'Regar al alba y sombrear', cost: { jornales: 2 }, effects: { zones: { huerta: 4 }, mood: -1 }, result: 'Madrugón y riego. La huerta aguanta.' },
-      { label: 'Siesta larga, como manda la tradición', effects: { zones: { huerta: -10, alberca: -6 }, mood: 4, water: -10 }, result: 'Persianas bajadas hasta las siete. Algo se seca, pero el ánimo descansa.' },
+      { label: 'Siesta larga, como manda la tradición', effects: { zones: { huerta: -10, alberca: -6 }, mood: 4, water: -10 }, apply: (s, h) => h.hurtBeds(0.35), result: 'Persianas bajadas hasta las siete. Algo se seca, pero el ánimo descansa.' },
     ],
   },
   {
@@ -2429,7 +3092,7 @@ const EVENTS = [
     text: 'Truena detrás del pueblo. En un momento el patio es un río y el cielo, morado.',
     options: [
       { label: 'Salir a asegurar las tejas', cost: { jornales: 1 }, effects: { zones: { cortijo: -2 } }, result: 'Empapado, pero el tejado aguanta.' },
-      { label: 'Mirarla desde la ventana', effects: { zones: { cortijo: -9, paseo: -5 }, mood: 2, water: 15 }, result: 'Una tormenta preciosa. Mañana habrá goteras.' },
+      { label: 'Mirarla desde la ventana', effects: { zones: { cortijo: -9, paseo: -5 }, mood: 2, water: 15 }, apply: (s, h) => { if (h.zoneCons('cortijo') < 65 && h.chance(0.5)) h.breakDown('tejado'); }, result: 'Una tormenta preciosa. Mañana habrá goteras.' },
     ],
   },
   {
@@ -2442,11 +3105,11 @@ const EVENTS = [
     ],
   },
   {
-    id: 'dana', title: 'Gota fría', illus: 'dana', weight: 2, seasons: [2], cooldown: 30,
+    id: 'dana', title: 'Gota fría', illus: 'dana', weight: 2, crisis: true, seasons: [2], cooldown: 30,
     text: 'Llueve como si el cielo se hubiera roto. El arroyo se desborda y arrastra parte del muro.',
     options: [
-      { label: 'Hacer zanjas para desviar el agua', cost: { jornales: 3 }, effects: { zones: { muros: -6, huerta: -4 }, water: 25 }, result: 'Barro hasta las rodillas, pero el agua se va por donde debe.' },
-      { label: 'Ponerse a salvo y esperar', effects: { zones: { muros: -18, huerta: -14, paseo: -8 }, water: 30 }, result: 'Cuando escampa, el paseo es un barrizal y el muro tiene un hueco nuevo.' },
+      { label: 'Hacer zanjas para desviar el agua', cost: { jornales: 3 }, effects: { zones: { muros: -6, huerta: -4 }, water: 25 }, apply: (s, h) => h.hurtBeds(0.3), result: 'Barro hasta las rodillas, pero el agua se va por donde debe.' },
+      { label: 'Ponerse a salvo y esperar', effects: { zones: { muros: -10, huerta: -8, paseo: -8 }, water: 30 }, apply: (s, h) => { h.breakDown('muro'); h.breakDown('bancales'); }, result: 'Cuando escampa, el paseo es un barrizal y el muro tiene un hueco nuevo.' },
     ],
   },
   {
@@ -2472,11 +3135,11 @@ const EVENTS = [
   },
   {
     id: 'jabalies', title: 'Jabalíes', illus: 'jabali', weight: 4, seasons: [2, 3], cooldown: 8,
-    cond: (s) => s.zones.huerta.unlocked,
+    cond: (s) => s.zones.huerta.unlocked && !s.flags.vallaJabali,
     text: 'Esta noche han entrado jabalíes. Han hozado los bancales y han dejado la valla como un acordeón.',
     options: [
-      { label: 'Reforzar la valla con piedra', cost: { jornales: 2, piedra: 2 }, effects: { zones: { huerta: -6 } }, flag: 'vallaJabali', result: 'Una valla que hasta un jabalí respetaría.' },
-      { label: 'Resignarse y replantar', effects: { zones: { huerta: -15 }, mood: -2 }, result: 'Se han comido lo mejor. Ya crecerá.' },
+      { label: 'Reforzar la valla con piedra', cost: { jornales: 2, piedra: 2 }, effects: { zones: { huerta: -6 } }, apply: (s, h) => h.hurtBeds(0.2), flag: 'vallaJabali', result: 'Una valla que hasta un jabalí respetaría.' },
+      { label: 'Resignarse y replantar', effects: { zones: { huerta: -15 }, mood: -2 }, apply: (s, h) => h.hurtBeds(0.8), result: 'Se han comido lo mejor. Ya crecerá.' },
     ],
   },
   {
@@ -2485,7 +3148,7 @@ const EVENTS = [
     text: 'Las hojas de la huerta y de la parra amanecen pegajosas. Pulgón, y mucho.',
     options: [
       { label: 'Jabón potásico, hoja a hoja', cost: { jornales: 2, money: 5 }, effects: { zones: { huerta: -2, bosquete: -2 } }, result: 'Paciencia de monje. La plaga se rinde.' },
-      { label: 'Esperar a las mariquitas', effects: { zones: { huerta: -10, bosquete: -6 } }, result: 'Las mariquitas llegan… tarde.' },
+      { label: 'Esperar a las mariquitas', effects: { zones: { huerta: -10, bosquete: -6 } }, apply: (s, h) => h.hurtBeds(0.5), result: 'Las mariquitas llegan… tarde.' },
     ],
   },
   {
@@ -2505,13 +3168,13 @@ const EVENTS = [
     ],
   },
   {
-    id: 'ciervos', title: 'Ciervos al atardecer', illus: 'ciervos', weight: 3, seasons: [0, 2, 3], cooldown: 9,
+    id: 'ciervos', title: 'Ciervos al atardecer', illus: 'ciervos', weight: 3, seasons: [0, 2, 3], cooldown: 9, when: 'tarde',
     text: (s) => s.items.includes('firma')
       ? 'Un ciervo y una cierva bajan a beber a la alberca. Es exactamente el cuadro de Transi, como si lo hubiera pintado esta tarde.'
       : 'Un ciervo y una cierva bajan a beber a la alberca. La escena te resulta extrañamente familiar.',
     options: [
       { label: 'Quedarse muy quieto mirando', effects: { mood: 6 }, apply: (s, h) => h.clue('transi', 0.5), result: 'Diez minutos sin respirar apenas. Luego se van entre las encinas.' },
-      { label: 'Intentar dibujarlos', cost: { jornales: 1 }, effects: { mood: 4, rep: 1 }, apply: (s, h) => h.clue('transi', 1), result: 'El dibujo no se parece a nada. Pero entiendes por qué alguien pintaba esto.' },
+      { label: 'Intentar dibujarlos', effects: { mood: 4, rep: 1 }, apply: (s, h) => h.clue('transi', 1), result: 'El dibujo no se parece a nada. Pero entiendes por qué alguien pintaba esto.' },
     ],
   },
   {
@@ -2521,6 +3184,230 @@ const EVENTS = [
     options: [
       { label: 'Darle las gracias (y una sardina)', apply: (s, h) => h.catGift().apply(), result: 'El gato acepta la sardina como un pago justo.' },
     ],
+  },
+
+  // ───────────── Contratiempos ─────────────
+  // Avisos: si se atienden a tiempo cuestan unos jornales; si no, algo se rompe y hay que repararlo.
+  {
+    id: 'temporal', title: 'Temporal', illus: 'averia', weight: 3, seasons: [2, 3], cooldown: 20, crisis: true,
+    cond: (s, h) => h.canBreak('tejado'),
+    text: 'Tres días de agua y viento. Esta noche la viga maestra del tejado ha crujido como un barco viejo.',
+    options: [
+      { label: 'Apuntalar la viga ya', cost: { jornales: 3, herramientas: 0.5 }, effects: { zones: { cortijo: -4 } }, result: 'Puntales, cuñas y mucho cuidado. La viga aguanta.' },
+      { label: 'Esperar a que escampe', apply: (s, h) => h.breakDown('tejado'), result: 'De madrugada, un estruendo. Se ha hundido un trozo del tejado.' },
+    ],
+  },
+  {
+    id: 'helada_negra', title: 'Helada negra', illus: 'helada', weight: 3, seasons: [3], cooldown: 25, crisis: true,
+    cond: (s, h) => h.canBreak('tuberia') || h.canBreak('alberca_grieta'),
+    text: 'Anuncian ocho bajo cero. De las que revientan tuberías y abren piedras.',
+    options: [
+      { label: 'Vaciar tuberías, tapar la huerta y la alberca', cost: { jornales: 3 }, apply: (s, h) => h.hurtBeds(0.2), result: 'Un día entero de mantas, paja y grifos abiertos. Amanece blanco, pero todo entero.' },
+      { label: 'Encender la chimenea y cruzar los dedos', apply: (s, h) => { h.hurtBeds(1); if (!h.breakDown('tuberia')) h.breakDown('alberca_grieta'); else if (h.chance(0.4)) h.breakDown('alberca_grieta'); }, result: 'Por la mañana, el patio es una pista de hielo y el agua sale por donde no debe.' },
+    ],
+  },
+  {
+    id: 'rayo', title: 'Tormenta seca', illus: 'tormenta', weight: 2, seasons: [1, 2], cooldown: 40, crisis: true,
+    cond: (s, h) => h.canBreak('espadana'),
+    text: 'Truena sin llover. Un rayo cae con un chasquido en la espadaña de la ermita y la campana rueda por el suelo.',
+    options: [
+      { label: 'Pedir ayuda a los vecinos para recoger', cost: { money: 15 }, apply: (s, h) => { h.breakDown('espadana'); h.helpRepair('espadana', 3); h.addRep(1); }, result: 'Suben con carretillas y un bocadillo. San Antonio tiene muchos devotos.' },
+      { label: 'Recoger la campana y ver qué se puede hacer', apply: (s, h) => h.breakDown('espadana'), result: 'La campana está entera. La espadaña, no.' },
+    ],
+  },
+  {
+    id: 'granizo', title: 'Pedrisco', illus: 'tormenta', weight: 3, seasons: [0, 1], cooldown: 25, crisis: true,
+    text: 'Cae granizo del tamaño de garbanzos durante diez minutos eternos. Suena como si tiraran piedras al tejado.',
+    options: [
+      { label: 'Salvar lo que se pueda de la huerta', cost: { jornales: 2 }, apply: (s, h) => { h.hurtBeds(0.5); h.mod('granizo', 7); }, result: 'Se salva la mitad. Los frutales, apedreados.' },
+      { label: 'Esperar dentro a que pase', apply: (s, h) => { h.hurtBeds(1); h.mod('granizo', 14); }, effects: { zones: { huerta: -10, pozo: -6, bosquete: -5 } }, result: 'La huerta está hecha trizas y la parra, deshojada.' },
+    ],
+  },
+  {
+    id: 'pozo_ruido', title: 'El pozo hace un ruido raro', illus: 'sequia', weight: 3, seasons: [1, 2], cooldown: 30, crisis: true,
+    cond: (s, h) => h.canBreak('bomba'),
+    text: 'La bomba del pozo traquetea y escupe agua con barro. Así no va a durar mucho.',
+    options: [
+      { label: 'Bajar a mirarla ya', cost: { jornales: 2, money: 15 }, result: 'Una junta gastada y una piedrecita en el filtro. Arreglado a tiempo.' },
+      { label: 'Ya aguantará', apply: (s, h) => h.breakDown('bomba'), result: 'Aguantó dos días. Ahora no da ni una gota.' },
+    ],
+  },
+  {
+    id: 'varroa_aviso', title: 'Abejas torpes', illus: 'enjambre', weight: 3, seasons: [0, 1, 2], cooldown: 30, crisis: true,
+    cond: (s, h) => h.canBreak('varroa'),
+    text: 'En la piquera hay abejas que no vuelan bien. Puede ser varroa, y si es, se extiende rápido.',
+    options: [
+      { label: 'Tratar todas las colmenas ya', cost: { jornales: 2, money: 25 }, effects: { zones: { colmenar: -4 } }, result: 'Ácido oxálico, humo y paciencia. Las colmenas se recuperan.' },
+      { label: 'Esperar a ver', apply: (s, h) => h.breakDown('varroa'), result: 'Era varroa. Y se ha extendido.' },
+    ],
+  },
+  {
+    id: 'zorro', title: 'Huellas de zorro', illus: 'jabali', weight: 3, cooldown: 25, crisis: true,
+    cond: (s, h) => s.animals.gallinas > 0 && h.canBreak('gallinero'),
+    text: 'Junto al gallinero hay huellas finas y un agujero bajo la tela. Las gallinas no han querido salir.',
+    options: [
+      { label: 'Enterrar tela y reforzar el gallinero', cost: { jornales: 2, piedra: 1 }, result: 'Tela enterrada un palmo y piedras encima. Que lo intente ahora.' },
+      { label: 'Cerrar bien la puerta esta noche', apply: (s, h) => { if (h.chance(0.75)) h.breakDown('gallinero'); }, result: 'Por la mañana se sabrá si ha bastado.' },
+    ],
+  },
+  {
+    id: 'humedad', title: 'Semana de niebla', illus: 'niebla', weight: 3, seasons: [2, 3], cooldown: 30, crisis: true,
+    cond: (s, h) => s.zones.piano.unlocked && s.zones.piano.cons >= 35 && h.canBreak('piano_humedad'),
+    text: 'La niebla se queda pegada a la dehesa una semana entera. En el cenador, el piano suda.',
+    options: [
+      { label: 'Taparlo y poner un brasero cerca', cost: { jornales: 1, lena: 2 }, result: 'Mantas, brasero y una vigilancia de abuela. El piano aguanta seco.' },
+      { label: 'Ya se secará', apply: (s, h) => h.breakDown('piano_humedad'), result: 'Las teclas se han hinchado. Suena «tun» donde debía sonar un la.' },
+    ],
+  },
+  {
+    id: 'procesionaria', title: 'Bolsones en los pinos', illus: 'plaga', weight: 2, seasons: [3, 0], cooldown: 40, crisis: true,
+    cond: (s, h) => h.canBreak('procesionaria'),
+    text: 'En las copas de los pinos del bosquete hay bolsones blancos. Procesionaria. En unas semanas bajarán en fila.',
+    options: [
+      { label: 'Quitarlos con la pértiga', cost: { jornales: 2, money: 10 }, result: 'Con guantes, gafas y mucho cuidado. Al fuego, todos.' },
+      { label: 'Dejarlo para la primavera', apply: (s, h) => h.breakDown('procesionaria'), result: 'Las orugas bajan antes de lo previsto. Nadie entra en el bosquete.' },
+    ],
+  },
+  {
+    id: 'camino', title: 'El camino se viene abajo', illus: 'dana', weight: 2, seasons: [2, 3], cooldown: 40, crisis: true,
+    cond: (s, h) => s.flags.tourism && h.canBreak('camino'),
+    text: 'Con tanta lluvia, el talud del camino junto a las adelfas se ha descalzado. Una rueda más y se hunde.',
+    options: [
+      { label: 'Echar piedra y apisonar hoy', cost: { jornales: 3, piedra: 3 }, effects: { zones: { paseo: 3 } }, result: 'Piedra, pisón y una carretilla que no para. El camino aguanta.' },
+      { label: 'Poner un cartel de «despacio»', apply: (s, h) => h.breakDown('camino'), result: 'El cartel no ha servido de mucho. El camino se ha hundido.' },
+    ],
+  },
+  {
+    id: 'furgoneta', title: 'La furgoneta tose', illus: 'furgoneta', weight: 3, cooldown: 35, minDay: 8, crisis: true,
+    cond: (s, h) => h.canBreak('furgoneta'),
+    text: 'La furgoneta arranca a la tercera y echa un humo azul que no gusta nada.',
+    options: [
+      { label: 'Llevarla al taller del pueblo', cost: { money: 55 }, result: 'Bujías, filtro y un mecánico que habla mucho. Como nueva (casi).' },
+      { label: 'Ya aguantará', apply: (s, h) => h.breakDown('furgoneta'), result: 'Aguantó hasta la cuesta del cortijo.' },
+    ],
+  },
+  {
+    id: 'ladrones', title: 'Han entrado en el cobertizo', illus: 'averia', weight: 2, cooldown: 40, minDay: 20, crisis: true,
+    text: 'Esta noche alguien ha forzado el candado del cobertizo. Faltan herramientas y algún saco.',
+    options: [
+      { label: 'Poner cerradura nueva y apuntarlo todo', cost: { money: 25 }, effects: { materials: { herramientas: -1 } }, result: 'Una cerradura de las buenas. Y el perro de la vecina, que ladra a todo.' },
+      { label: 'Preguntar en el bar del pueblo', apply: (s, h) => { if (h.chance(0.5)) h.log('Aparecen las herramientas junto a la cancela. Nadie sabe nada.'); else { h.addProduct('herramientas', -2); h.log('Nadie ha visto nada. Faltan dos juegos de herramientas.'); } }, result: 'En los pueblos todo se sabe… o no.' },
+    ],
+  },
+  {
+    id: 'gripe', title: 'Gripe en la casa', illus: 'voluntario', weight: 3, seasons: [2, 3], cooldown: 20, crisis: true,
+    cond: (s) => s.volunteers.some((v) => !(v.rest > 0)),
+    text: (s) => `Tos, mantas y caldo. Alguien de la casa tiene fiebre y no se puede levantar.`,
+    options: [
+      { label: 'Ir a la farmacia del pueblo y cuidarle', cost: { jornales: 1, money: 10 }, apply: (s, h) => { const v = h.restVolunteer(3); if (v) h.log(`${v.name} guarda cama tres días.`); }, result: 'Caldo de gallina, miel y paciencia.' },
+      { label: 'Reposo y mucha agua', apply: (s, h) => { const v = h.restVolunteer(6); if (v) h.log(`${v.name} guarda cama casi una semana.`); }, result: 'La gripe se toma su tiempo.' },
+    ],
+  },
+
+  // Economía: cambios que no se pueden evitar, solo aguantar o aprovechar
+  {
+    id: 'coop_baja', title: 'Carta de la cooperativa', illus: 'papeles', weight: 3, cooldown: 35, minDay: 10, crisis: true,
+    text: 'Hay excedente en toda la comarca. La cooperativa avisa: durante dos semanas pagará mucho menos.',
+    options: [
+      { label: 'Guardar lo que aguante y vender en el mercado', apply: (s, h) => h.mod('coop_baja', 14), result: 'Lo fresco no espera. Lo demás, a la despensa.' },
+    ],
+  },
+  {
+    id: 'mercado_flojo', title: 'Camiones de fuera', illus: 'feria', weight: 2, cooldown: 35, minDay: 12, crisis: true,
+    text: 'Llegan camiones con fruta y verdura de fuera, a precio de saldo. En el mercado nadie mira el puesto de la finca.',
+    options: [
+      { label: 'Aguantar', apply: (s, h) => h.mod('mercado_flojo', 10), result: 'Ya pasará. Lo de aquí sabe a otra cosa.' },
+    ],
+  },
+  {
+    id: 'luz_cara', title: 'La factura de la luz', illus: 'papeles', weight: 2, cooldown: 60, minDay: 25, crisis: true,
+    cond: (s) => !s.flags.placas,
+    text: 'Suben la luz y el gasoil. Los recibos de la finca van a pesar bastante más durante un mes.',
+    options: [
+      { label: 'Poner placas solares en el tejado del corral', cost: { money: 320, jornales: 2 }, flag: 'placas', apply: (s, h) => h.mod('luz_cara', 7), result: 'Placas al sol de Córdoba. Desde ahora, los recibos bajan para siempre.' },
+      { label: 'Apretarse el cinturón', effects: { mood: -3 }, apply: (s, h) => h.mod('luz_cara', 28), result: 'Velas en la cena, que también es bonito.' },
+    ],
+  },
+  {
+    id: 'carretera', title: 'Obras en la carretera', illus: 'papeles', weight: 2, cooldown: 50, minDay: 20, crisis: true,
+    text: 'Cortan la carretera de Fuente Obejuna una semana para asfaltar. Ni huéspedes ni mercado.',
+    options: [
+      { label: 'Aprovechar para trabajar en la finca', apply: (s, h) => h.mod('carretera', 7), result: 'Una semana de silencio total. Solo se oyen las máquinas, a lo lejos.' },
+    ],
+  },
+  {
+    id: 'lengua_azul', title: 'Lengua azul', illus: 'inspector', weight: 2, cooldown: 60, crisis: true,
+    cond: (s) => s.animals.ovejas > 0,
+    text: (s) => `Hay lengua azul en la comarca. La Junta obliga a vacunar y a tener las ovejas en cuarentena. Vacunar las ${s.animals.ovejas} cuesta ${s.animals.ovejas * 12} €.`,
+    options: [
+      { label: 'Vacunar a todas', apply: (s, h) => { h.addMoney(-12 * s.animals.ovejas); h.mod('lengua_azul', 8); }, result: 'Pinchazo a pinchazo. Una semana sin queso, pero todas sanas.' },
+      { label: 'Solo cuarentena', apply: (s, h) => { h.mod('lengua_azul', 20); const n = h.loseAnimals('ovejas', 0.25); h.log(`Se pierden ${n === 1 ? 'una oveja' : n + ' ovejas'}.`); }, result: 'La cuarentena se alarga y alguna oveja no lo supera.' },
+    ],
+  },
+  {
+    id: 'peste', title: 'Alerta sanitaria porcina', illus: 'inspector', weight: 2, seasons: [2, 3], cooldown: 60, crisis: true,
+    cond: (s) => s.animals.cerdos > 0 || s.products.cerdo > 0,
+    text: 'Han detectado un brote en otra provincia. Los mataderos pagan la mitad hasta que se aclare.',
+    options: [
+      { label: 'Esperar sin vender', apply: (s, h) => h.mod('peste', 14), result: 'Los cerdos, a seguir comiendo bellota. Ya se venderán.' },
+    ],
+  },
+  {
+    id: 'pienso_caro', title: 'El pienso, por las nubes', illus: 'sequia', weight: 2, seasons: [1], cooldown: 40, crisis: true,
+    cond: (s) => s.animals.ovejas + s.animals.gallinas > 0,
+    text: 'Con la sequía, el pienso y la paja cuestan el doble en la cooperativa. Quien guardó heno en primavera respira.',
+    options: [
+      { label: 'Racionar', apply: (s, h) => h.mod('sequia_precio', 21), result: 'A partir de hoy, cada paca cuenta.' },
+    ],
+  },
+  {
+    id: 'mala_resena', title: 'Una estrella', illus: 'influencer', weight: 3, cooldown: 30, crisis: true,
+    cond: (s, h) => s.flags.tourism && s.stats.guests > 4 && (s.zones.cortijo.cons < 75 || s.cold || h.damaged('cortijo') || h.damaged('paseo')),
+    text: (s) => `Alguien ha dejado una reseña de una estrella: «${s.cold ? 'Pasamos un frío horrible, la chimenea apagada.' : 'Bonito, pero la casa se cae a trozos.'}»`,
+    options: [
+      { label: 'Contestar con cariño e invitarles a volver', cost: { jornales: 1 }, effects: { rep: -2 }, result: 'Una respuesta larga y sincera. Alguien escribe debajo: «Yo sí volvería».' },
+      { label: 'Ignorarla', effects: { rep: -5 }, apply: (s, h) => h.mod('cancelaciones', 10), result: 'La reseña sube como la espuma. Llegan cancelaciones.' },
+    ],
+  },
+  {
+    id: 'prestamo', title: 'Números rojos', illus: 'papeles', weight: 8, cooldown: 45,
+    cond: (s) => s.money < -40 && !s.loan,
+    text: 'El director de la cooperativa te ve en la báscula y baja la voz: «Si os hace falta, os adelantamos algo. Ya lo devolvéis poco a poco».',
+    options: [
+      { label: 'Aceptar 300 € (11 cuotas de 30 €)', apply: (s, h) => h.takeLoan(300, 11, 30), result: 'Un apretón de manos y un papel firmado. Respiro.' },
+      { label: 'No, ya saldremos', effects: { mood: -2 }, result: 'Toca vender lo que haya y apretarse.' },
+    ],
+  },
+  {
+    id: 'renta', title: 'La declaración de la renta', illus: 'papeles', weight: 0,
+    // La dispara la simulación cada primavera si el año ha dado beneficio
+    text: (s, h) => `Llega la primavera y, con ella, Hacienda. Por lo ganado este año toca pagar ${h.taxDue()} €.`,
+    options: [
+      { label: 'Llevársela al gestor (+40 €)', apply: (s, h) => h.payTax(40), result: 'El gestor lo deja todo en orden en media hora.' },
+      { label: 'Hacerla una misma, a lápiz', cost: { jornales: 2 }, apply: (s, h) => h.payTax(0), result: 'Una mañana entera de papeles. Pero sale bien.' },
+    ],
+  },
+
+  // Rachas buenas
+  {
+    id: 'puente', title: 'Puente festivo', illus: 'feria', weight: 3, seasons: [0, 2], cooldown: 30,
+    cond: (s, h) => s.flags.tourism && !h.stopped('tourism'),
+    text: 'Viene un puente largo. Llaman preguntando si queda alguna habitación libre.',
+    options: [
+      { label: 'Preparar las habitaciones', cost: { jornales: 1 }, apply: (s, h) => h.mod('puente', 5), result: 'Sábanas tendidas al sol y flores en cada mesilla.' },
+      { label: 'Que vengan los que vengan', apply: (s, h) => h.mod('puente', 3) },
+    ],
+  },
+  {
+    id: 'aceite_caro', title: 'Mal año en Jaén', illus: 'bellota', weight: 2, seasons: [3], cooldown: 60,
+    text: 'La sequía ha dejado los olivares de Jaén a medias. El aceite se paga como nunca.',
+    options: [ { label: 'Que suba', apply: (s, h) => h.mod('aceite_caro', 21), result: 'Los olivos de la dehesa valen hoy su peso en oro.' } ],
+  },
+  {
+    id: 'feria_queso', title: 'Feria del queso y la miel', illus: 'feria', weight: 2, seasons: [0], cooldown: 60,
+    cond: (s) => s.animals.ovejas > 0 || s.animals.colmenas > 0,
+    text: 'La comarca celebra su feria del queso y la miel. Llegan compradores de Córdoba y de Badajoz.',
+    options: [ { label: 'Aprovecharla', apply: (s, h) => h.mod('feria_queso', 10), result: 'Quesos y tarros, mejor pagados estos días.' } ],
   },
 
   // ───────────── Pueblo ─────────────
@@ -2569,7 +3456,7 @@ const EVENTS = [
     ],
   },
   {
-    id: 'inspeccion', title: 'Inspección', illus: 'inspector', weight: 2, cooldown: 30, minDay: 10,
+    id: 'inspeccion', title: 'Inspección', illus: 'inspector', weight: 2, crisis: true, cooldown: 30, minDay: 10,
     cond: (s) => s.zones.corral.unlocked || s.guests.length > 0,
     text: (s) => `Un inspector de la Junta pregunta por ${s.guests.length ? 'los papeles de los huéspedes' : 'el corral y los animales'}. Mira todo con su carpeta.`,
     options: [
@@ -2657,7 +3544,7 @@ return { EVENTS, EVENT_BY_ID };
 })();
 
 // ── src/data/texts.js ──
-const __m25 = (() => {
+const __m28 = (() => {
 // Textos sueltos: introducción, regalos del gato, postales, la finca dormida, consejos.
 
 const INTRO = [
@@ -2721,69 +3608,18 @@ const TIPS = [
 return { INTRO, CAT_NAME, CAT_GIFTS, POSTCARDS, SLEEP, TIPS };
 })();
 
-// ── src/data/tourism.js ──
-const __m27 = (() => {
-// Agroturismo (fase 2). Mejoras que se construyen y actividades que se ofrecen.
-// requires.zones: conservación mínima; requires.animals; requires.items; requires.skill
-// capacity: plazas para huéspedes · appeal: atractivo · price: lo que paga cada huésped por día
-// cost: lo que cuesta construirla (dinero, materiales y jornales)
-
-const UPGRADES = [
-  { id: 'hab1', name: 'Primera habitación', kind: 'room', capacity: 2, appeal: 1,
-    cost: { money: 140, cal: 2, jornales: 3 }, requires: { zones: { cortijo: 65 } },
-    desc: 'La alcoba de arriba, encalada y con colcha de ganchillo.' },
-  { id: 'hab2', name: 'Segunda habitación', kind: 'room', capacity: 2, appeal: 1,
-    cost: { money: 240, cal: 2, piedra: 2, jornales: 4 }, requires: { zones: { cortijo: 75 }, upgrades: ['hab1'] },
-    desc: 'La del patio, con ventana a la fuente.' },
-  { id: 'hab3', name: 'Habitación del desván', kind: 'room', capacity: 2, appeal: 1.5,
-    cost: { money: 380, cal: 3, herramientas: 1, jornales: 5 }, requires: { zones: { cortijo: 85 }, upgrades: ['hab2'] },
-    desc: 'Vigas a la vista y una claraboya para ver estrellas sin salir de la cama.' },
-  { id: 'glamping', name: 'Glamping bajo las encinas', kind: 'room', capacity: 3, appeal: 2,
-    cost: { money: 320, lena: 3, jornales: 4 }, requires: { zones: { dehesa: 60 } },
-    desc: 'Tres tiendas de lona cruda entre encinas centenarias.' },
-
-  { id: 'taller_queso', name: 'Taller de queso', kind: 'activity', appeal: 1, price: 18,
-    cost: { money: 60, jornales: 2 }, requires: { zones: { corral: 60 }, animals: { ovejas: 2 } },
-    desc: 'Cuajo, paciencia y un queso que te llevas a casa.' },
-  { id: 'taller_miel', name: 'Taller de miel', kind: 'activity', appeal: 1, price: 15,
-    cost: { money: 50, jornales: 2 }, requires: { zones: { colmenar: 60 }, animals: { colmenas: 2 } },
-    desc: 'Con careta y ahumador. La miel se prueba del panal.' },
-  { id: 'taller_pan', name: 'Taller de pan', kind: 'activity', appeal: 1, price: 14,
-    cost: { money: 70, lena: 2, jornales: 2 }, requires: { zones: { cortijo: 70 } },
-    desc: 'Masa madre y horno de leña de encina.' },
-  { id: 'taller_acuarela', name: 'Taller de acuarela', kind: 'activity', appeal: 1.5, price: 20,
-    cost: { money: 40, jornales: 2 }, requires: { items: ['acuarelas'] },
-    desc: 'Con la caja de Transi en la mesa, como homenaje. Se pinta el paseo de las adelfas.' },
-  { id: 'ruta', name: 'Ruta por la dehesa', kind: 'activity', appeal: 1, price: 10,
-    cost: { money: 30, jornales: 2 }, requires: { zones: { dehesa: 60, muros: 50 } },
-    desc: 'Entre muros de piedra seca hasta el berrocal grande, con el pueblo al fondo.' },
-  { id: 'estrellas', name: 'Observación de estrellas', kind: 'activity', appeal: 1.2, price: 12,
-    cost: { money: 90, jornales: 1 }, requires: { zones: { dehesa: 50 } },
-    desc: 'Un telescopio viejo y mantas sobre la hierba. Aquí la Vía Láctea se ve entera.' },
-  { id: 'concierto', name: 'Conciertos al atardecer', kind: 'activity', appeal: 3, price: 25,
-    cost: { money: 50, jornales: 2 }, requires: { zones: { piano: 80 } },
-    desc: 'El piano del cenador vuelve a sonar cuando bajan los ciervos.' },
-];
-
-const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
-
-// Cuánto atrae cada estación (primavera, verano, otoño, invierno)
-const TOURISM_SEASON = [1.2, 1.0, 1.1, 0.6];
-
-return { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON };
-})();
-
 // ── src/sim/tourism.js ──
-const __m26 = (() => {
+const __m29 = (() => {
 // Agroturismo: mejoras, huéspedes, actividades y conciertos.
 const { BALANCE } = __m4;
-const { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON } = __m27;
+const { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON } = __m20;
 const { WEATHER } = __m9;
 const { ZONE_BY_ID } = __m5;
 const { rand, randInt, chance } = __m11;
 const { seasonIndex } = __m12;
 const { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, labelOf } = __m13;
 const { hasSkill } = __m16;
+const { stopped, modFactor, damages } = __m18;
 
 function tourismOpen(s) {
   if (s.flags.tourism) return true;
@@ -2848,19 +3684,22 @@ function tourismDawn(s) {
     g.nights--;
     if (g.nights > 0) { stay.push(g); continue; }
     const vis = (s.zones.cortijo.cons + s.zones.patio.cons + s.zones.paseo.cons) / 3;
-    const sat = 50 + (vis - 50) * 0.6 + appeal(s) * 3 + (s.mood - 50) * 0.2 + (rand(s) - 0.5) * 20 + (g.fed ? 5 : 0);
-    const dr = clamp(Math.round((sat - 50) / 12), -3, 4);
+    let sat = 50 + (vis - 50) * 0.6 + appeal(s) * 2 + (s.mood - 50) * 0.2 + (rand(s) - 0.5) * 20 + (g.fed ? 5 : 0);
+    if (s.cold) sat -= 25;                         // sin calefacción, nadie vuelve
+    sat -= damages(s).length * 6;                  // obras y cosas rotas por todas partes
+    const dr = clamp(Math.round((sat - 50) / 15), -4, 3);
     s.rep = clamp(s.rep + dr, 0, 100);
     if (dr > 1) addLog(s, `Se despiden unos huéspedes encantados: «Volveremos en ${['primavera', 'verano', 'otoño', 'invierno'][randInt(s, 0, 3)]}».`, 'good');
     else if (dr < 0) addLog(s, 'Unos huéspedes se van con cara de pocos amigos. «Muy bonito, pero…»', 'bad');
   }
   s.guests = stay;
   if (!s.flags.tourism) return;
+  if (stopped(s, 'tourism')) return;
   const cap = capacity(s) - guestCount(s);
   if (cap <= 0) return;
   const si = seasonIndex(s);
   const w = WEATHER[s.weather] || WEATHER.sol;
-  const expected = (BALANCE.visitorBase + s.rep * BALANCE.visitorPerRep) * (1 + Math.min(8, appeal(s)) * 0.1) * TOURISM_SEASON[si] * w.visitors * (s.zones.cortijo.cons / 100);
+  const expected = (BALANCE.visitorBase + s.rep * BALANCE.visitorPerRep) * (1 + Math.min(8, appeal(s)) * 0.1) * TOURISM_SEASON[si] * w.visitors * (s.zones.cortijo.cons / 100) * modFactor(s, 'tourism');
   let free = cap;
   let tries = Math.floor(expected) + (rand(s) < expected % 1 ? 1 : 0);
   while (tries-- > 0 && free > 0) {
@@ -2892,7 +3731,7 @@ function tourismEvening(s) {
 }
 
 function concertDue(s) {
-  return s.upgrades.includes('concierto') && guestCount(s) > 0 && s.day % 4 === 0;
+  return s.upgrades.includes('concierto') && guestCount(s) > 0 && s.day % 4 === 0 && !stopped(s, 'concerts');
 }
 
 function concert(s) {
@@ -2913,23 +3752,25 @@ return { tourismOpen, capacity, appeal, guestCount, upgradeBlocker, buildUpgrade
 })();
 
 // ── src/sim/events.js ──
-const __m23 = (() => {
+const __m26 = (() => {
 // Motor de eventos: elige, encola y resuelve eventos definidos en data/events.js.
 const { BALANCE } = __m4;
-const { EVENTS, EVENT_BY_ID } = __m24;
+const { EVENTS, EVENT_BY_ID } = __m27;
 const { REVELATION } = __m7;
-const { CAT_GIFTS, POSTCARDS } = __m25;
+const { CAT_GIFTS, POSTCARDS } = __m28;
 const { PRODUCTS } = __m6;
 const { ITEM_BY_ID } = __m15;
 const { VOLUNTEER_BY_ID } = __m17;
 const { rand, chance, randInt, pick, weighted } = __m11;
-const { seasonIndex } = __m12;
+const { seasonIndex, isSeasonStart, yearOf } = __m12;
+const { breakDown, canBreak, addMod, difficulty, taxDue, damageOf, stopped, takeLoan } = __m18;
+const { BILLS, DAMAGES } = __m19;
 const { addLog, signal, clamp, canAfford, payCost, applyEffects, addStock, costLabel, missingOf, labelOf } = __m13;
 const { avgCons, avgWeeds } = __m14;
-const { giveItem, clue } = __m18;
-const { sellAllAt } = __m22;
+const { giveItem, clue } = __m21;
+const { sellAllAt } = __m25;
 const { departVolunteer, infoOf } = __m16;
-const { concert } = __m26;
+const { concert } = __m29;
 
 // Evento sintético de la revelación (sus textos están en story.js)
 const REVELATION_EVENT = {
@@ -2969,22 +3810,37 @@ function eligibleEvents(s) {
   return EVENTS.filter((e) => eligible(s, e, h));
 }
 
-// Al amanecer: ¿habrá evento hoy? ¿a qué hora?
+// Los contratiempos pesan más cada año y según la dificultad
+function crisisFactor(s) {
+  return difficulty(s).crisis * (1 + (yearOf(s) - 1) * BALANCE.crisisGrowthPerYear);
+}
+
+function eventWeight(s, e) { return e.weight * (e.crisis ? crisisFactor(s) : 1); }
+
+// ¿Alguna opción cuesta jornales? Entonces llega al amanecer, con el día por delante
+function needsJornales(e) { return e.options.some((o) => o.cost && o.cost.jornales); }
+
+// Al amanecer se decide el evento del día. Si pide jornales, sale ya; si no, a una hora cualquiera.
 function planDay(s) {
   s.todayEvent = null;
   if (s.day - s.lastEventDay < BALANCE.eventMinGapDays) return;
   if (s.day < 2) return;
   if (!chance(s, BALANCE.eventChancePerDay)) return;
-  s.todayEvent = { hour: randInt(s, 9, 18) };
+  const h = helpers(s);
+  const list = EVENTS.filter((e) => eligible(s, e, h));
+  const id = weighted(s, list.map((e) => [e.id, eventWeight(s, e)]));
+  if (!id) return;
+  const e = EVENT_BY_ID[id];
+  const hour = e.when === 'tarde' ? 19 : needsJornales(e) ? BALANCE.dawnHour : randInt(s, 9, 17);
+  s.todayEvent = { hour, id };
 }
 
 function hourEvents(s, hour) {
   if (s.todayEvent && hour >= s.todayEvent.hour) {
+    const { id } = s.todayEvent;
     s.todayEvent = null;
-    const h = helpers(s);
-    const list = EVENTS.filter((e) => eligible(s, e, h));
-    const id = weighted(s, list.map((e) => [e.id, e.weight]));
-    if (id) queueEvent(s, id);
+    const e = id && EVENT_BY_ID[id];
+    if (e && (!e.cond || e.cond(s, helpers(s)))) queueEvent(s, id);
   }
 }
 
@@ -3016,7 +3872,12 @@ function systemEvents(s) {
     s.pendingCat = chooseCatGift(s);
     queueEvent(s, 'gato');
   }
-  // Programados (subvención, notario…)
+  // La declaración de la renta, cada primavera
+  if (isSeasonStart(s) && seasonIndex(s) === BILLS.tax.season && s.day > 1) {
+    if (taxDue(s) > 0) queueEvent(s, 'renta');
+    else s.taxBase = { earned: s.stats.earned, spent: s.stats.spent };
+  }
+  // Programados (subvención, notario, avisos que van a más…)
   const due = s.scheduled.filter((x) => x.day <= s.day);
   s.scheduled = s.scheduled.filter((x) => x.day > s.day);
   for (const x of due) queueEvent(s, x.id);
@@ -3066,6 +3927,7 @@ function helpers(s) {
       }
       s.mood = clamp(s.mood - sev * 6, 0, 100);
       if (dmg > 8) addLog(s, 'Huele a ceniza durante días. La dehesa tardará en sanar.', 'bad');
+      if (dmg > 14) breakDown(s, 'dehesa_quemada');
     },
     catGift: () => {
       const g = CAT_GIFTS[s.pendingCat ?? 0];
@@ -3100,6 +3962,43 @@ function helpers(s) {
       s.pendingLeave = null;
     },
     concert: () => concert(s),
+    // Contratiempos
+    breakDown: (id) => breakDown(s, id),
+    canBreak: (id) => canBreak(s, id),
+    damaged: (zoneId) => !!damageOf(s, zoneId),
+    stopped: (what, zoneId) => stopped(s, what, zoneId),
+    mod: (id, days) => addMod(s, id, days),
+    taxDue: () => taxDue(s),
+    takeLoan: (a, w, q) => takeLoan(s, a, w, q),
+    payTax: (extra = 0) => {
+      const v = taxDue(s) + extra;
+      addStock(s, 'money', -v); s.stats.spent += v; s.stats.bills = (s.stats.bills || 0) + v;
+      signal(s, 'coins', { amount: -v });
+      s.taxBase = { earned: s.stats.earned, spent: s.stats.spent };
+      addLog(s, `Pagas ${v} € a Hacienda.`, 'info');
+    },
+    loseAnimals: (k, frac) => {
+      const n = Math.min(s.animals[k] || 0, Math.max(1, Math.round((s.animals[k] || 0) * frac)));
+      s.animals[k] = (s.animals[k] || 0) - n;
+      return n;
+    },
+    loseProduct: (k, frac) => { const n = Math.floor((s.products[k] || 0) * frac); addStock(s, k, -n); return n; },
+    loseStock: (frac) => {
+      let n = 0;
+      for (const k of Object.keys(PRODUCTS)) { const q = Math.floor((s.products[k] || 0) * frac); if (q > 0 && !['cerdo', 'jamon'].includes(k)) { addStock(s, k, -q); n += q; } }
+      return n;
+    },
+    restVolunteer: (days) => {
+      const v = s.volunteers.filter((x) => !(x.rest > 0))[0];
+      if (!v) return null;
+      v.rest = days;
+      return infoOf(v);
+    },
+    chance: (p) => chance(s, p),
+    // Los vecinos echan una mano: adelantan trabajo de una reparación
+    helpRepair: (id, n) => { const d = s.damages && s.damages[id]; if (d) d.work = Math.min(DAMAGES[id].work - 1, d.work + n); },
+    clearBeds: () => { for (const b of s.beds || []) { b.crop = null; b.growth = 0; b.ready = null; } },
+    hurtBeds: (f) => { for (const b of s.beds || []) if (b.crop) { b.growth = Math.max(0, b.growth * (1 - f)); if (b.ready != null && f > 0.5) { b.crop = null; b.ready = null; b.growth = 0; } } },
   };
   return h;
 }
@@ -3143,7 +4042,7 @@ function resolveEvent(s, index = 0) {
   return { title: e.title, result: opt.result || '' };
 }
 
-return { eventDef, eligibleEvents, planDay, hourEvents, queueEvent, fireRisk, systemEvents, helpers, currentEvent, resolveEvent };
+return { eventDef, eligibleEvents, crisisFactor, needsJornales, planDay, hourEvents, queueEvent, fireRisk, systemEvents, helpers, currentEvent, resolveEvent };
 })();
 
 // ── src/sim/sim.js ──
@@ -3158,13 +4057,14 @@ const { rand, pick, weighted } = __m11;
 const { seasonIndex, isSeasonStart, isMarketDay, yearOf, weekday } = __m12;
 const { addLog, signal, clamp } = __m13;
 const { decayHour, avgCons, autoMaintain, restoredCount, checkItems } = __m14;
-const { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices, spoilDay } = __m22;
-const { gardenDay } = __m20;
+const { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices, spoilDay } = __m25;
+const { gardenDay } = __m23;
 const { tryArrival, feedVolunteers, dailyVolunteers, departVolunteer, payEmployees, dailyJornales } = __m16;
-const { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } = __m23;
-const { checkRevelation } = __m18;
+const { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } = __m26;
+const { checkRevelation } = __m21;
+const { hardshipDawn, damages } = __m18;
 const { TRAITS, VOLUNTEER_BY_ID } = __m17;
-const { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } = __m26;
+const { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } = __m29;
 
 // Horas de juego por segundo real a velocidad x1
 const HOURS_PER_SECOND = 24 / BALANCE.realSecondsPerDay;
@@ -3255,6 +4155,7 @@ function dawn(s) {
 
   // Finca
   spoilDay(s);
+  hardshipDawn(s);     // gastos, leña, comida de los animales, averías que empeoran
   produceDay(s);
   gardenDay(s);
   montaneraDay(s);
@@ -3265,10 +4166,11 @@ function dawn(s) {
   tourismDawn(s);
 
   // Ánimo
-  let dm = (BALANCE.moodRestTarget - s.mood) * 0.02 * BALANCE.moodDailyDrift * 4 + w.mood;
+  // Tiende a un punto que sube un poco con cada zona restaurada; los ratos libres lo empujan por encima
+  const moodTarget = BALANCE.moodRestTarget + Math.min(12, restoredCount(s) * BALANCE.moodPerRestoredTarget);
+  let dm = (moodTarget - s.mood) * 0.02 * BALANCE.moodDailyDrift * 4 + w.mood;
   if (avgCons(s) < 30) dm += BALANCE.moodLowConservation;
   if (s.money < 0) dm += BALANCE.moodDebt;
-  dm += restoredCount(s) * 0.15;
   for (const v of s.volunteers) dm += (VOL_MOOD(v));
   s.mood = clamp(s.mood + dm, 0, 100);
 
@@ -3277,8 +4179,8 @@ function dawn(s) {
   checkRevelation(s);
 
   // La fama no se sostiene sola: tiende a lo que la finca merece
-  const repTarget = 5 + avgCons(s) * 0.25 + restoredCount(s) + appeal(s) * 4 + s.items.length * 0.3;
-  if (s.rep > repTarget) s.rep = Math.max(repTarget, s.rep - BALANCE.repDecay - (s.rep - repTarget) * 0.02);
+  const repTarget = 5 + avgCons(s) * 0.22 + restoredCount(s) * 0.9 + appeal(s) * 2.5 + s.items.length * 0.25 - damages(s).length * 4 - (s.cold ? 6 : 0);
+  if (s.rep > repTarget) s.rep = Math.max(repTarget, s.rep - BALANCE.repDecay - (s.rep - repTarget) * 0.05);
 
   // Jornales del día
   s.jornales = dailyJornales(s);
@@ -3339,7 +4241,7 @@ return { HOURS_PER_SECOND, isBlocked, advance, runDays, autoResolve, dawn, check
 })();
 
 // ── src/data/activities.js ──
-const __m29 = (() => {
+const __m31 = (() => {
 // Ratos libres: actividades artísticas y de ocio que suben el ánimo de la casa y de los voluntarios.
 // cost: jornales, dinero, materiales o productos ('food' = cualquier comida de la finca)
 // happy: cuánto se alegran los voluntarios · mood: ánimo de la casa · cooldown: días hasta repetir
@@ -3374,11 +4276,11 @@ return { ACTIVITIES, ACTIVITY_BY_ID };
 })();
 
 // ── src/sim/kitchen.js ──
-const __m28 = (() => {
+const __m30 = (() => {
 // La cocina del cortijo (conservas, mermelada, matanza) y los ratos libres.
-const { RECIPES } = __m21;
+const { RECIPES } = __m24;
 const { PRODUCTS } = __m6;
-const { ACTIVITIES, ACTIVITY_BY_ID } = __m29;
+const { ACTIVITIES, ACTIVITY_BY_ID } = __m31;
 const { WEATHER } = __m9;
 const { ZONE_BY_ID } = __m5;
 const { seasonIndex } = __m12;
@@ -3520,11 +4422,12 @@ const __m2 = (() => {
 
 
 
-return { ...__m3, ...__m8, ...__m12, ...__m13, ...__m14, ...__m22, ...__m16, ...__m26, ...__m18, ...__m23, ...__m20, ...__m28, rand: __m11.rand };
+
+return { ...__m3, ...__m8, ...__m12, ...__m13, ...__m14, ...__m25, ...__m16, ...__m29, ...__m21, ...__m26, ...__m23, ...__m30, ...__m18, rand: __m11.rand };
 })();
 
 // ── src/art/noise.js ──
-const __m32 = (() => {
+const __m34 = (() => {
 // Aleatoriedad para el dibujo (independiente de la simulación) y ruido suave.
 
 function makeRng(seed = 1) {
@@ -3591,10 +4494,10 @@ return { makeRng, hashStr, noise1, noise2, fbm2 };
 })();
 
 // ── src/art/ink.js ──
-const __m31 = (() => {
+const __m33 = (() => {
 // Trazo «a mano»: líneas con temblor, doble trazo, rayado y aguadas de acuarela.
 // Todo se dibuja sobre capas cacheadas, nunca por fotograma.
-const { makeRng, noise1 } = __m32;
+const { makeRng, noise1 } = __m34;
 
 // ── Color ──
 function hexToRgb(hex) {
@@ -3885,10 +4788,10 @@ return { hexToRgb, rgba, mix, INK, INK_LIGHT, PENCIL, Pen, blobPts, canopyPts, s
 })();
 
 // ── src/art/paper.js ──
-const __m33 = (() => {
+const __m35 = (() => {
 // Papel antiguo generado por código: fibras, manchas de café y humedad, bordes gastados.
-const { makeRng, noise2, fbm2 } = __m32;
-const { rgba, mix, blobPts, wash } = __m31;
+const { makeRng, noise2, fbm2 } = __m34;
+const { rgba, mix, blobPts, wash } = __m33;
 
 function makeCanvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined' && !makeCanvas.forceDom) {
@@ -4064,9 +4967,9 @@ return { makeCanvas, makePaper, coffeeRing, paperDataURL, mix };
 })();
 
 // ── src/art/palette.js ──
-const __m34 = (() => {
+const __m36 = (() => {
 // Colores de las aguadas según la estación, y el tinte del papel según la hora.
-const { mix } = __m31;
+const { mix } = __m33;
 
 const BASE = {
   whitewash: '#f4efe4', wallShade: '#a9b4c2', tile: '#2f5f9e', tileLight: '#7fa6d6',
@@ -4129,12 +5032,12 @@ return { palette, timeTint, SEASON_PAPER };
 })();
 
 // ── src/art/sketches.js ──
-const __m35 = (() => {
+const __m37 = (() => {
 // Ilustraciones a boceto de la finca, dibujadas a partir de las fotos de referencia.
 // Cada función dibuja en coordenadas locales de su zona (0,0 → w,h) sobre dos capas:
 //   d.pen → tinta (capa de líneas)      d.wash(...) → acuarela (capa de color)
-const { canopyPts, blobPts, rgba, mix } = __m31;
-const { GRANDCHILDREN } = __m19;
+const { canopyPts, blobPts, rgba, mix } = __m33;
+const { GRANDCHILDREN } = __m22;
 
 // ───────────────────────── Elementos reutilizables ─────────────────────────
 
@@ -5212,7 +6115,7 @@ return { groundShadow, groundPatch, encina, olivo, pino, eucalipto, mimosa, higu
 })();
 
 // ── src/art/cat.js ──
-const __m36 = (() => {
+const __m38 = (() => {
 // El gato de la finca: blanco con manchas atigradas. Te sigue, duerme al sol y a veces encuentra cosas.
 const { ZONES, ZONE_BY_ID } = __m5;
 
@@ -5398,7 +6301,7 @@ return { Cat };
 })();
 
 // ── src/art/critters.js ──
-const __m37 = (() => {
+const __m39 = (() => {
 // Pequeños seres vivos del plano, dibujados en vivo con pocos trazos.
 const INK = 'rgba(59,42,28,0.9)';
 
@@ -5527,18 +6430,19 @@ return { drawHen, drawSheep, drawPig, drawBee, drawDeer, drawFigure };
 })();
 
 // ── src/art/map.js ──
-const __m30 = (() => {
+const __m32 = (() => {
 // El plano de la finca: capas cacheadas (papel, terreno, zonas) y elementos vivos
 // (gato, animales, voluntarios, clima, luz). Lo estático solo se redibuja cuando cambia.
 const { ZONES, ZONE_BY_ID, DECOR } = __m5;
-const { Pen, wash, blobPts, rgba, mix, INK, PENCIL, canopyPts } = __m31;
-const { makeRng, hashStr } = __m32;
-const { makePaper, makeCanvas } = __m33;
-const { palette, timeTint } = __m34;
-const { SKETCHES, village, compass, encina: encinaFree, arbusto: matorral } = __m35;
-const { Cat } = __m36;
-const { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } = __m37;
-const { CROPS } = __m21;
+const { Pen, wash, blobPts, rgba, mix, INK, PENCIL, canopyPts } = __m33;
+const { makeRng, hashStr } = __m34;
+const { makePaper, makeCanvas } = __m35;
+const { palette, timeTint } = __m36;
+const { SKETCHES, village, compass, encina: encinaFree, arbusto: matorral } = __m37;
+const { Cat } = __m38;
+const { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } = __m39;
+const { CROPS } = __m24;
+const { DAMAGES } = __m19;
 
 const WORLD = { w: 1600, h: 1000 };
 const PAD = 46;
@@ -5847,6 +6751,7 @@ class FarmMap {
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(this.static, 0, 0, this.static.width / S, this.static.height / S);
     this._live(ctx, s, dt);
+    this._damage(ctx, s);
     this._light(ctx, s);
     this._weather(ctx, s, dt);
     this._selection(ctx);
@@ -5960,6 +6865,47 @@ class FarmMap {
         ctx.arc(cx + Math.sin(t * 4 + i) * 6 + t * 14, cy - t * 50, 3 + t * 9, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+  }
+
+  // Averías: tachones en rojo óxido sobre la zona y una etiqueta con lo que falta
+  _damage(ctx, s) {
+    if (!s.damages) return;
+    for (const d of Object.values(s.damages)) {
+      const def = DAMAGES[d.id];
+      if (!def || !def.zone) continue;
+      const z = ZONE_BY_ID[def.zone];
+      const r = makeRng(hashStr(d.id) + 3);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(160,52,30,0.55)';
+      ctx.lineCap = 'round';
+      const cx = z.x + z.w * (0.3 + r() * 0.4), cy = z.y + z.h * (0.35 + r() * 0.3);
+      const rw = Math.min(70, z.w * 0.3), rh = Math.min(50, z.h * 0.3);
+      ctx.lineWidth = 2.2;
+      for (let i = 0; i < 7; i++) {
+        const y = cy - rh + (i / 6) * rh * 2;
+        ctx.beginPath();
+        ctx.moveTo(cx - rw + r() * 10, y + r() * 4);
+        ctx.lineTo(cx + rw - r() * 10, y - 8 + r() * 4);
+        ctx.stroke();
+      }
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(cx - rw * 0.7, cy - rh * 0.7); ctx.lineTo(cx + rw * 0.7, cy + rh * 0.7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx + rw * 0.7, cy - rh * 0.7); ctx.lineTo(cx - rw * 0.7, cy + rh * 0.7); ctx.stroke();
+      // Etiqueta
+      const pulse = 0.75 + 0.25 * Math.sin(this.time * 3);
+      const txt = `⚠ ${def.name}${d.work ? ` · ${d.work}/${def.work}` : ''}`;
+      ctx.font = `700 17px ${this.labelFont}`;
+      const tw = ctx.measureText(txt).width;
+      ctx.fillStyle = `rgba(250,240,220,${0.85 * pulse})`;
+      ctx.fillRect(cx - tw / 2 - 6, cy + rh + 6, tw + 12, 22);
+      ctx.strokeStyle = 'rgba(160,52,30,0.8)';
+      ctx.lineWidth = 1.2;
+      ctx.strokeRect(cx - tw / 2 - 6, cy + rh + 6, tw + 12, 22);
+      ctx.fillStyle = 'rgba(140,40,22,0.95)';
+      ctx.textAlign = 'center';
+      ctx.fillText(txt, cx, cy + rh + 23);
+      ctx.restore();
     }
   }
 
@@ -6136,9 +7082,9 @@ return { WORLD, singleCtx, FarmMap, canopyPts, mix };
 })();
 
 // ── src/engine/camera.js ──
-const __m38 = (() => {
+const __m40 = (() => {
 // Cámara del plano: encaje en pantalla, arrastre, pellizco y rueda.
-const { WORLD } = __m30;
+const { WORLD } = __m32;
 
 class Camera {
   constructor() {
@@ -6285,7 +7231,7 @@ return { Camera, attachGestures };
 })();
 
 // ── src/ui/dom.js ──
-const __m40 = (() => {
+const __m42 = (() => {
 // Ayudas mínimas para construir la interfaz sin librerías.
 
 function h(tag, attrs = {}, ...children) {
@@ -6334,12 +7280,13 @@ return { h, $, clear, fmtMoney, fmtNum, bar, btn };
 })();
 
 // ── src/ui/hud.js ──
-const __m41 = (() => {
+const __m43 = (() => {
 // Barra superior: fecha, hora, tiempo, recursos y velocidad.
-const { h, fmtMoney } = __m40;
+const { h, fmtMoney } = __m42;
 const { WEATHER } = __m9;
 const { dateLabel, clockLabel, daysToMarket, isMarketDay } = __m12;
 const { dailyJornales } = __m16;
+const { troubles } = __m18;
 
 class Hud {
   constructor(root, game) {
@@ -6353,7 +7300,11 @@ class Hud {
     this.jorn = this._chip('', 'jornales');
     this.mood = this._chip('', 'ánimo');
     this.rep = this._chip('', 'reputación');
-    this.res = h('div', { class: 'res' }, this.money.el, this.jorn.el, this.mood.el, this.rep.el);
+    this.alertB = h('b');
+    this.alertLab = h('span', { class: 'lab' }, 'avisos');
+    this.alert = h('button', { class: 'chip alert', title: 'Averías y avisos', 'aria-label': 'Ver averías y avisos', onclick: () => game.ui.openBook('cuentas') }, this.alertB, this.alertLab);
+    this.alert.hidden = true;
+    this.res = h('div', { class: 'res' }, this.money.el, this.jorn.el, this.mood.el, this.rep.el, this.alert);
     this.speedBtns = [0, 1, 2, 3].map((v) => h('button', {
       'aria-label': v ? `Velocidad x${v}` : 'Pausa',
       onclick: () => { game.setSpeed(v); },
@@ -6375,7 +7326,8 @@ class Hud {
   update(s) {
     const w = WEATHER[s.weather] || WEATHER.sol;
     const market = isMarketDay(s) ? ' · hoy hay mercado' : daysToMarket(s) === 1 ? ' · mañana, mercado' : '';
-    const key = [Math.floor(s.hour * 6), s.day, s.weather, Math.round(s.money), s.jornales, Math.round(s.mood), Math.round(s.rep), this.game.speed, this.game.paused].join('|');
+    const tr = troubles(s).filter((t) => t.kind !== 'mod' || t.bad);
+    const key = [tr.length, Object.keys(s.damages || {}).join(), Math.floor(s.hour * 6), s.day, s.weather, Math.round(s.money), s.jornales, Math.round(s.mood), Math.round(s.rep), this.game.speed, this.game.paused].join('|');
     if (key === this.last) return;
     this.last = key;
     this.clock.textContent = clockLabel(s.hour);
@@ -6391,6 +7343,11 @@ class Hud {
     this.mood.b.textContent = Math.round(s.mood);
     this.mood.el.classList.toggle('neg', s.mood < 30);
     this.rep.b.textContent = Math.round(s.rep);
+    this.alert.hidden = !tr.length;
+    if (tr.length) {
+      this.alertB.textContent = `⚠ ${tr.length}`;
+      this.alertLab.textContent = tr.length === 1 ? tr[0].name.toLowerCase() : 'problemas';
+    }
     const sp = this.game.paused ? 0 : this.game.speed;
     this.speedBtns.forEach((b, i) => b.classList.toggle('on', i === sp));
   }
@@ -6402,14 +7359,14 @@ return { Hud };
 })();
 
 // ── src/art/illus.js ──
-const __m43 = (() => {
+const __m45 = (() => {
 // Ilustraciones a boceto para eventos, recuerdos y la portada.
-const { Pen, wash, blobPts, canopyPts, rgba, mix, INK } = __m31;
-const { makeRng, hashStr } = __m32;
-const { palette } = __m34;
-const { encina, pino, eucalipto, adelfa, yuca, boulder, lavanda, grassTufts, mimosa, village } = __m35;
-const { singleCtx } = __m30;
-const { drawDeer } = __m37;
+const { Pen, wash, blobPts, canopyPts, rgba, mix, INK } = __m33;
+const { makeRng, hashStr } = __m34;
+const { palette } = __m36;
+const { encina, pino, eucalipto, adelfa, yuca, boulder, lavanda, grassTufts, mimosa, village } = __m37;
+const { singleCtx } = __m32;
+const { drawDeer } = __m39;
 
 const W = 360, H = 210;
 
@@ -6609,6 +7566,45 @@ function boar(d, x, y, s = 1) {
 }
 
 const MOTIFS = {
+  niebla(d) {
+    sky(d, '#c4c8c4', '#e4e6e0');
+    hills(d, 150, '#b8bcb0');
+    encina(d, 90, 172, 1.3); encina(d, 280, 166, 1.0);
+    for (let i = 0; i < 6; i++) d.washBlob(30 + i * 62, 120 + (i % 2) * 22, 70, 16, '#f4f4ee', { alpha: 0.55 });
+    d.pen.set({ width: 1.1 });
+    d.pen.path([[160, 190], [160, 150], [215, 150], [215, 190]], false);   // el piano tapado
+    d.pen.curve([[150, 152], [188, 138], [226, 152]]);
+  },
+  averia(d) {
+    sky(d, '#9aa4b0', '#d8dce0');
+    hills(d, 170, '#b8b498');
+    const { pen } = d;
+    d.wash([[90, 200], [90, 120], [270, 120], [270, 200]], '#f2ece0', { alpha: 0.9 });
+    pen.set({ width: 1.3 });
+    pen.path([[90, 200], [90, 120], [270, 120], [270, 200]], false);
+    // Tejado con un hueco
+    pen.path([[80, 122], [150, 78], [175, 92]], false);
+    pen.path([[205, 92], [210, 78], [280, 122]], false);
+    d.wash([[80, 122], [150, 78], [175, 92], [205, 92], [210, 78], [280, 122]], '#b06a48', { alpha: 0.45 });
+    pen.set({ width: 0.9 });
+    for (let i = 0; i < 5; i++) pen.line(176 + i * 7, 96 + (i % 2) * 6, 180 + i * 7, 110 + (i % 3) * 4); // vigas rotas
+    // Escalera apoyada
+    pen.set({ width: 1 });
+    pen.line(300, 200, 262, 104); pen.line(314, 200, 276, 104);
+    for (let k = 1; k < 7; k++) { const t = k / 7; pen.line(300 - 38 * t, 200 - 96 * t, 314 - 38 * t, 200 - 96 * t); }
+    pen.path([[150, 200], [150, 160], [178, 160], [178, 200]], false);
+    rain(d, 30, 150, 40, 120, 100);
+  },
+  furgoneta(d) {
+    hills(d, 150);
+    const { pen } = d;
+    d.wash([[80, 180], [80, 120], [210, 120], [250, 145], [270, 150], [270, 180]], '#e8e2d0', { alpha: 0.9 });
+    pen.set({ width: 1.3 });
+    pen.path([[80, 180], [80, 120], [210, 120], [250, 145], [270, 150], [270, 180], [80, 180]], false);
+    pen.path([[212, 126], [244, 146], [212, 146]], true);
+    for (const x of [118, 232]) { d.washBlob(x, 182, 15, 15, '#3a3a3a', { alpha: 0.6 }); pen.ellipse(x, 182, 15, 15); }
+    for (let i = 0; i < 5; i++) d.washBlob(60 - i * 10, 170 - i * 14, 10 + i * 5, 8 + i * 4, '#8890a8', { alpha: 0.3 - i * 0.04 });
+  },
   helada(d) {
     sky(d, '#c8d6e2', '#eef2f4');
     hills(d, 150, '#c6ccc8');
@@ -6971,7 +7967,7 @@ return { drawIllus, drawIcon, drawTitleArt, ILLUS_W: W, ILLUS_H: H };
 })();
 
 // ── src/audio/audio.js ──
-const __m45 = (() => {
+const __m47 = (() => {
 // Motor de audio: buses separados (música, ambiente, efectos), reverberación generada,
 // capa lo-fi y desbloqueo en iOS/Android (incluido el interruptor de silencio del iPhone).
 
@@ -7137,10 +8133,10 @@ return { AudioEngine, silentWav, audio };
 })();
 
 // ── src/audio/ambience.js ──
-const __m44 = (() => {
+const __m46 = (() => {
 // Ambiente: viento en las encinas, lluvia, chicharras, grillos, fuente, pájaros,
 // ovejas, cencerros, gallinas y el gato. Y los efectos de papel, pluma, sello y monedas.
-const { audio } = __m45;
+const { audio } = __m47;
 
 function noiseSrc(loop = true) {
   const c = audio.ctx;
@@ -7466,20 +8462,57 @@ const ambience = new Ambience();
 return { Ambience, sfx, ambience };
 })();
 
+// ── src/ui/troubles.js ──
+const __m48 = (() => {
+// Tarjeta de una avería: qué ha pasado, cuánto falta y cómo arreglarlo (a mano o pagando).
+const { h, bar, btn } = __m42;
+const { DAMAGES, repairBlocker, repair, hireBlocker, hireRepair, proTotal, repairCostLabel, repairLeft } = __m2;
+
+function repairCard(game, s, id, after) {
+  const def = DAMAGES[id];
+  const d = s.damages[id];
+  const left = repairLeft(s, id);
+  const why = repairBlocker(s, id);
+  const whyPro = hireBlocker(s, id);
+  const put = Math.min(Math.floor(s.jornales), left);
+  return h('div', { class: 'task damage' },
+    h('div', { class: 'info' },
+      h('div', { class: 'name' }, `⚠ ${def.name}`),
+      h('div', { class: 'small' }, def.text),
+      h('div', { class: 'meta' }, repairCostLabel(s, id) + (def.zone ? ' · mientras, la zona no produce ni se puede cuidar' : '')),
+      d.work ? h('div', {}, h('div', { class: 'statline small' }, h('span', {}, 'Reparación'), h('span', {}, `${d.work} / ${def.work} jornales`)), bar(d.work / def.work * 100, 'green')) : null,
+      !d.started && s.day - d.since > 2 && def.worse ? h('div', { class: 'why' }, 'Cada día sin empezar, va a peor.') : null,
+      why ? h('div', { class: 'why' }, why) : null),
+    h('div', { class: 'col' },
+      btn(d.work ? `Seguir (−${put || 0})` : `Reparar (−${put || 0})`, () => {
+        game.afterAction(repair(s, id), def.zone || null, 'tools');
+        after && after();
+      }, { cls: 'primary', disabled: why }),
+      btn(`Llamar a alguien · ${proTotal(s, id)} €`, () => {
+        game.afterAction(hireRepair(s, id), def.zone || null, 'coins');
+        after && after();
+      }, { cls: 'small', disabled: whyPro })));
+}
+
+return { repairCard };
+})();
+
 // ── src/ui/zonePanel.js ──
-const __m42 = (() => {
+const __m44 = (() => {
 // Nota sujeta con clip: una zona de la finca, su estado y sus tareas.
-const { h, clear, bar, btn, fmtNum } = __m40;
+const { h, clear, bar, btn, fmtNum } = __m42;
 const { ZONE_BY_ID } = __m5;
 const { ANIMALS, PRODUCTS } = __m6;
 const { ITEMS } = __m15;
 const { SEASONS } = __m9;
 const { VOLUNTEER_BY_ID } = __m17;
 const { taskBlocker, taskJornales, taskSkillBonus, doTask, unlockBlocker, unlockZone, unlockCostLabel, unlockTotal, unlockRequirement, taskGain, costLabel, seasonIndex, hasSkill, skillName, assignVolunteer, buyAnimal, animalBlocker, infoOf } = __m2;
-const { drawIcon } = __m43;
-const { CROPS, RECIPES, SOW_JORNALES, HARVEST_JORNALES } = __m21;
+const { drawIcon } = __m45;
+const { CROPS, RECIPES, SOW_JORNALES, HARVEST_JORNALES } = __m24;
 const { beds, seasonalCrops, sow, sowBlocker, harvest, harvestBlocker, harvestAmount, recipeBlocker, recipeJornales, cook, ingredientLabel } = __m2;
-const { sfx } = __m44;
+const { sfx } = __m46;
+const { damageOf } = __m2;
+const { repairCard } = __m48;
 
 class ZonePanel {
   constructor(root, game) {
@@ -7509,7 +8542,7 @@ class ZonePanel {
     if (!this.zone) return;
     const st = s.zones[this.zone];
     const key = [this.zone, Math.round(st.cons), st.weeds == null ? '' : Math.round(st.weeds / 2), st.unlocked, s.jornales, Math.round(s.money),
-      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length].join('|');
+      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length, JSON.stringify(s.damages || {}), (s.beds || []).map((b) => b.crop + (b.ready ?? '')).join()].join('|');
     if (!force && key === this.key) return;
     this.key = key;
     this.render(s);
@@ -7549,6 +8582,12 @@ class ZonePanel {
       if (work && s.volunteers.length) this._assign(s, z);
       else if (s.volunteers.length) this.el.append(h('p', { class: 'small muted' }, 'Cuando empieces, podrás encargar el trabajo a un voluntario.'));
       return;
+    }
+    // Avería: lo primero
+    const dmg = damageOf(s, z.id);
+    if (dmg) {
+      this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Averiado'), h('div', { class: 'tasks' }, repairCard(g, s, dmg.id)),
+        h('p', { class: 'small muted' }, 'Puedes encargar la reparación a un voluntario: pondrá sus jornales cada mañana.')));
     }
     // Estado
     const consTxt = st.cons >= 85 ? 'Cuidada y con color' : st.cons >= 70 ? 'Restaurada' : st.cons >= 45 ? 'Aguanta' : st.cons >= 25 ? 'Se va borrando' : 'Casi borrada';
@@ -7716,24 +8755,26 @@ return { ZonePanel, fmtNum };
 })();
 
 // ── src/ui/notebook.js ──
-const __m46 = (() => {
+const __m49 = (() => {
 // El cuaderno: diario, despensa y mercado, gente, recuerdos, huéspedes, álbum y ajustes.
-const { h, clear, bar, btn, fmtMoney, fmtNum } = __m40;
+const { h, clear, bar, btn, fmtMoney, fmtNum } = __m42;
 const { PRODUCTS, MATERIALS, ANIMALS, CHANNELS } = __m6;
 const { VOLUNTEER_BY_ID, TRAITS, SKILLS } = __m17;
 const { ZONES, ZONE_BY_ID } = __m5;
 const { ITEMS } = __m15;
-const { FAMILY } = __m19;
+const { FAMILY } = __m22;
 const { MILESTONES } = __m10;
-const { UPGRADES } = __m27;
+const { UPGRADES } = __m20;
 const { THEME } = __m7;
 const { BALANCE } = __m4;
 const { unitPrice, sell, sellBlocker, channelOpen, basketCapacity, buyMaterial, hireEmployee, fireEmployee, bedsTotal, assignVolunteer, threads, themeNotesKnown, hypothesesRanked, upgradeBlocker, buildUpgrade, capacity, guestCount, WEEKDAYS, daysToMarket, isMarketDay, costLabel, dailyJornales, volunteerJornales, activityBlocker, doActivity, ACTIVITIES } = __m2;
-const { drawIcon } = __m43;
-const { sfx } = __m44;
+const { drawIcon } = __m45;
+const { sfx } = __m46;
+const { troubles, damages, upcomingBills, heatingNeed, feedNeed, feedStock, winterEstimate, reserveDays, buyPrice, taxableProfit, DIFFICULTY, difficulty, seasonIndex } = __m2;
+const { repairCard } = __m48;
 
 const TABS = [
-  ['diario', 'Diario'], ['despensa', 'Despensa'], ['gente', 'Gente'], ['recuerdos', 'Recuerdos'],
+  ['diario', 'Diario'], ['despensa', 'Despensa'], ['cuentas', 'Cuentas'], ['gente', 'Gente'], ['recuerdos', 'Recuerdos'],
   ['huespedes', 'Huéspedes'], ['album', 'Álbum'], ['ajustes', 'Ajustes'],
 ];
 
@@ -7766,7 +8807,7 @@ class Notebook {
   update(s) {
     if (!this.el || this.tab === 'ajustes') return;
     const key = [this.tab, s.day, Math.round(s.money), s.jornales, s.log.length, s.items.length, s.volunteers.length,
-      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel].join('|');
+      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel, JSON.stringify(s.damages || {}), (s.mods || []).length].join('|');
     if (key === this.key) return;
     this.render();
   }
@@ -7786,7 +8827,7 @@ class Notebook {
     try { this['page_' + this.tab](body, s); } catch (e) { console.error(e); body.append(h('p', {}, 'Esta página se ha emborronado.')); }
     body.scrollTop = scroll;
     this.key = [this.tab, s.day, Math.round(s.money), s.jornales, s.log.length, s.items.length, s.volunteers.length,
-      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel].join('|');
+      JSON.stringify(s.products), JSON.stringify(s.materials), s.guests.length, s.upgrades.length, s.milestones.length, this.channel, JSON.stringify(s.damages || {}), (s.mods || []).length].join('|');
   }
 
   // ── Diario ──
@@ -7835,14 +8876,7 @@ class Notebook {
 
     // Materiales
     const mt = h('table', { class: 'inv' }, h('tr', {}, h('th', {}, 'Material'), h('th', {}, 'Tienes'), h('th', {}, 'Comprar')));
-    for (const [k, m] of Object.entries(MATERIALS)) {
-      mt.append(h('tr', {},
-        h('td', {}, m.name),
-        h('td', { class: 'num' }, fmtNum(s.materials[k] || 0, (s.materials[k] % 1) ? 1 : 0)),
-        h('td', {}, h('div', { class: 'row' },
-          btn(`1 · ${m.buy} €`, () => { g.afterAction(buyMaterial(s, k, 1), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < m.buy ? 'No llega' : null }),
-          btn(`5 · ${m.buy * 5} €`, () => { g.afterAction(buyMaterial(s, k, 5), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < m.buy * 5 ? 'No llega' : null })))));
-    }
+    for (const [k, m] of Object.entries(MATERIALS)) mt.append(this._buyRow(s, k, m.name));
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Materiales (cooperativa)'), mt,
       h('p', { class: 'tiny muted' }, 'La piedra también se recoge gratis en la dehesa; la leña, podando.')));
 
@@ -7850,6 +8884,68 @@ class Notebook {
     const an = h('div', { class: 'pills' }, Object.entries(ANIMALS).map(([k, a]) => h('span', { class: 'pill' }, `${a.name}: ${s.animals[k] || 0}`)));
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Animales'), an,
       h('p', { class: 'tiny muted' }, 'Se compran desde su zona en el plano (corral, dehesa, colmenar).')));
+  }
+
+  _buyRow(s, k, name) {
+    const g = this.game;
+    const p = buyPrice(s, k);
+    return h('tr', {},
+      h('td', {}, name),
+      h('td', { class: 'num' }, fmtNum(s.materials[k] || 0, (s.materials[k] % 1) ? 1 : 0)),
+      h('td', {}, h('div', { class: 'row' },
+        btn(`1 · ${fmtMoney(p)} €`, () => { g.afterAction(buyMaterial(s, k, 1), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < p ? 'No llega' : null }),
+        btn(`5 · ${fmtMoney(p * 5)} €`, () => { g.afterAction(buyMaterial(s, k, 5), null, 'coins'); this.render(); }, { cls: 'small', disabled: s.money < p * 5 ? 'No llega' : null }))));
+  }
+
+  // ── Cuentas: lo roto, los avisos, las reservas y los pagos ──
+  page_cuentas(el, s) {
+    const g = this.game;
+    el.append(h('h2', {}, 'Cuentas y avisos'));
+    // Averías
+    const ds = damages(s);
+    const box = h('div', { class: 'tasks' });
+    for (const d of ds) box.append(repairCard(g, s, d.id, () => this.render()));
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Lo que está roto'),
+      ds.length ? box : h('p', { class: 'small muted' }, 'Nada roto, de momento. Atender los avisos a tiempo sale más barato que arreglar.')));
+    // Avisos de la economía
+    const mods = troubles(s).filter((t) => t.kind !== 'damage');
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Avisos'),
+      mods.length ? h('div', {}, mods.map((t) => h('div', { class: 'trouble ' + (t.bad === false ? 'good' : 'bad') },
+        h('b', {}, t.name), t.days ? h('span', { class: 'small muted' }, ` · ${t.days === 1 ? 'hoy acaba' : `${t.days} días más`}`) : null,
+        h('div', { class: 'small' }, t.text))))
+        : h('p', { class: 'small muted' }, 'Sin novedades en la comarca.')));
+    // Reservas para el invierno
+    const si = seasonIndex(s);
+    const w = winterEstimate(s);
+    const lenaNeed = heatingNeed(s);
+    const fNeed = feedNeed(s);
+    const lena = s.materials.lena || 0;
+    const feed = feedStock(s);
+    const foodKeys = Object.keys(PRODUCTS).filter((k) => PRODUCTS[k].food);
+    const food = foodKeys.reduce((a, k) => a + Math.floor(s.products[k] || 0) * PRODUCTS[k].food, 0);
+    const foodNeed = s.volunteers.length * BALANCE.foodFromFarmPerVolunteer;
+    const line = (label, have, need, extra) => {
+      const days = reserveDays(have, need);
+      return [h('span', {}, label, extra ? h('div', { class: 'tiny muted' }, extra) : null),
+        h('span', { class: 'num' + (need > 0 && days < 5 ? ' warn' : '') }, need > 0 ? `${fmtNum(have, 0)} · ${days === Infinity ? '∞' : days} días` : fmtNum(have, 0))];
+    };
+    const mt = h('table', { class: 'inv' });
+    mt.append(this._buyRow(s, 'lena', 'Leña'), this._buyRow(s, 'pienso', 'Pienso y paja'));
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Reservas para el invierno'),
+      h('div', { class: 'reserve small' },
+        ...line('Leña para la chimenea', lena, lenaNeed, lenaNeed ? `Se gastan ${fmtNum(lenaNeed, 1)} cargas al día` : `Para el invierno harán falta unas ${w.lena}`),
+        ...line('Heno y pienso para los animales', feed, fNeed, fNeed ? `Comen ${fmtNum(fNeed, 1)} al día (el campo no da)` : (w.feed ? `Para el invierno harán falta unas ${w.feed}` : 'Sin animales que alimentar')),
+        ...line('Comida de la finca para la gente', food, foodNeed, 'Conservas, embutido y queso aguantan; lo fresco se estropea')),
+      h('p', { class: 'tiny muted' }, si === 3 ? 'En invierno la leña y la comida se pagan caras.' : 'La leña se recoge en el bosquete y podando; el heno se siega en la dehesa en primavera. En invierno todo cuesta más.'),
+      mt));
+    // Pagos
+    const bills = upcomingBills(s);
+    el.append(h('div', { class: 'section' }, h('h3', {}, 'Próximos pagos'),
+      h('table', { class: 'inv' }, bills.map((b) => h('tr', {},
+        h('td', {}, b.name, h('div', { class: 'tiny muted' }, b.every)),
+        h('td', { class: 'num' }, b.days === 1 ? 'mañana' : `en ${b.days} días`),
+        h('td', { class: 'num' }, `${fmtMoney(b.amount)} €`)))),
+      h('p', { class: 'tiny muted' }, `Beneficio desde la última declaración: ${fmtMoney(Math.round(taxableProfit(s)))} €. Los gastos fijos suben con cada zona en marcha, cada habitación y cada animal.${s.flags.placas ? ' Las placas solares abaratan la luz.' : ''}`)));
   }
 
   // ── Gente ──
@@ -8017,6 +9113,9 @@ class Notebook {
       check('names', 'Mostrar el nombre de los voluntarios en el plano'),
       check('bigText', 'Letra más grande'),
       h('div', { class: 'row', style: { margin: '8px 0' } }, btn('Pantalla completa', () => g.toggleFullscreen(), { cls: 'small' })),
+      h('h3', {}, 'Dificultad'),
+      h('div', { class: 'row' }, Object.entries(DIFFICULTY).map(([id, d]) => btn(d.name, () => { g.s.cfg.difficulty = id; sfx('pen'); this.render(); }, { cls: 'small' + ((g.s.cfg.difficulty || 'normal') === id ? ' on' : '') }))),
+      h('p', { class: 'small muted' }, difficulty(g.s).desc + ' Se puede cambiar en cualquier momento.'),
       h('h3', {}, 'Partida'),
       h('p', { class: 'small muted' }, 'Se guarda sola cada día de juego y al salir. Puedes llevarte una copia.'),
       h('div', { class: 'row' },
@@ -8082,9 +9181,9 @@ return { Notebook, drawStaff, WEEKDAYS };
 })();
 
 // ── src/ui/toast.js ──
-const __m47 = (() => {
+const __m50 = (() => {
 // Notas emergentes sujetas al borde del cuaderno.
-const { h } = __m40;
+const { h } = __m42;
 
 class Toasts {
   constructor(root) {
@@ -8107,12 +9206,12 @@ return { Toasts };
 })();
 
 // ── src/ui/screens.js ──
-const __m48 = (() => {
+const __m51 = (() => {
 // Diálogos de eventos, confirmaciones, importación, portada, introducción y la finca dormida.
-const { h, clear, btn } = __m40;
-const { drawIllus, drawTitleArt } = __m43;
-const { INTRO, SLEEP } = __m25;
-const { sfx } = __m44;
+const { h, clear, btn } = __m42;
+const { drawIllus, drawTitleArt } = __m45;
+const { INTRO, SLEEP } = __m28;
+const { sfx } = __m46;
 
 function modal(root, content, { onClose = null, closable = false } = {}) {
   const card = h('div', { class: 'modal paper', role: 'dialog' }, content);
@@ -8235,19 +9334,19 @@ return { modal, eventDialog, confirmDialog, importDialog, titleScreen, introScre
 })();
 
 // ── src/ui/ui.js ──
-const __m39 = (() => {
+const __m41 = (() => {
 // Coordinador de la interfaz: HUD, panel de zona, cuaderno, notas y diálogos.
-const { h } = __m40;
-const { Hud } = __m41;
-const { ZonePanel } = __m42;
-const { Notebook } = __m46;
-const { Toasts } = __m47;
-const { eventDialog, confirmDialog, importDialog, modal } = __m48;
-const { drawIcon } = __m43;
+const { h } = __m42;
+const { Hud } = __m43;
+const { ZonePanel } = __m44;
+const { Notebook } = __m49;
+const { Toasts } = __m50;
+const { eventDialog, confirmDialog, importDialog, modal } = __m51;
+const { drawIcon } = __m45;
 const { ITEM_BY_ID } = __m15;
-const { TIPS } = __m25;
-const { sfx } = __m44;
-const { btn } = __m40;
+const { TIPS } = __m28;
+const { sfx } = __m46;
+const { btn } = __m42;
 
 class UI {
   constructor(game) {
@@ -8365,7 +9464,7 @@ return { UI };
 })();
 
 // ── src/save/save.js ──
-const __m49 = (() => {
+const __m52 = (() => {
 // Guardado automático en localStorage, copia del inicio de estación y exportar/importar.
 const { migrate, STATE_VERSION } = __m3;
 
@@ -8466,10 +9565,10 @@ return { pack, unpack, save, load, hasSave, savedInfo, clearSave, saveSeasonSnap
 })();
 
 // ── src/audio/music.js ──
-const __m50 = (() => {
+const __m53 = (() => {
 // Música generativa: piano tranquilo con mucho espacio, que cambia con la estación,
 // la hora y la situación. Y el tema del pianista, que gana notas con cada partitura.
-const { audio } = __m45;
+const { audio } = __m47;
 const { THEME, THEME_TEMPO } = __m7;
 
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
@@ -8730,21 +9829,21 @@ return { pianoNote, Music, music };
 const __m1 = (() => {
 // El juego: bucle, tiempo con pausa y velocidades, plano, interfaz, audio y guardado.
 const S = __m2;
-const { FarmMap, WORLD } = __m30;
-const { Camera, attachGestures } = __m38;
-const { UI } = __m39;
-const { titleScreen, introScreen, sleepScreen, confirmDialog, importDialog } = __m48;
-const { paperDataURL } = __m33;
-const { SEASON_PAPER } = __m34;
+const { FarmMap, WORLD } = __m32;
+const { Camera, attachGestures } = __m40;
+const { UI } = __m41;
+const { titleScreen, introScreen, sleepScreen, confirmDialog, importDialog } = __m51;
+const { paperDataURL } = __m35;
+const { SEASON_PAPER } = __m36;
 const { ITEM_BY_ID } = __m15;
 const { MILESTONES } = __m10;
 const { ZONE_BY_ID } = __m5;
 const { VOLUNTEER_BY_ID } = __m17;
 const { SEASONS } = __m9;
-const Save = __m49;
-const { audio } = __m45;
-const { music } = __m50;
-const { ambience, sfx } = __m44;
+const Save = __m52;
+const { audio } = __m47;
+const { music } = __m53;
+const { ambience, sfx } = __m46;
 
 class Game {
   constructor() {
@@ -8974,7 +10073,29 @@ class Game {
         }
         case 'season': this.ui.toast(`${SEASONS[g.season].name}. ${SEASONS[g.season].note}`, 'info'); sfx('page'); break;
         case 'coins': coins = true; break;
-        case 'warning': this.ui.toast(g.kind === 'ruin' ? 'Las cuentas no salen. Vende algo o gasta menos.' : 'La finca se está borrando. Necesita cuidados.', 'bad'); sfx('warn'); break;
+        case 'warning': {
+          const W = {
+            ruin: 'Las cuentas no salen. Vende algo, gasta menos o pide ayuda a la cooperativa.',
+            abandon: 'La finca se está borrando. Necesita cuidados.',
+            cold: 'No queda leña: en el cortijo hace frío. Mira «Cuentas» en el cuaderno.',
+            feed: 'Los animales no tienen qué comer. Compra pienso o siega heno.',
+          };
+          this.ui.toast(W[g.kind] || W.abandon, 'bad'); sfx('warn'); break;
+        }
+        case 'damage': {
+          const def = S.DAMAGES[g.id];
+          this.ui.toast(`⚠ ${def.name}. ${def.zone ? 'Toca la zona para repararla.' : 'Míralo en «Cuentas».'}`, 'bad');
+          if (def.zone) { const z = ZONE_BY_ID[def.zone]; this.map.addFloat(z.x + z.w / 2, z.y + z.h / 2, '¡Averiado!', '#a0382a'); }
+          sfx('warn');
+          break;
+        }
+        case 'repaired': {
+          const def = S.DAMAGES[g.id];
+          this.ui.toast(`Reparado: ${def.name.toLowerCase()}.`, 'good');
+          if (def.zone) { const z = ZONE_BY_ID[def.zone]; this.map.addFloat(z.x + z.w / 2, z.y + z.h / 2, '¡Arreglado!', '#4f7a35'); }
+          sfx('chime');
+          break;
+        }
         case 'sleep': this.goToSleep(g.kind); break;
         case 'theme': this.playTheme(!!g.full); break;
         case 'tourism': this.ui.toast('Ya puedes recibir huéspedes: mira «Huéspedes» en el cuaderno.', 'good'); sfx('stamp'); break;

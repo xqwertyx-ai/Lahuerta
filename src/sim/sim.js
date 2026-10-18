@@ -13,6 +13,7 @@ import { gardenDay } from './garden.js';
 import { tryArrival, feedVolunteers, dailyVolunteers, departVolunteer, payEmployees, dailyJornales } from './people.js';
 import { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } from './events.js';
 import { checkRevelation } from './mystery.js';
+import { hardshipDawn, damages } from './hardship.js';
 import { TRAITS, VOLUNTEER_BY_ID } from '../data/volunteers.js';
 import { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } from './tourism.js';
 
@@ -105,6 +106,7 @@ export function dawn(s) {
 
   // Finca
   spoilDay(s);
+  hardshipDawn(s);     // gastos, leña, comida de los animales, averías que empeoran
   produceDay(s);
   gardenDay(s);
   montaneraDay(s);
@@ -115,10 +117,11 @@ export function dawn(s) {
   tourismDawn(s);
 
   // Ánimo
-  let dm = (BALANCE.moodRestTarget - s.mood) * 0.02 * BALANCE.moodDailyDrift * 4 + w.mood;
+  // Tiende a un punto que sube un poco con cada zona restaurada; los ratos libres lo empujan por encima
+  const moodTarget = BALANCE.moodRestTarget + Math.min(12, restoredCount(s) * BALANCE.moodPerRestoredTarget);
+  let dm = (moodTarget - s.mood) * 0.02 * BALANCE.moodDailyDrift * 4 + w.mood;
   if (avgCons(s) < 30) dm += BALANCE.moodLowConservation;
   if (s.money < 0) dm += BALANCE.moodDebt;
-  dm += restoredCount(s) * 0.15;
   for (const v of s.volunteers) dm += (VOL_MOOD(v));
   s.mood = clamp(s.mood + dm, 0, 100);
 
@@ -127,8 +130,8 @@ export function dawn(s) {
   checkRevelation(s);
 
   // La fama no se sostiene sola: tiende a lo que la finca merece
-  const repTarget = 5 + avgCons(s) * 0.25 + restoredCount(s) + appeal(s) * 4 + s.items.length * 0.3;
-  if (s.rep > repTarget) s.rep = Math.max(repTarget, s.rep - BALANCE.repDecay - (s.rep - repTarget) * 0.02);
+  const repTarget = 5 + avgCons(s) * 0.22 + restoredCount(s) * 0.9 + appeal(s) * 2.5 + s.items.length * 0.25 - damages(s).length * 4 - (s.cold ? 6 : 0);
+  if (s.rep > repTarget) s.rep = Math.max(repTarget, s.rep - BALANCE.repDecay - (s.rep - repTarget) * 0.05);
 
   // Jornales del día
   s.jornales = dailyJornales(s);

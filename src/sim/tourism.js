@@ -7,6 +7,7 @@ import { rand, randInt, chance } from './rng.js';
 import { seasonIndex } from './calendar.js';
 import { addLog, signal, clamp, canAfford, payCost, addStock, missingOf, labelOf } from './effects.js';
 import { hasSkill } from './people.js';
+import { stopped, modFactor, damages } from './hardship.js';
 
 export function tourismOpen(s) {
   if (s.flags.tourism) return true;
@@ -71,19 +72,22 @@ export function tourismDawn(s) {
     g.nights--;
     if (g.nights > 0) { stay.push(g); continue; }
     const vis = (s.zones.cortijo.cons + s.zones.patio.cons + s.zones.paseo.cons) / 3;
-    const sat = 50 + (vis - 50) * 0.6 + appeal(s) * 3 + (s.mood - 50) * 0.2 + (rand(s) - 0.5) * 20 + (g.fed ? 5 : 0);
-    const dr = clamp(Math.round((sat - 50) / 12), -3, 4);
+    let sat = 50 + (vis - 50) * 0.6 + appeal(s) * 2 + (s.mood - 50) * 0.2 + (rand(s) - 0.5) * 20 + (g.fed ? 5 : 0);
+    if (s.cold) sat -= 25;                         // sin calefacción, nadie vuelve
+    sat -= damages(s).length * 6;                  // obras y cosas rotas por todas partes
+    const dr = clamp(Math.round((sat - 50) / 15), -4, 3);
     s.rep = clamp(s.rep + dr, 0, 100);
     if (dr > 1) addLog(s, `Se despiden unos huéspedes encantados: «Volveremos en ${['primavera', 'verano', 'otoño', 'invierno'][randInt(s, 0, 3)]}».`, 'good');
     else if (dr < 0) addLog(s, 'Unos huéspedes se van con cara de pocos amigos. «Muy bonito, pero…»', 'bad');
   }
   s.guests = stay;
   if (!s.flags.tourism) return;
+  if (stopped(s, 'tourism')) return;
   const cap = capacity(s) - guestCount(s);
   if (cap <= 0) return;
   const si = seasonIndex(s);
   const w = WEATHER[s.weather] || WEATHER.sol;
-  const expected = (BALANCE.visitorBase + s.rep * BALANCE.visitorPerRep) * (1 + Math.min(8, appeal(s)) * 0.1) * TOURISM_SEASON[si] * w.visitors * (s.zones.cortijo.cons / 100);
+  const expected = (BALANCE.visitorBase + s.rep * BALANCE.visitorPerRep) * (1 + Math.min(8, appeal(s)) * 0.1) * TOURISM_SEASON[si] * w.visitors * (s.zones.cortijo.cons / 100) * modFactor(s, 'tourism');
   let free = cap;
   let tries = Math.floor(expected) + (rand(s) < expected % 1 ? 1 : 0);
   while (tries-- > 0 && free > 0) {
@@ -115,7 +119,7 @@ export function tourismEvening(s) {
 }
 
 export function concertDue(s) {
-  return s.upgrades.includes('concierto') && guestCount(s) > 0 && s.day % 4 === 0;
+  return s.upgrades.includes('concierto') && guestCount(s) > 0 && s.day % 4 === 0 && !stopped(s, 'concerts');
 }
 
 export function concert(s) {
