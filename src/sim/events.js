@@ -96,7 +96,7 @@ export function systemEvents(s) {
   const last = s.eventLast.incendio;
   if ((last == null || s.day - last > 25) && chance(s, fireRisk(s))) queueEvent(s, 'incendio');
   const lastCat = s.eventLast.gato;
-  if (s.day > 3 && (lastCat == null || s.day - lastCat >= 3) && chance(s, BALANCE.catFindChancePerDay)) {
+  if (s.day > 3 && (lastCat == null || s.day - lastCat >= 3) && chance(s, BALANCE.catFindChancePerDay * (s.zones.ermita.everRestored ? 1.5 : 1))) {
     s.pendingCat = chooseCatGift(s);
     queueEvent(s, 'gato');
   }

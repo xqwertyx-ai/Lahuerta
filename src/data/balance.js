@@ -19,7 +19,7 @@ export const BALANCE = {
   },
 
   // ── Jornales (energía diaria) ──
-  playerJornales: 3,
+  playerJornales: 5,
   volunteerJornales: 2,
   employeeJornales: 3,
   employeeWagePerDay: 22,

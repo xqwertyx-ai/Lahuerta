@@ -63,7 +63,7 @@ h1, h2, h3, .title { font-family: var(--title); font-weight: 700; margin: 0; lin
 .muted { color: var(--ink2); }
 .small { font-size: 0.82em; }
 .tiny { font-size: 0.72em; }
-.hidden { display: none !important; }
+.hidden, [hidden] { display: none !important; }
 
 /* ── Botones a mano ── */
 .btn {
@@ -110,6 +110,15 @@ h1, h2, h3, .title { font-family: var(--title); font-weight: 700; margin: 0; lin
 .speed button + button { border-left: 1.5px solid rgba(59, 42, 28, 0.5); }
 .speed button.on { background: rgba(59, 42, 28, 0.15); font-weight: bold; }
 .weather { font-size: 0.78em; color: var(--ink2); }
+
+/* ── Zoom ── */
+.zoom { position: fixed; left: calc(10px + var(--safe-l)); bottom: calc(14px + var(--safe-b)); display: flex; flex-direction: column; border: 2px solid var(--ink); border-radius: var(--hand-radius); overflow: hidden; box-shadow: 2px 3px 0 rgba(59, 42, 28, 0.22); }
+.zoom button { width: 46px; height: 44px; border: 0; background: transparent; font-family: var(--title); font-size: 1.6em; font-weight: 700; line-height: 1; }
+.zoom button + button { border-top: 1.5px solid rgba(59, 42, 28, 0.45); }
+.zoom button:active { background: rgba(59, 42, 28, 0.12); }
+
+/* ── Saltar al amanecer ── */
+.dawn { position: fixed; left: 50%; transform: translateX(-50%); top: calc(var(--hud-h, 80px) + 10px); }
 
 /* ── Panel de zona (nota con clip) ── */
 .sheet {
@@ -305,7 +314,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610181829
+// La Huerta del Pianista · build 202610181837
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
@@ -329,7 +338,7 @@ const BALANCE = {
   },
 
   // ── Jornales (energía diaria) ──
-  playerJornales: 3,
+  playerJornales: 5,
   volunteerJornales: 2,
   employeeJornales: 3,
   employeeWagePerDay: 22,
@@ -427,6 +436,7 @@ const ZONES = [
       { id: 'encalar', name: 'Encalar la fachada', jornales: 2, cost: { cal: 1 }, effect: { cons: 18 }, skill: 'pintura', notWeather: ['lluvia', 'tormenta', 'helada'] },
       { id: 'tejas', name: 'Arreglar las tejas', jornales: 2, cost: { herramientas: 0.25 }, effect: { cons: 14 }, skill: 'carpinteria' },
       { id: 'chimenea', name: 'Limpiar la chimenea', jornales: 1, effect: { cons: 7, mood: 2 }, seasons: [2, 3] },
+      { id: 'herramientas', name: 'Reparar herramientas', jornales: 1, effect: { cons: 1 }, gain: { herramientas: 1 }, skill: 'carpinteria' },
     ],
   },
   {
@@ -450,22 +460,22 @@ const ZONES = [
     ],
   },
   {
-    id: 'almacen', name: 'Almacén de la puerta roja', x: 1380, y: 690, w: 190, h: 210,
-    desc: 'Una nave blanca con una puerta roja de forja. Dentro huele a aceite viejo y a sacos.',
+    id: 'ermita', name: 'Ermita de San Antonio', x: 1380, y: 690, w: 190, h: 210,
+    desc: 'La ermita blanca dedicada a San Antonio, al final del paseo, con su reja roja de forja y la mimosa al lado.',
     start: 28, unlocked: false, decay: 0.8, weeds: false,
-    unlock: { text: 'Forzar la puerta y vaciar trastos', jornales: 8, cost: { herramientas: 1 } },
+    unlock: { text: 'Abrir la reja, sacar los trastos y limpiar el altar', jornales: 12, cost: { herramientas: 1 } },
     tasks: [
-      { id: 'ordenar', name: 'Ordenar el almacén', jornales: 1, effect: { cons: 10 } },
-      { id: 'puerta', name: 'Pintar la puerta roja', jornales: 2, cost: { money: 8 }, effect: { cons: 16 }, skill: 'pintura' },
-      { id: 'herramientas', name: 'Reparar herramientas', jornales: 1, effect: { cons: 2 }, gain: { herramientas: 1 }, skill: 'carpinteria' },
-      { id: 'carbon', name: 'Hacer carbón de encina', jornales: 2, cost: { lena: 3 }, effect: { cons: 2 }, gain: { carbon: 2 }, skill: 'monte' },
+      { id: 'barrer', name: 'Barrer y poner flores a San Antonio', jornales: 1, effect: { cons: 10, mood: 1 } },
+      { id: 'encalar', name: 'Encalar la ermita', jornales: 2, cost: { cal: 1 }, effect: { cons: 16 }, skill: 'pintura', notWeather: ['lluvia', 'tormenta', 'helada'] },
+      { id: 'reja', name: 'Pintar la reja roja', jornales: 2, cost: { money: 8 }, effect: { cons: 14 }, skill: 'pintura' },
+      { id: 'campana', name: 'Arreglar la espadaña', jornales: 2, cost: { herramientas: 0.25 }, effect: { cons: 12 }, skill: 'albanileria' },
     ],
   },
   {
     id: 'huerta', name: 'La huerta', x: 110, y: 560, w: 440, h: 230,
     desc: 'Bancales de tierra roja junto al cortijo. Con agua, da para comer y para vender.',
     start: 30, unlocked: false, decay: 1.2, weeds: true,
-    unlock: { text: 'Desbrozar y cavar los bancales', jornales: 9, cost: { herramientas: 0.5 } },
+    unlock: { text: 'Desbrozar y cavar los bancales', jornales: 14, cost: { herramientas: 0.5 } },
     tasks: [
       { id: 'sembrar', name: 'Cavar y sembrar', jornales: 2, effect: { cons: 15 }, skill: 'huerta', seasons: [0, 1, 2] },
       { id: 'regar', name: 'Regar', jornales: 1, effect: { cons: 7 }, skill: 'agua', seasons: [0, 1, 2] },
@@ -477,7 +487,7 @@ const ZONES = [
     id: 'bosquete', name: 'El bosquete', x: 80, y: 820, w: 420, h: 165,
     desc: 'Acacias, higueras, eucaliptos y una parra. La hojarasca cruje; hay un rastrillo y una caja de fruta olvidados.',
     start: 26, unlocked: false, decay: 1.0, weeds: true,
-    unlock: { text: 'Abrir paso entre la hojarasca', jornales: 8, requires: { zones: { huerta: 1 } } },
+    unlock: { text: 'Abrir paso entre la hojarasca', jornales: 12, requires: { zones: { huerta: 1 } } },
     tasks: [
       { id: 'barrer', name: 'Rastrillar la hojarasca', jornales: 1, effect: { cons: 9, weeds: -20 }, seasonBonus: { 2: 1.4 } },
       { id: 'higueras', name: 'Podar higueras y eucaliptos', jornales: 2, effect: { cons: 13 }, gain: { lena: 2 }, seasons: [2, 3], skill: 'monte' },
@@ -494,6 +504,7 @@ const ZONES = [
       { id: 'desbrozar', name: 'Desbrozar el pasto', jornales: 2, effect: { cons: 6, weeds: -50 }, skill: 'monte' },
       { id: 'bellota', name: 'Varear y recoger bellota', jornales: 2, effect: { cons: 2 }, gainScaled: { bellota: 5 }, seasons: [2] },
       { id: 'piedra', name: 'Recoger piedra suelta', jornales: 1, effect: { cons: 2 }, gain: { piedra: 3 } },
+      { id: 'carbon', name: 'Hacer carbón de encina', jornales: 2, cost: { lena: 3 }, effect: { cons: 1 }, gain: { carbon: 2 }, skill: 'monte' },
     ],
     produce: { bellota: [0, 0, 2.2, 0.6], aceite: [0, 0, 0, 0.7] },
   },
@@ -501,7 +512,7 @@ const ZONES = [
     id: 'muros', name: 'Muros de piedra seca', x: 90, y: 470, w: 690, h: 70,
     desc: 'Piedra sobre piedra, sin argamasa. Cada invierno se cae un trozo y cada verano lo cubren las zarzas.',
     start: 25, unlocked: false, decay: 0.8, weeds: true,
-    unlock: { text: 'Limpiar las zarzas y apilar la piedra caída', jornales: 14, cost: { piedra: 6 }, requires: { zones: { dehesa: 45 } } },
+    unlock: { text: 'Limpiar las zarzas y apilar la piedra caída', jornales: 21, cost: { piedra: 6 }, requires: { zones: { dehesa: 45 } } },
     tasks: [
       { id: 'rehacer', name: 'Rehacer un tramo', jornales: 3, cost: { piedra: 3 }, effect: { cons: 20 }, skill: 'albanileria', notWeather: ['helada'] },
       { id: 'zarzas', name: 'Quitar zarzas', jornales: 1, effect: { cons: 4, weeds: -40 }, skill: 'monte' },
@@ -511,7 +522,7 @@ const ZONES = [
     id: 'alberca', name: 'La alberca', x: 810, y: 190, w: 260, h: 200,
     desc: 'Agua quieta entre juncos. Al atardecer bajan los ciervos, como en el cuadro.',
     start: 24, unlocked: false, decay: 1.0, weeds: true,
-    unlock: { text: 'Sacar el lodo y destapar el caño', jornales: 14, cost: { herramientas: 1, money: 40 }, requires: { zones: { muros: 1 } } },
+    unlock: { text: 'Sacar el lodo y destapar el caño', jornales: 21, cost: { herramientas: 1, money: 40 }, requires: { zones: { muros: 1 } } },
     tasks: [
       { id: 'limpiar', name: 'Limpiar la alberca', jornales: 2, effect: { cons: 17, weeds: -30 }, skill: 'agua' },
       { id: 'fugas', name: 'Reparar las fugas', jornales: 2, cost: { cal: 1 }, effect: { cons: 12 }, skill: 'albanileria' },
@@ -521,7 +532,7 @@ const ZONES = [
     id: 'colmenar', name: 'El colmenar', x: 1100, y: 140, w: 210, h: 180,
     desc: 'Corchos y cajas entre romero y lavanda. Zumban aunque no los veas.',
     start: 30, unlocked: false, decay: 0.9, weeds: true,
-    unlock: { text: 'Preparar el colmenar', jornales: 8, cost: { money: 20 }, requires: { skill: 'apicultura' } },
+    unlock: { text: 'Preparar el colmenar', jornales: 12, cost: { money: 20 }, requires: { skill: 'apicultura' } },
     tasks: [
       { id: 'revisar', name: 'Revisar las colmenas', jornales: 1, effect: { cons: 10 }, skill: 'apicultura' },
       { id: 'catar', name: 'Catar la miel', jornales: 2, effect: { cons: 3 }, gainPerAnimal: { miel: 1.5, animal: 'colmenas' }, seasons: [1], skill: 'apicultura' },
@@ -532,7 +543,7 @@ const ZONES = [
     id: 'corral', name: 'El corral', x: 1320, y: 150, w: 250, h: 270,
     desc: 'Gallinas rojas bajo la yuca, una rueda de carro y una valla que pide clavos.',
     start: 28, unlocked: false, decay: 1.1, weeds: false,
-    unlock: { text: 'Arreglar la valla y el gallinero', jornales: 12, cost: { herramientas: 1, piedra: 4, money: 30 }, requires: { zones: { almacen: 1 } } },
+    unlock: { text: 'Arreglar la valla y el gallinero', jornales: 18, cost: { herramientas: 1, piedra: 4, money: 30 }, requires: { zones: { huerta: 1 } } },
     tasks: [
       { id: 'limpiar', name: 'Limpiar el corral', jornales: 1, effect: { cons: 10 }, skill: 'ganado' },
       { id: 'valla', name: 'Arreglar la valla', jornales: 2, cost: { herramientas: 0.25 }, effect: { cons: 14 }, skill: 'carpinteria' },
@@ -544,7 +555,7 @@ const ZONES = [
     id: 'piano', name: 'El rincón del piano', x: 1080, y: 430, w: 230, h: 200,
     desc: 'Un cenador bajo los eucaliptos con un piano vertical tapado con una manta. Le faltan teclas y le sobra polvo.',
     start: 18, unlocked: false, decay: 0.8, weeds: false,
-    unlock: { text: 'Destapar el piano y montar el cenador', jornales: 12, cost: { herramientas: 1, money: 60 }, requires: { zones: { cortijo: 65, almacen: 1 } } },
+    unlock: { text: 'Destapar el piano y montar el cenador', jornales: 18, cost: { herramientas: 1, money: 60 }, requires: { zones: { cortijo: 65, ermita: 1 } } },
     tasks: [
       { id: 'limpiar', name: 'Quitar el polvo y la carcoma', jornales: 1, effect: { cons: 8 }, skill: 'carpinteria' },
       { id: 'afinar', name: 'Afinar el piano', jornales: 2, cost: { money: 15 }, effect: { cons: 16 }, skill: 'afinacion', needsSkillAbove: 50 },
@@ -761,6 +772,9 @@ function createState(seed = Date.now() % 2147483647, overrides = {}) {
 
 // Completa partidas guardadas con versiones anteriores (campos nuevos con su valor por defecto)
 function migrate(s) {
+  // v0.1 → el «almacén» es en realidad la ermita de San Antonio
+  if (s.zones && s.zones.almacen && !s.zones.ermita) { s.zones.ermita = s.zones.almacen; delete s.zones.almacen; }
+  if (s.volunteers) for (const v of s.volunteers) if (v.zone === 'almacen') v.zone = 'ermita';
   const fresh = createState(s.seed || 1, s.cfg);
   for (const k of Object.keys(fresh)) if (s[k] === undefined) s[k] = fresh[k];
   for (const k of Object.keys(fresh.zones)) {
@@ -1086,8 +1100,8 @@ const ITEMS = [
   { id: 'partitura1', name: 'Una hoja de partitura doblada', thread: 'pianista', zone: 'patio', where: 'restore', minDay: 6, score: 4, icon: 'partitura',
     text: 'Encajada bajo un azulejo suelto de la fuente. Ocho compases a lápiz, sin título. Al final, una sola palabra: «atardecer».',
     hyp: { musico: 1, transi: 1 } },
-  { id: 'partitura2', name: 'Partitura con manchas de aceite', thread: 'pianista', zone: 'almacen', where: 'restore', minDay: 35, score: 4, icon: 'partitura',
-    text: 'Entre sacos de pienso. La letra de las notas es fina y apretada; la de los márgenes, redonda. Dos manos distintas.',
+  { id: 'partitura2', name: 'Partitura junto al altar', thread: 'pianista', zone: 'ermita', where: 'restore', minDay: 35, score: 4, icon: 'partitura',
+    text: 'Doblada bajo la peana de San Antonio, entre cabos de vela. La letra de las notas es fina y apretada; la de los márgenes, redonda. Dos manos distintas.',
     hyp: { feliciano: 1, transi: 1 } },
   { id: 'partitura3', name: 'Partitura en el desván', thread: 'pianista', zone: 'cortijo', where: 'restore', minDay: 20, score: 4, icon: 'partitura',
     text: 'Dentro de una caja de zapatos. Alguien tachó una nota y escribió encima otra, con prisa, como quien corrige una carta.',
@@ -1101,8 +1115,8 @@ const ITEMS = [
   { id: 'partitura6', name: 'Partitura en la caja de fruta', thread: 'pianista', zone: 'bosquete', where: 'restore', minDay: 45, score: 2, icon: 'partitura',
     text: 'Envuelta en papel de periódico dentro de la caja de fruta. Es el final de la melodía: las últimas notas, por fin.',
     hyp: { musico: 1, feliciano: 1 } },
-  { id: 'disco', name: 'Un disco de pizarra sin etiqueta', thread: 'pianista', zone: 'almacen', where: 'unlock', icon: 'disco',
-    text: 'En el centro, a pluma: «para tocar al atardecer». No hay gramófono en la casa. Todavía.',
+  { id: 'disco', name: 'Un disco de pizarra sin etiqueta', thread: 'pianista', zone: 'ermita', where: 'unlock', icon: 'disco',
+    text: 'Envuelto en un paño detrás de los bancos de la ermita. En el centro, a pluma: «para tocar al atardecer». No hay gramófono en la casa. Todavía.',
     hyp: { musico: 1, mueble: 1 } },
   { id: 'diario', name: 'Un diario de tapas azules', thread: 'pianista', zone: 'piano', where: 'restore', minDay: 70, icon: 'diario',
     text: 'Apuntes breves, sin nombre: «Hoy ha sonado bien.» «Llovió; no tocamos.» «Los ciervos han vuelto.» Siempre en plural.',
@@ -1120,7 +1134,7 @@ const ITEMS = [
     hyp: { manuel: 2, feliciano: -1, transi: -1 } },
 
   // ── Feliciano ──
-  { id: 'cuentas', name: 'El cuaderno de cuentas', thread: 'feliciano', zone: 'almacen', where: 'task', icon: 'cuaderno',
+  { id: 'cuentas', name: 'El cuaderno de cuentas', thread: 'feliciano', zone: 'cortijo', where: 'task', icon: 'cuaderno',
     text: 'Sacos de bellota, kilos de cal, jornales. En una esquina, a lápiz: «cuerdas del piano — pendiente».',
     hyp: { feliciano: 1, mueble: 1 } },
   { id: 'foto_fuente', name: 'Una foto de la fuente a medio hacer', thread: 'feliciano', zone: 'patio', where: 'cons', at: 55, minDay: 3, icon: 'foto',
@@ -1678,7 +1692,7 @@ function taskBlocker(s, zoneId, task) {
     return `Hace falta alguien que sepa de ${skillName(task.skill)}`;
   }
   if (task.gainPerAnimal && !(s.animals[task.gainPerAnimal.animal] > 0)) return 'No hay animales';
-  if (task.id === 'carbon' && zoneId === 'almacen' && (s.materials.lena || 0) < 3) return 'Falta leña';
+  if (task.id === 'carbon' && (s.materials.lena || 0) < 3) return 'Falta leña';
   if (s.jornales < taskJornales(s, task)) return 'No quedan jornales hoy';
   if (!canAfford(s, task.cost)) return 'Falta ' + missingOf(s, task.cost).map(labelOf).join(', ');
   return null;
@@ -1740,6 +1754,7 @@ function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   if (taskItems.length && st.cons >= 55 && s.day >= 4) {
     let p = 0.22;
     for (const v of s.volunteers) p += traitOf(v).findBonus || 0;
+    if (s.zones.ermita.everRestored) p += 0.1; // San Antonio, que encuentra lo perdido
     if (chance(s, p)) giveItem(s, taskItems[0].id);
   }
 
@@ -2282,6 +2297,17 @@ const EVENTS = [
     ],
   },
   {
+    id: 'san_antonio', title: 'Fiesta de San Antonio', illus: 'vecinos', weight: 7, seasons: [1], cooldown: 45,
+    cond: (s) => s.zones.ermita.unlocked,
+    text: (s) => s.zones.ermita.cons >= 60
+      ? 'Es el día de San Antonio. Los vecinos suben por el paseo de las adelfas con flores para la ermita, que hoy luce blanca y con la reja recién pintada.'
+      : 'Es el día de San Antonio. Algunos vecinos suben con flores, pero la ermita está desconchada y la reja oxidada. Nadie dice nada, aunque se nota.',
+    options: [
+      { label: 'Abrir la ermita y convidar a limonada', cost: { jornales: 1, money: 10 }, apply: (s, h) => { const c = h.zoneCons('ermita'); h.addRep(c >= 60 ? 4 : 1); h.addMood(6); if (c < 60) h.log('Alguien deja dicho que el año que viene trae cal.'); }, result: 'Flores, limonada y conversación bajo la mimosa hasta que cae el sol.' },
+      { label: 'Poner unas flores y seguir trabajando', effects: { mood: 2 }, result: 'Un ramo de adelfas a los pies del santo. Que encuentre lo que haga falta.' },
+    ],
+  },
+  {
     id: 'feria', title: 'Feria de Fuente Obejuna', illus: 'feria', weight: 4, seasons: [1, 2], cooldown: 40,
     text: 'Es la feria del pueblo. Hay un puesto libre en la plaza y la cooperativa organiza un concurso.',
     options: [
@@ -2750,7 +2776,7 @@ function systemEvents(s) {
   const last = s.eventLast.incendio;
   if ((last == null || s.day - last > 25) && chance(s, fireRisk(s))) queueEvent(s, 'incendio');
   const lastCat = s.eventLast.gato;
-  if (s.day > 3 && (lastCat == null || s.day - lastCat >= 3) && chance(s, BALANCE.catFindChancePerDay)) {
+  if (s.day > 3 && (lastCat == null || s.day - lastCat >= 3) && chance(s, BALANCE.catFindChancePerDay * (s.zones.ermita.everRestored ? 1.5 : 1))) {
     s.pendingCat = chooseCatGift(s);
     queueEvent(s, 'gato');
   }
@@ -4222,7 +4248,7 @@ const SKETCHES = {
     for (const x of [30, 150]) { pen.line(x, 90, x, 70); pen.line(x + 2, 90, x + 2, 70); }
   },
 
-  almacen(d) {
+  ermita(d) {
     const { pen, r, P } = d;
     const gy = 192;
     groundShadow(d, 100, gy + 2, 84, 8);
@@ -4248,9 +4274,16 @@ const SKETCHES = {
     d.wash([[30, 106], [93, 60], [156, 106], [152, 108], [93, 66], [34, 108]], P.roof, { alpha: 0.7, edge: 0.3 });
     pen.path(gable, false);
     pen.path([[93, 62], [118, 54], [176, 92]], false);
-    // Campanario/chimenea en lo alto
-    pen.rect(88, 46, 10, 18);
-    pen.rect(86, 42, 14, 5);
+    // Espadaña con su campanita y la cruz
+    d.wash([[84, 66], [102, 66], [102, 40], [84, 40]], P.whitewash, { alpha: 1 });
+    pen.path([[84, 66], [84, 40], [102, 40], [102, 66]], false);
+    pen.path([[88, 58], [88, 48], [93, 44], [98, 48], [98, 58]], false);
+    pen.set({ width: 1 });
+    pen.curve([[90, 55], [93, 49], [96, 55]]);
+    pen.dot(93, 56, 1.4);
+    pen.set({ width: 1.4 });
+    pen.line(93, 40, 93, 26);
+    pen.line(88, 31, 98, 31);
     // Puerta roja de forja con arco apuntado
     const door = [[58, gy], [58, 132], [93, 112], [128, 132], [128, gy]];
     d.wash(door, P.door, { alpha: 0.62, spread: 1 });
@@ -5005,7 +5038,7 @@ const WORLD = { w: 1600, h: 1000 };
 const PAD = 46;
 
 const LABELS = {
-  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], almacen: [1475, 680], huerta: [330, 582],
+  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], huerta: [330, 582],
   bosquete: [290, 818], dehesa: [250, 140], muros: [640, 462], alberca: [940, 184], colmenar: [1205, 134],
   corral: [1445, 140], piano: [1195, 424],
 };
@@ -5588,7 +5621,7 @@ class Camera {
     this.vw = vw; this.vh = vh; this.dpr = dpr;
     this.fit = Math.min(vw / (WORLD.w + 40), (vh - this.topInset) / (WORLD.h + 40));
     // En pantallas estrechas (móvil en vertical) se empieza más cerca para que se lea
-    this.minZoom = this.fit * 0.95;
+    this.minZoom = this.fit * 0.8;
     this.maxZoom = Math.max(this.fit * 4, 2.2);
     if (first) {
       const narrow = vw / vh < 1;
@@ -5651,55 +5684,66 @@ class Camera {
   }
 }
 
-// Gestos sobre el lienzo: arrastrar, pellizcar, rueda y toque
-function attachGestures(canvas, cam, { onTap }) {
-  const pts = new Map();
-  let moved = 0, start = null, lastPinch = 0;
-  canvas.addEventListener('pointerdown', (e) => {
-    canvas.setPointerCapture(e.pointerId);
-    pts.set(e.pointerId, [e.clientX, e.clientY]);
-    if (pts.size === 1) { moved = 0; start = [e.clientX, e.clientY, performance.now()]; }
-    if (pts.size === 2) lastPinch = dist();
-    cam._target = null;
-  });
-  canvas.addEventListener('pointermove', (e) => {
-    if (!pts.has(e.pointerId)) return;
-    const prev = pts.get(e.pointerId);
-    pts.set(e.pointerId, [e.clientX, e.clientY]);
-    if (pts.size === 1) {
-      const dx = e.clientX - prev[0], dy = e.clientY - prev[1];
-      moved += Math.abs(dx) + Math.abs(dy);
-      if (moved > 6) cam.pan(dx, dy);
-    } else if (pts.size === 2) {
-      const d = dist();
-      const [mx, my] = mid();
-      if (lastPinch > 0) cam.zoomAt(mx, my, d / lastPinch);
-      lastPinch = d;
-      moved += 100;
-    }
-  });
-  const up = (e) => {
-    if (!pts.has(e.pointerId)) return;
-    pts.delete(e.pointerId);
-    if (pts.size === 0 && start && moved <= 8 && performance.now() - start[2] < 600) {
-      onTap(e.clientX, e.clientY);
-    }
-    if (pts.size < 2) lastPinch = 0;
+// Gestos sobre el lienzo: arrastrar, pellizcar, rueda y toque.
+// En pantallas táctiles se usan eventos touch con preventDefault (algunos visores incrustados
+// cancelan los punteros al arrastrar); el ratón usa eventos de puntero.
+function attachGestures(canvas, getCam, { onTap }) {
+  // getCam: la cámara se recrea al empezar cada partida, así que siempre se pide la actual
+  let moved = 0, start = null, last = null, lastPinch = 0;
+  const begin = (x, y) => { moved = 0; start = [x, y, performance.now()]; last = [x, y]; getCam()._target = null; };
+  const drag = (x, y) => {
+    const dx = x - last[0], dy = y - last[1];
+    last = [x, y];
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (moved > 6) getCam().pan(dx, dy);
   };
+  const end = (x, y) => {
+    if (start && moved <= 10 && performance.now() - start[2] < 650) onTap(x, y);
+    start = null;
+  };
+  // Táctil
+  const tdist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1) begin(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length === 2) { lastPinch = tdist(e.touches); moved += 100; }
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && last) drag(e.touches[0].clientX, e.touches[0].clientY);
+    else if (e.touches.length >= 2) {
+      const d = tdist(e.touches);
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2, my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (lastPinch > 0) getCam().zoomAt(mx, my, d / lastPinch);
+      lastPinch = d;
+      last = [mx, my];
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 0) {
+      const t = e.changedTouches[0];
+      end(t.clientX, t.clientY);
+      lastPinch = 0;
+    } else if (e.touches.length === 1) { last = [e.touches[0].clientX, e.touches[0].clientY]; lastPinch = 0; }
+  }, { passive: false });
+  canvas.addEventListener('touchcancel', () => { start = null; lastPinch = 0; });
+  // Ratón y lápiz
+  let down = false;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
+    down = true;
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* nada */ }
+    begin(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('pointermove', (e) => { if (down && e.pointerType !== 'touch') drag(e.clientX, e.clientY); });
+  const up = (e) => { if (!down || e.pointerType === 'touch') return; down = false; end(e.clientX, e.clientY); };
   canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', up);
+  canvas.addEventListener('pointercancel', () => { down = false; start = null; });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    cam.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+    getCam().zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
   }, { passive: false });
-  function dist() {
-    const [a, b] = [...pts.values()];
-    return Math.hypot(a[0] - b[0], a[1] - b[1]);
-  }
-  function mid() {
-    const [a, b] = [...pts.values()];
-    return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  }
 }
 
 return { Camera, attachGestures };
@@ -5808,6 +5852,7 @@ class Hud {
     const max = Math.max(s.jornales, dailyJornales(s));
     const full = Math.max(0, Math.floor(s.jornales));
     this.jorn.b.innerHTML = `<span class="dots">${'●'.repeat(Math.min(full, 12))}${'○'.repeat(Math.max(0, Math.min(12, max) - Math.min(full, 12)))}</span>`;
+    this.jorn.el.querySelector('.lab').textContent = full < 1 ? 'jornales (vuelven al amanecer)' : 'jornales';
     this.mood.b.textContent = Math.round(s.mood);
     this.mood.el.classList.toggle('neg', s.mood < 30);
     this.rep.b.textContent = Math.round(s.rep);
@@ -7609,6 +7654,15 @@ class UI {
     this.toasts = new Toasts(this.layer);
     this.modalOpen = null;
     this.noteQueue = [];
+    const cam = () => game.cam;
+    this.zoomBox = h('div', { class: 'zoom paper', role: 'group', 'aria-label': 'Zoom del plano' },
+      h('button', { 'aria-label': 'Acercar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1.35) }, '+'),
+      h('button', { 'aria-label': 'Ver el plano entero', onclick: () => { cam().zoom = cam().fit; cam().centerOn(800, 500); } }, '⊡'),
+      h('button', { 'aria-label': 'Alejar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1 / 1.35) }, '−'));
+    this.layer.append(this.zoomBox);
+    this.dawnBtn = btn('☾ Sin jornales: pasar al amanecer', () => game.skipToDawn(), { cls: 'dawn primary' });
+    this.dawnBtn.hidden = true;
+    this.layer.append(this.dawnBtn);
     this.hint = h('div', { class: 'hint paper', style: { opacity: 0 } });
     this.layer.append(this.hint);
     this.tipIndex = 0;
@@ -7698,6 +7752,8 @@ class UI {
 
   update(s) {
     if (this.zone.isOpen && this.hint.style.opacity === '1') { this.hint.style.opacity = '0'; this.tipTimer = 4; }
+    const showDawn = s.jornales < 1 && !this.game.skipping && !this.modalOpen && !s.asleep;
+    if (this.dawnBtn.hidden === showDawn) this.dawnBtn.hidden = !showDawn;
     this.hud.update(s);
     this.zone.update(s);
     this.book.update(s);
@@ -8192,7 +8248,8 @@ class Game {
   }
 
   cacheScale() {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const dpr = Math.min(coarse ? 1.5 : 2, window.devicePixelRatio || 1);
     const mobile = Math.min(window.innerWidth, window.innerHeight) < 600;
     // Resolución de la caché: la del zoom con el que se suele mirar (sin pasarse en móviles)
     return Math.max(1, Math.min(mobile ? 1.6 : 2, dpr * Math.max(this.cam.zoom, this.cam.fit * 1.6)));
@@ -8210,7 +8267,11 @@ class Game {
     if (!s) { ctx.fillStyle = '#2b2018'; ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); return; }
     const ui = this.ui;
     const bookPause = ui.book.isOpen && this.settings.pauseBook;
-    if (!this.paused && this.speed > 0 && !ui.blocking && !bookPause && !s.asleep) {
+    if (this.skipping && (ui.blocking || s.asleep || s.day !== this.skipDay)) this.skipping = false;
+    if (this.skipping) {
+      // Pasar la noche: ocho horas de juego por segundo hasta el amanecer
+      S.advance(s, dt * 8);
+    } else if (!this.paused && this.speed > 0 && !ui.blocking && !bookPause && !s.asleep) {
       S.advance(s, dt * this.speed * S.HOURS_PER_SECOND);
     }
     this.handleSignals();
@@ -8239,6 +8300,14 @@ class Game {
     const s = this.s;
     Save.save(s);
     if (S.isSeasonStart(s)) { Save.saveSeasonSnapshot(s); s.flags.seasonSnap = s.day; }
+  }
+
+  skipToDawn() {
+    if (!this.s || this.s.asleep) return;
+    this.skipping = true;
+    this.skipDay = this.s.day;
+    this.paused = false;
+    sfx('page');
   }
 
   setSpeed(v) {
@@ -8363,8 +8432,9 @@ class Game {
   }
 
   resize(force = false) {
-    // El lienzo nunca pasa de 2× (en móviles de 3× no se nota en un dibujo a boceto y ahorra batería)
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // El lienzo nunca pasa de 2× (1,5× en pantallas táctiles): en un dibujo a boceto no se nota y va más fluido
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const dpr = Math.min(coarse ? 1.5 : 2, window.devicePixelRatio || 1);
     const w = window.innerWidth, hgt = window.innerHeight;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(hgt * dpr);
@@ -8377,7 +8447,7 @@ class Game {
   }
 
   _bindGlobal() {
-    attachGestures(this.canvas, this.cam, { onTap: (x, y) => this.onTap(x, y) });
+    attachGestures(this.canvas, () => this.cam, { onTap: (x, y) => this.onTap(x, y) });
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 200));
     const unlock = () => this.unlockAudio();

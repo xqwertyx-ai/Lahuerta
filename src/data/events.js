@@ -137,6 +137,17 @@ export const EVENTS = [
     ],
   },
   {
+    id: 'san_antonio', title: 'Fiesta de San Antonio', illus: 'vecinos', weight: 7, seasons: [1], cooldown: 45,
+    cond: (s) => s.zones.ermita.unlocked,
+    text: (s) => s.zones.ermita.cons >= 60
+      ? 'Es el día de San Antonio. Los vecinos suben por el paseo de las adelfas con flores para la ermita, que hoy luce blanca y con la reja recién pintada.'
+      : 'Es el día de San Antonio. Algunos vecinos suben con flores, pero la ermita está desconchada y la reja oxidada. Nadie dice nada, aunque se nota.',
+    options: [
+      { label: 'Abrir la ermita y convidar a limonada', cost: { jornales: 1, money: 10 }, apply: (s, h) => { const c = h.zoneCons('ermita'); h.addRep(c >= 60 ? 4 : 1); h.addMood(6); if (c < 60) h.log('Alguien deja dicho que el año que viene trae cal.'); }, result: 'Flores, limonada y conversación bajo la mimosa hasta que cae el sol.' },
+      { label: 'Poner unas flores y seguir trabajando', effects: { mood: 2 }, result: 'Un ramo de adelfas a los pies del santo. Que encuentre lo que haga falta.' },
+    ],
+  },
+  {
     id: 'feria', title: 'Feria de Fuente Obejuna', illus: 'feria', weight: 4, seasons: [1, 2], cooldown: 40,
     text: 'Es la feria del pueblo. Hay un puesto libre en la plaza y la cooperativa organiza un concurso.',
     options: [

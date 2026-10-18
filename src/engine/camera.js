@@ -17,7 +17,7 @@ export class Camera {
     this.vw = vw; this.vh = vh; this.dpr = dpr;
     this.fit = Math.min(vw / (WORLD.w + 40), (vh - this.topInset) / (WORLD.h + 40));
     // En pantallas estrechas (móvil en vertical) se empieza más cerca para que se lea
-    this.minZoom = this.fit * 0.95;
+    this.minZoom = this.fit * 0.8;
     this.maxZoom = Math.max(this.fit * 4, 2.2);
     if (first) {
       const narrow = vw / vh < 1;
@@ -80,53 +80,64 @@ export class Camera {
   }
 }
 
-// Gestos sobre el lienzo: arrastrar, pellizcar, rueda y toque
-export function attachGestures(canvas, cam, { onTap }) {
-  const pts = new Map();
-  let moved = 0, start = null, lastPinch = 0;
-  canvas.addEventListener('pointerdown', (e) => {
-    canvas.setPointerCapture(e.pointerId);
-    pts.set(e.pointerId, [e.clientX, e.clientY]);
-    if (pts.size === 1) { moved = 0; start = [e.clientX, e.clientY, performance.now()]; }
-    if (pts.size === 2) lastPinch = dist();
-    cam._target = null;
-  });
-  canvas.addEventListener('pointermove', (e) => {
-    if (!pts.has(e.pointerId)) return;
-    const prev = pts.get(e.pointerId);
-    pts.set(e.pointerId, [e.clientX, e.clientY]);
-    if (pts.size === 1) {
-      const dx = e.clientX - prev[0], dy = e.clientY - prev[1];
-      moved += Math.abs(dx) + Math.abs(dy);
-      if (moved > 6) cam.pan(dx, dy);
-    } else if (pts.size === 2) {
-      const d = dist();
-      const [mx, my] = mid();
-      if (lastPinch > 0) cam.zoomAt(mx, my, d / lastPinch);
-      lastPinch = d;
-      moved += 100;
-    }
-  });
-  const up = (e) => {
-    if (!pts.has(e.pointerId)) return;
-    pts.delete(e.pointerId);
-    if (pts.size === 0 && start && moved <= 8 && performance.now() - start[2] < 600) {
-      onTap(e.clientX, e.clientY);
-    }
-    if (pts.size < 2) lastPinch = 0;
+// Gestos sobre el lienzo: arrastrar, pellizcar, rueda y toque.
+// En pantallas táctiles se usan eventos touch con preventDefault (algunos visores incrustados
+// cancelan los punteros al arrastrar); el ratón usa eventos de puntero.
+export function attachGestures(canvas, getCam, { onTap }) {
+  // getCam: la cámara se recrea al empezar cada partida, así que siempre se pide la actual
+  let moved = 0, start = null, last = null, lastPinch = 0;
+  const begin = (x, y) => { moved = 0; start = [x, y, performance.now()]; last = [x, y]; getCam()._target = null; };
+  const drag = (x, y) => {
+    const dx = x - last[0], dy = y - last[1];
+    last = [x, y];
+    moved += Math.abs(dx) + Math.abs(dy);
+    if (moved > 6) getCam().pan(dx, dy);
   };
+  const end = (x, y) => {
+    if (start && moved <= 10 && performance.now() - start[2] < 650) onTap(x, y);
+    start = null;
+  };
+  // Táctil
+  const tdist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1) begin(e.touches[0].clientX, e.touches[0].clientY);
+    if (e.touches.length === 2) { lastPinch = tdist(e.touches); moved += 100; }
+  }, { passive: false });
+  canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 1 && last) drag(e.touches[0].clientX, e.touches[0].clientY);
+    else if (e.touches.length >= 2) {
+      const d = tdist(e.touches);
+      const mx = (e.touches[0].clientX + e.touches[1].clientX) / 2, my = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      if (lastPinch > 0) getCam().zoomAt(mx, my, d / lastPinch);
+      lastPinch = d;
+      last = [mx, my];
+    }
+  }, { passive: false });
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    if (e.touches.length === 0) {
+      const t = e.changedTouches[0];
+      end(t.clientX, t.clientY);
+      lastPinch = 0;
+    } else if (e.touches.length === 1) { last = [e.touches[0].clientX, e.touches[0].clientY]; lastPinch = 0; }
+  }, { passive: false });
+  canvas.addEventListener('touchcancel', () => { start = null; lastPinch = 0; });
+  // Ratón y lápiz
+  let down = false;
+  canvas.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') return;
+    down = true;
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* nada */ }
+    begin(e.clientX, e.clientY);
+  });
+  canvas.addEventListener('pointermove', (e) => { if (down && e.pointerType !== 'touch') drag(e.clientX, e.clientY); });
+  const up = (e) => { if (!down || e.pointerType === 'touch') return; down = false; end(e.clientX, e.clientY); };
   canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', up);
+  canvas.addEventListener('pointercancel', () => { down = false; start = null; });
   canvas.addEventListener('wheel', (e) => {
     e.preventDefault();
-    cam.zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
+    getCam().zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015));
   }, { passive: false });
-  function dist() {
-    const [a, b] = [...pts.values()];
-    return Math.hypot(a[0] - b[0], a[1] - b[1]);
-  }
-  function mid() {
-    const [a, b] = [...pts.values()];
-    return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  }
 }

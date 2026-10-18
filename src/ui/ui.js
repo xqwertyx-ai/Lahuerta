@@ -23,6 +23,15 @@ export class UI {
     this.toasts = new Toasts(this.layer);
     this.modalOpen = null;
     this.noteQueue = [];
+    const cam = () => game.cam;
+    this.zoomBox = h('div', { class: 'zoom paper', role: 'group', 'aria-label': 'Zoom del plano' },
+      h('button', { 'aria-label': 'Acercar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1.35) }, '+'),
+      h('button', { 'aria-label': 'Ver el plano entero', onclick: () => { cam().zoom = cam().fit; cam().centerOn(800, 500); } }, '⊡'),
+      h('button', { 'aria-label': 'Alejar', onclick: () => cam().zoomAt(cam().vw / 2, cam().vh / 2, 1 / 1.35) }, '−'));
+    this.layer.append(this.zoomBox);
+    this.dawnBtn = btn('☾ Sin jornales: pasar al amanecer', () => game.skipToDawn(), { cls: 'dawn primary' });
+    this.dawnBtn.hidden = true;
+    this.layer.append(this.dawnBtn);
     this.hint = h('div', { class: 'hint paper', style: { opacity: 0 } });
     this.layer.append(this.hint);
     this.tipIndex = 0;
@@ -112,6 +121,8 @@ export class UI {
 
   update(s) {
     if (this.zone.isOpen && this.hint.style.opacity === '1') { this.hint.style.opacity = '0'; this.tipTimer = 4; }
+    const showDawn = s.jornales < 1 && !this.game.skipping && !this.modalOpen && !s.asleep;
+    if (this.dawnBtn.hidden === showDawn) this.dawnBtn.hidden = !showDawn;
     this.hud.update(s);
     this.zone.update(s);
     this.book.update(s);

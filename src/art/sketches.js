@@ -522,7 +522,7 @@ export const SKETCHES = {
     for (const x of [30, 150]) { pen.line(x, 90, x, 70); pen.line(x + 2, 90, x + 2, 70); }
   },
 
-  almacen(d) {
+  ermita(d) {
     const { pen, r, P } = d;
     const gy = 192;
     groundShadow(d, 100, gy + 2, 84, 8);
@@ -548,9 +548,16 @@ export const SKETCHES = {
     d.wash([[30, 106], [93, 60], [156, 106], [152, 108], [93, 66], [34, 108]], P.roof, { alpha: 0.7, edge: 0.3 });
     pen.path(gable, false);
     pen.path([[93, 62], [118, 54], [176, 92]], false);
-    // Campanario/chimenea en lo alto
-    pen.rect(88, 46, 10, 18);
-    pen.rect(86, 42, 14, 5);
+    // Espadaña con su campanita y la cruz
+    d.wash([[84, 66], [102, 66], [102, 40], [84, 40]], P.whitewash, { alpha: 1 });
+    pen.path([[84, 66], [84, 40], [102, 40], [102, 66]], false);
+    pen.path([[88, 58], [88, 48], [93, 44], [98, 48], [98, 58]], false);
+    pen.set({ width: 1 });
+    pen.curve([[90, 55], [93, 49], [96, 55]]);
+    pen.dot(93, 56, 1.4);
+    pen.set({ width: 1.4 });
+    pen.line(93, 40, 93, 26);
+    pen.line(88, 31, 98, 31);
     // Puerta roja de forja con arco apuntado
     const door = [[58, gy], [58, 132], [93, 112], [128, 132], [128, gy]];
     d.wash(door, P.door, { alpha: 0.62, spread: 1 });

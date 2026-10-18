@@ -46,6 +46,7 @@ test('las zonas se deterioran y la maleza crece', () => {
 
 test('tareas: gastan jornales y materiales y suben la conservación', () => {
   const s = fresh();
+  s.jornales = 3;
   const c0 = s.zones.cortijo.cons, cal0 = s.materials.cal, j0 = s.jornales;
   const r = S.doTask(s, 'cortijo', 'encalar');
   assert.ok(r.ok, r.text);
@@ -66,7 +67,7 @@ test('la tarea de temporada se bloquea fuera de su estación', () => {
 
 test('desbloquear una zona la vuelve a dibujar y puede dar un recuerdo', () => {
   const s = fresh();
-  s.jornales = 10;
+  s.jornales = 20;
   const r = S.unlockZone(s, 'huerta');
   assert.ok(r.ok, r.text);
   assert.ok(s.zones.huerta.unlocked);
@@ -255,15 +256,15 @@ test('todos los objetos se pueden encontrar', () => {
 test('recuperar una zona es un proyecto de varios jornales', () => {
   const s = fresh();
   s.jornales = 3;
-  const r1 = S.unlockZone(s, 'almacen');
+  const r1 = S.unlockZone(s, 'ermita');
   assert.ok(r1.ok && !r1.done);
-  assert.equal(s.zones.almacen.unlockWork, 3);
+  assert.equal(s.zones.ermita.unlockWork, 3);
   assert.equal(s.jornales, 0);
   // Un voluntario encargado sigue el trabajo
   S.arrive(s, 'jonas');
-  assert.ok(S.assignVolunteer(s, 'jonas', 'almacen'));
-  for (let i = 0; i < 4; i++) S.autoMaintain(s);
-  assert.ok(s.zones.almacen.unlocked);
+  assert.ok(S.assignVolunteer(s, 'jonas', 'ermita'));
+  for (let i = 0; i < 10; i++) S.autoMaintain(s);
+  assert.ok(s.zones.ermita.unlocked);
 });
 
 test('rendimiento decreciente: lo bien cuidado sube menos', () => {

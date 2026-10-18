@@ -82,6 +82,9 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
 
 // Completa partidas guardadas con versiones anteriores (campos nuevos con su valor por defecto)
 export function migrate(s) {
+  // v0.1 → el «almacén» es en realidad la ermita de San Antonio
+  if (s.zones && s.zones.almacen && !s.zones.ermita) { s.zones.ermita = s.zones.almacen; delete s.zones.almacen; }
+  if (s.volunteers) for (const v of s.volunteers) if (v.zone === 'almacen') v.zone = 'ermita';
   const fresh = createState(s.seed || 1, s.cfg);
   for (const k of Object.keys(fresh)) if (s[k] === undefined) s[k] = fresh[k];
   for (const k of Object.keys(fresh.zones)) {

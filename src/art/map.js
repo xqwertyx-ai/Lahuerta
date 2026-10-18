@@ -13,7 +13,7 @@ export const WORLD = { w: 1600, h: 1000 };
 const PAD = 46;
 
 const LABELS = {
-  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], almacen: [1475, 680], huerta: [330, 582],
+  cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], huerta: [330, 582],
   bosquete: [290, 818], dehesa: [250, 140], muros: [640, 462], alberca: [940, 184], colmenar: [1205, 134],
   corral: [1445, 140], piano: [1195, 424],
 };

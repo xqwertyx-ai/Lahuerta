@@ -50,6 +50,7 @@ export class Hud {
     const max = Math.max(s.jornales, dailyJornales(s));
     const full = Math.max(0, Math.floor(s.jornales));
     this.jorn.b.innerHTML = `<span class="dots">${'●'.repeat(Math.min(full, 12))}${'○'.repeat(Math.max(0, Math.min(12, max) - Math.min(full, 12)))}</span>`;
+    this.jorn.el.querySelector('.lab').textContent = full < 1 ? 'jornales (vuelven al amanecer)' : 'jornales';
     this.mood.b.textContent = Math.round(s.mood);
     this.mood.el.classList.toggle('neg', s.mood < 30);
     this.rep.b.textContent = Math.round(s.rep);

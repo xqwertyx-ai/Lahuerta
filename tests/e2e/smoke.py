@@ -77,6 +77,16 @@ def run(url, tag, browser):
     pg.locator('.sheet .task').filter(has_text='Arreglar las tejas').locator('button').count()
     pg.click('.sheet .close')
 
+    # Sin jornales: pasar al amanecer
+    pg.evaluate("() => { __huerta.s.jornales = 0; }")
+    pg.wait_for_selector('.dawn:not([hidden])', timeout=3000)
+    d0 = pg.evaluate("() => __huerta.s.day")
+    pg.click('.dawn')
+    pg.wait_for_function(f"() => __huerta.s.day > {d0} || document.querySelector('.modal')", timeout=10000)
+    dismiss(pg)
+    pg.wait_for_function(f"() => __huerta.s.day > {d0}", timeout=10000)
+    check('pasar al amanecer devuelve los jornales', pg.evaluate("() => __huerta.s.jornales") >= 5)
+
     # Velocidad y paso del tiempo
     pg.click('.speed button:nth-child(4)')
     h0 = pg.evaluate("() => __huerta.s.day * 24 + __huerta.s.hour")
@@ -143,6 +153,19 @@ def run(url, tag, browser):
         mp.wait_for_selector('.hud', timeout=10000)
         time.sleep(1)
         mp.screenshot(path=f'{SHOTS}/{tag}-21-{name}-plano.png')
+        # Arrastrar con el dedo mueve el plano; los botones de zoom acercan y alejan
+        x0 = mp.evaluate("() => __huerta.cam.x + ',' + __huerta.cam.y")
+        mp.evaluate("""() => { const c = document.getElementById('map'); const mk = (x, y) => new Touch({ identifier: 1, target: c, clientX: x, clientY: y });
+          c.dispatchEvent(new TouchEvent('touchstart', { touches: [mk(200, 400)], changedTouches: [mk(200, 400)], cancelable: true, bubbles: true }));
+          for (let i = 1; i <= 10; i++) c.dispatchEvent(new TouchEvent('touchmove', { touches: [mk(200 - i * 12, 400 - i * 8)], changedTouches: [mk(200 - i * 12, 400 - i * 8)], cancelable: true, bubbles: true }));
+          c.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [mk(80, 320)], cancelable: true, bubbles: true })); }""")
+        x1 = mp.evaluate("() => __huerta.cam.x + ',' + __huerta.cam.y")
+        check(f'{name}: arrastrar con el dedo mueve el plano', x0 != x1, f'{x0} → {x1}')
+        z0 = mp.evaluate("() => __huerta.cam.zoom")
+        mp.click('.zoom button[aria-label="Alejar"]')
+        z1 = mp.evaluate("() => __huerta.cam.zoom")
+        check(f'{name}: botón de alejar', z1 < z0, f'{z0:.2f} → {z1:.2f}')
+        mp.click('.zoom button[aria-label="Acercar"]')
         tap_zone(mp, 360, 300)  # dehesa
         mp.wait_for_selector('.sheet.open', timeout=3000)
         time.sleep(0.4)

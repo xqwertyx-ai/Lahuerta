@@ -119,7 +119,8 @@ export class Game {
   }
 
   cacheScale() {
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const dpr = Math.min(coarse ? 1.5 : 2, window.devicePixelRatio || 1);
     const mobile = Math.min(window.innerWidth, window.innerHeight) < 600;
     // Resolución de la caché: la del zoom con el que se suele mirar (sin pasarse en móviles)
     return Math.max(1, Math.min(mobile ? 1.6 : 2, dpr * Math.max(this.cam.zoom, this.cam.fit * 1.6)));
@@ -137,7 +138,11 @@ export class Game {
     if (!s) { ctx.fillStyle = '#2b2018'; ctx.fillRect(0, 0, this.canvas.width, this.canvas.height); return; }
     const ui = this.ui;
     const bookPause = ui.book.isOpen && this.settings.pauseBook;
-    if (!this.paused && this.speed > 0 && !ui.blocking && !bookPause && !s.asleep) {
+    if (this.skipping && (ui.blocking || s.asleep || s.day !== this.skipDay)) this.skipping = false;
+    if (this.skipping) {
+      // Pasar la noche: ocho horas de juego por segundo hasta el amanecer
+      S.advance(s, dt * 8);
+    } else if (!this.paused && this.speed > 0 && !ui.blocking && !bookPause && !s.asleep) {
       S.advance(s, dt * this.speed * S.HOURS_PER_SECOND);
     }
     this.handleSignals();
@@ -166,6 +171,14 @@ export class Game {
     const s = this.s;
     Save.save(s);
     if (S.isSeasonStart(s)) { Save.saveSeasonSnapshot(s); s.flags.seasonSnap = s.day; }
+  }
+
+  skipToDawn() {
+    if (!this.s || this.s.asleep) return;
+    this.skipping = true;
+    this.skipDay = this.s.day;
+    this.paused = false;
+    sfx('page');
   }
 
   setSpeed(v) {
@@ -290,8 +303,9 @@ export class Game {
   }
 
   resize(force = false) {
-    // El lienzo nunca pasa de 2× (en móviles de 3× no se nota en un dibujo a boceto y ahorra batería)
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    // El lienzo nunca pasa de 2× (1,5× en pantallas táctiles): en un dibujo a boceto no se nota y va más fluido
+    const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const dpr = Math.min(coarse ? 1.5 : 2, window.devicePixelRatio || 1);
     const w = window.innerWidth, hgt = window.innerHeight;
     this.canvas.width = Math.round(w * dpr);
     this.canvas.height = Math.round(hgt * dpr);
@@ -304,7 +318,7 @@ export class Game {
   }
 
   _bindGlobal() {
-    attachGestures(this.canvas, this.cam, { onTap: (x, y) => this.onTap(x, y) });
+    attachGestures(this.canvas, () => this.cam, { onTap: (x, y) => this.onTap(x, y) });
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 200));
     const unlock = () => this.unlockAudio();

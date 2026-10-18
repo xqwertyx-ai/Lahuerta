@@ -81,7 +81,7 @@ export function taskBlocker(s, zoneId, task) {
     return `Hace falta alguien que sepa de ${skillName(task.skill)}`;
   }
   if (task.gainPerAnimal && !(s.animals[task.gainPerAnimal.animal] > 0)) return 'No hay animales';
-  if (task.id === 'carbon' && zoneId === 'almacen' && (s.materials.lena || 0) < 3) return 'Falta leña';
+  if (task.id === 'carbon' && (s.materials.lena || 0) < 3) return 'Falta leña';
   if (s.jornales < taskJornales(s, task)) return 'No quedan jornales hoy';
   if (!canAfford(s, task.cost)) return 'Falta ' + missingOf(s, task.cost).map(labelOf).join(', ');
   return null;
@@ -143,6 +143,7 @@ export function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   if (taskItems.length && st.cons >= 55 && s.day >= 4) {
     let p = 0.22;
     for (const v of s.volunteers) p += traitOf(v).findBonus || 0;
+    if (s.zones.ermita.everRestored) p += 0.1; // San Antonio, que encuentra lo perdido
     if (chance(s, p)) giveItem(s, taskItems[0].id);
   }
 
