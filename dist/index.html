@@ -311,6 +311,16 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   * { animation-duration: 0.01s !important; transition-duration: 0.01s !important; }
 }
 
+/* Láminas de los recuerdos: cuadros de Transi y fotos, como pegados en el cuaderno */
+.lamina { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; margin: 4px 0 8px; cursor: zoom-in;
+  filter: sepia(0.18) saturate(0.92) contrast(0.96);
+  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, rgba(0,0,0,0.55) 82%, transparent 100%);
+          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, rgba(0,0,0,0.55) 82%, transparent 100%); }
+.lamina.big { max-height: min(56vh, 520px); margin: 6px auto 10px; cursor: default; }
+.card.wide { grid-column: span 2; }
+@media (max-width: 560px) { .card.wide { grid-column: auto; } }
+.tractor-ok { color: var(--green); }
+
 </style>
 </head>
 <body>
@@ -318,7 +328,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610190929
+// La Huerta del Pianista · build 202610191004
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
@@ -417,6 +427,8 @@ const BALANCE = {
   catFindChancePerDay: 0.06,
   itemChanceOnRestore: 1.0,     // al restaurar una zona por primera vez aparece su objeto
   itemChanceOnTask: 0.05,
+  itemFullCons: 99.5,           // los recuerdos de una zona solo aparecen cuando llega al 100 %
+  itemDripDays: 3,              // y de uno en uno: como mucho uno por zona cada 3 días (2 con la ermita restaurada)
 };
 
 return { BALANCE };
@@ -487,7 +499,7 @@ const ZONES = [
     start: 30, unlocked: false, decay: 1.2, weeds: true, beds: true,
     unlock: { text: 'Desbrozar y cavar los bancales', jornales: 14, cost: { herramientas: 0.5 } },
     tasks: [
-      { id: 'cavar', name: 'Cavar y abonar', jornales: 2, effect: { cons: 15 }, skill: 'huerta' },
+      { id: 'cavar', name: 'Cavar y abonar', jornales: 2, tractor: true, effect: { cons: 15 }, skill: 'huerta' },
       { id: 'regar', name: 'Regar los bancales', jornales: 1, effect: { cons: 5 }, water: 6, growBeds: 0.15, skill: 'agua', notWeather: ['lluvia', 'tormenta'] },
       { id: 'desbrozar', name: 'Quitar malas hierbas', jornales: 1, effect: { cons: 4, weeds: -40 }, skill: 'huerta' },
     ],
@@ -511,9 +523,9 @@ const ZONES = [
     start: 36, unlocked: true, decay: 0.7, weeds: true,
     tasks: [
       { id: 'podar', name: 'Podar encinas', jornales: 3, effect: { cons: 14 }, gain: { lena: 3 }, seasons: [2, 3], skill: 'monte' },
-      { id: 'desbrozar', name: 'Desbrozar el pasto', jornales: 2, effect: { cons: 6, weeds: -50 }, skill: 'monte' },
-      { id: 'bellota', name: 'Varear y recoger bellota', jornales: 2, effect: { cons: 2 }, gainScaled: { bellota: 5 }, seasons: [2] },
-      { id: 'heno', name: 'Segar y empacar el heno', jornales: 2, effect: { cons: 3 }, gainScaled: { heno: 9 }, seasons: [0, 1], skill: 'ganado' },
+      { id: 'desbrozar', name: 'Desbrozar el pasto', jornales: 2, tractor: true, effect: { cons: 6, weeds: -50 }, skill: 'monte' },
+      { id: 'bellota', name: 'Varear y recoger bellota', jornales: 2, tractor: true, effect: { cons: 2 }, gainScaled: { bellota: 5 }, seasons: [2] },
+      { id: 'heno', name: 'Segar y empacar el heno', jornales: 2, tractor: true, effect: { cons: 3 }, gainScaled: { heno: 9 }, seasons: [0, 1], skill: 'ganado' },
       { id: 'piedra', name: 'Recoger piedra suelta', jornales: 1, effect: { cons: 2 }, gain: { piedra: 3 } },
       { id: 'carbon', name: 'Hacer carbón de encina', jornales: 2, cost: { lena: 3 }, effect: { cons: 1 }, gain: { carbon: 2 }, skill: 'monte' },
     ],
@@ -525,7 +537,7 @@ const ZONES = [
     start: 25, unlocked: false, decay: 0.8, weeds: true,
     unlock: { text: 'Limpiar las zarzas y apilar la piedra caída', jornales: 21, cost: { piedra: 6 }, requires: { zones: { dehesa: 45 } } },
     tasks: [
-      { id: 'rehacer', name: 'Rehacer un tramo', jornales: 3, cost: { piedra: 3 }, effect: { cons: 20 }, skill: 'albanileria', notWeather: ['helada'] },
+      { id: 'rehacer', name: 'Rehacer un tramo', jornales: 3, tractor: true, cost: { piedra: 3 }, effect: { cons: 20 }, skill: 'albanileria', notWeather: ['helada'] },
       { id: 'zarzas', name: 'Quitar zarzas', jornales: 1, effect: { cons: 4, weeds: -40 }, skill: 'monte' },
     ],
   },
@@ -809,7 +821,9 @@ function createState(seed = Date.now() % 2147483647, overrides = {}) {
     damages: {},             // averías en marcha: { id: { id, work, started, since } }
     mods: [],                // avisos temporales: [{ id, until }]
     taxBase: { earned: 0, spent: 0 },
-    loan: null,              // préstamo de la cooperativa: { weekly, left }
+    loan: null,
+    tractor: { found: false, work: 0, started: false, ready: false },
+    itemDrip: {},            // día del último recuerdo de cada zona              // préstamo de la cooperativa: { weekly, left }
     cold: false, coldDays: 0, hungry: false, hungryDays: 0,
     guests: [],              // [{ n, nights }]
     log: [],
@@ -921,6 +935,7 @@ const MILESTONES = [
   { id: 'matanza', name: 'Día de matanza', text: 'Un jamón curándose con el aire de la sierra.', check: (s) => (s.stats.produced.jamon || 0) >= 1 },
   { id: 'bancos', name: 'Los bancos de los nietos', text: 'Cada nombre se lee otra vez entre las teselas.', check: (s) => s.zones.bancos.cons >= 80 },
   { id: 'ratos', name: 'Ratos libres', text: 'No todo es trabajar: diez tardes de música, pintura y estrellas.', check: (s) => (s.stats.activities || 0) >= 10 },
+  { id: 'pascuali', name: 'El Pascuali arranca', text: 'Amarillo, viejo y con más carácter que nadie.', check: (s) => !!(s.tractor && s.tractor.ready) },
   { id: 'cortijo_encalado', name: 'Cortijo encalado', text: 'Blanco como el pueblo de enfrente.', check: (s) => s.zones.cortijo.cons >= 85 },
   { id: 'recuerdos5', name: 'Cinco recuerdos', text: 'La casa empieza a contarte cosas.', check: (s) => s.items.length >= 5 },
   { id: 'primera_miel', name: 'Primera miel', text: 'Sabe a romero y a encina.', check: (s) => s.stats.produced.miel >= 1 },
@@ -1158,7 +1173,7 @@ return { clamp, addLog, signal, drainSignals, stockOf, canAfford, missingOf, pay
 const __m15 = (() => {
 // Objetos y recuerdos que aparecen al restaurar la finca.
 //
-// where: 'unlock' (al volver a dibujar la zona), 'restore' (al llegar a conservación 70),
+// where: 'full' (al volver a dibujar la zona), 'restore' (al llegar a conservación 70),
 //        'cons' (al llegar a la conservación indicada en at),
 // minDay: no aparece antes de ese día (aunque se cumpla la condición; saldrá en cuanto llegue)
 //        'cat' (lo trae el gato), 'event' (solo por un evento), 'task' (tarea en la zona)
@@ -1170,36 +1185,36 @@ const __m15 = (() => {
 
 const ITEMS = [
   // ── Pianista: partituras ──
-  { id: 'partitura1', name: 'Una hoja de partitura doblada', thread: 'pianista', zone: 'patio', where: 'restore', minDay: 6, score: 4, icon: 'partitura',
+  { id: 'partitura1', name: 'Una hoja de partitura doblada', thread: 'pianista', zone: 'patio', where: 'full', minDay: 6, score: 4, icon: 'partitura',
     text: 'Encajada bajo un azulejo suelto de la fuente. Ocho compases a lápiz, sin título. Al final, una sola palabra: «atardecer».',
     hyp: { musico: 1, transi: 1 } },
-  { id: 'partitura2', name: 'Partitura junto al altar', thread: 'pianista', zone: 'ermita', where: 'restore', minDay: 35, score: 4, icon: 'partitura',
+  { id: 'partitura2', name: 'Partitura junto al altar', thread: 'pianista', zone: 'ermita', where: 'full', minDay: 35, score: 4, icon: 'partitura',
     text: 'Doblada bajo la peana de San Antonio, entre cabos de vela. La letra de las notas es fina y apretada; la de los márgenes, redonda. Dos manos distintas.',
     hyp: { feliciano: 1, transi: 1 } },
-  { id: 'partitura3', name: 'Partitura en el desván', thread: 'pianista', zone: 'cortijo', where: 'restore', minDay: 20, score: 4, icon: 'partitura',
+  { id: 'partitura3', name: 'Partitura en el desván', thread: 'pianista', zone: 'cortijo', where: 'full', minDay: 20, score: 4, icon: 'partitura',
     text: 'Dentro de una caja de zapatos. Alguien tachó una nota y escribió encima otra, con prisa, como quien corrige una carta.',
     hyp: { musico: 1, mueble: -1 } },
-  { id: 'partitura4', name: 'Partitura en la banqueta', thread: 'pianista', zone: 'piano', where: 'unlock', score: 4, icon: 'partitura',
+  { id: 'partitura4', name: 'Partitura en la banqueta', thread: 'pianista', zone: 'piano', where: 'full', score: 4, icon: 'partitura',
     text: 'Bajo la tapa de la banqueta del piano. Está fechada en verano, sin año. Lleva un dibujo diminuto de un ciervo en una esquina.',
     hyp: { transi: 2, mueble: -1 } },
   { id: 'partitura5', name: 'Un trozo de partitura mordisqueado', thread: 'pianista', zone: null, where: 'cat', score: 2, icon: 'partitura',
     text: 'El gato lo deja a tus pies con mucha dignidad. Le faltan las esquinas, pero se leen cuatro notas.',
     hyp: {} },
-  { id: 'partitura6', name: 'Partitura en la caja de fruta', thread: 'pianista', zone: 'bosquete', where: 'restore', minDay: 45, score: 2, icon: 'partitura',
+  { id: 'partitura6', name: 'Partitura en la caja de fruta', thread: 'pianista', zone: 'bosquete', where: 'full', minDay: 45, score: 2, icon: 'partitura',
     text: 'Envuelta en papel de periódico dentro de la caja de fruta. Es el final de la melodía: las últimas notas, por fin.',
     hyp: { musico: 1, feliciano: 1 } },
-  { id: 'disco', name: 'Un disco de pizarra sin etiqueta', thread: 'pianista', zone: 'ermita', where: 'unlock', icon: 'disco',
+  { id: 'disco', name: 'Un disco de pizarra sin etiqueta', thread: 'pianista', zone: 'ermita', where: 'full', icon: 'disco',
     text: 'Envuelto en un paño detrás de los bancos de la ermita. En el centro, a pluma: «para tocar al atardecer». No hay gramófono en la casa. Todavía.',
     hyp: { musico: 1, mueble: 1 } },
-  { id: 'diario', name: 'Un diario de tapas azules', thread: 'pianista', zone: 'piano', where: 'restore', minDay: 70, icon: 'diario',
+  { id: 'diario', name: 'Un diario de tapas azules', thread: 'pianista', zone: 'piano', where: 'full', minDay: 70, icon: 'diario',
     text: 'Apuntes breves, sin nombre: «Hoy ha sonado bien.» «Llovió; no tocamos.» «Los ciervos han vuelto.» Siempre en plural.',
     hyp: { musico: 1, transi: 1, feliciano: 1, mueble: -2 } },
 
   // ── Manuel ──
-  { id: 'llave', name: 'Una llave grande de hierro', thread: 'manuel', zone: 'muros', where: 'unlock', icon: 'llave',
+  { id: 'llave', name: 'Una llave grande de hierro', thread: 'manuel', zone: 'muros', where: 'full', icon: 'llave',
     text: 'Aparece entre dos piedras del muro, envuelta en un trapo. Es demasiado grande para cualquier puerta de la casa.',
     hyp: { manuel: 1 } },
-  { id: 'reloj', name: 'Un reloj de bolsillo parado', thread: 'manuel', zone: 'dehesa', where: 'restore', minDay: 25, icon: 'reloj',
+  { id: 'reloj', name: 'Un reloj de bolsillo parado', thread: 'manuel', zone: 'dehesa', where: 'full', minDay: 25, icon: 'reloj',
     text: 'Bajo el gran pino, medio enterrado. Las agujas marcan las ocho y diez. La tapa tiene grabada una M.',
     hyp: { manuel: 1 } },
   { id: 'escritura', name: 'Una escritura antigua', thread: 'manuel', zone: null, where: 'event', icon: 'carta',
@@ -1207,37 +1222,53 @@ const ITEMS = [
     hyp: { manuel: 2, feliciano: -1, transi: -1 } },
 
   // ── Feliciano ──
-  { id: 'cuentas', name: 'El cuaderno de cuentas', thread: 'feliciano', zone: 'cortijo', where: 'task', icon: 'cuaderno',
+  { id: 'cuentas', name: 'El cuaderno de cuentas', thread: 'feliciano', zone: 'cortijo', where: 'full', icon: 'cuaderno',
     text: 'Sacos de bellota, kilos de cal, jornales. En una esquina, a lápiz: «cuerdas del piano — pendiente».',
     hyp: { feliciano: 1, mueble: 1 } },
-  { id: 'foto_fuente', name: 'Una foto de la fuente a medio hacer', thread: 'feliciano', zone: 'patio', where: 'cons', at: 55, minDay: 3, icon: 'foto',
+  { id: 'foto_fuente', name: 'Una foto de la fuente a medio hacer', thread: 'feliciano', zone: 'patio', where: 'full', minDay: 3, icon: 'foto',
     text: 'Un hombre con boina, de espaldas, sujeta un azulejo azul. Al dorso: «Feliciano, la fuente, primer verano».',
     hyp: { feliciano: 1 } },
 
   // ── Transi ──
-  { id: 'firma', name: 'La firma de los cuadros', thread: 'transi', zone: 'cortijo', where: 'cons', at: 50, icon: 'firma',
+  { id: 'firma', name: 'La firma de los cuadros', thread: 'transi', zone: 'cortijo', where: 'full', icon: 'firma',
     text: 'Al descolgar los dos óleos para limpiarlos, lo lees despacio en la esquina: «Transi». Los pintó la abuela.',
     hyp: { transi: 2 } },
-  { id: 'acuarelas', name: 'La caja de pinturas de Transi', thread: 'transi', zone: 'cortijo', where: 'task', icon: 'caja',
+  { id: 'acuarelas', name: 'La caja de pinturas de Transi', thread: 'transi', zone: 'cortijo', where: 'full', icon: 'caja',
     text: 'Pastillas de color gastadas hasta el fondo. El ocre y el azul, casi terminados. Debajo, un papel con notas musicales dibujadas como pájaros.',
     hyp: { transi: 2 } },
-  { id: 'boceto', name: 'Un boceto de los ciervos', thread: 'transi', zone: 'alberca', where: 'restore', minDay: 50, icon: 'boceto',
+  { id: 'boceto', name: 'Un boceto de los ciervos', thread: 'transi', zone: 'alberca', where: 'full', minDay: 50, icon: 'boceto',
     text: 'El estudio del segundo cuadro: los ciervos junto al agua. En el borde, a lápiz, un pentagrama sin terminar.',
     hyp: { transi: 1, musico: 1 } },
 
   // ── Elisa y Loli ──
-  { id: 'carta', name: 'Una carta de Elisa', thread: 'elisa', zone: 'cortijo', where: 'cons', at: 85, minDay: 30, icon: 'carta',
+  { id: 'carta', name: 'Una carta de Elisa', thread: 'elisa', zone: 'cortijo', where: 'full', minDay: 30, icon: 'carta',
     text: '«¿Sigue sonando el piano por las tardes? Aquí lo echo de menos. Dale un beso a Transi y otro al pino.»',
     hyp: { musico: 1, mueble: -1 } },
-  { id: 'receta', name: 'La receta de membrillo de Loli', thread: 'loli', zone: 'huerta', where: 'unlock', icon: 'receta',
+  { id: 'receta', name: 'La receta de membrillo de Loli', thread: 'loli', zone: 'huerta', where: 'full', icon: 'receta',
     text: 'Membrillo, azúcar, paciencia. Y al final: «remover despacio, con música, que sale mejor».',
     hyp: {} },
-  { id: 'foto_hermanas', name: 'Una foto de tres hermanas', thread: 'loli', zone: 'paseo', where: 'restore', minDay: 18, icon: 'foto',
+  { id: 'foto_hermanas', name: 'Una foto de tres hermanas', thread: 'loli', zone: 'paseo', where: 'full', minDay: 18, icon: 'foto',
     text: 'Tres mujeres de espaldas bajo las adelfas, mirando hacia el cenador. Una lleva un pañuelo, otra un cesto. La tercera, un cuaderno.',
     hyp: { transi: 1 } },
-  { id: 'panuelo', name: 'Un pañuelo bordado', thread: 'elisa', zone: 'bosquete', where: 'unlock', icon: 'panuelo',
+  { id: 'panuelo', name: 'Un pañuelo bordado', thread: 'elisa', zone: 'bosquete', where: 'full', icon: 'panuelo',
     text: 'Colgado de una rama de la higuera, descolorido. Bordadas, unas iniciales: E. y, más pequeño, una corchea.',
     hyp: { musico: 1 } },
+  // ── Los cuadros de Transi y la foto del abuelo ──
+  { id: 'cuadro_pueblo', name: 'El cuadro del pueblo', thread: 'transi', zone: 'dehesa', where: 'full', icon: 'boceto', image: 'cuadro-pueblo',
+    text: 'Óleo de Transi: Ojuelos en lo alto, los muros de piedra seca, las encinas y el gran pino a la derecha. Desde la dehesa se ve tal cual.',
+    hyp: { transi: 1 } },
+  { id: 'cuadro_ciervos', name: 'El cuadro de los ciervos', thread: 'transi', zone: 'alberca', where: 'full', minDay: 40, icon: 'boceto', image: 'cuadro-ciervos',
+    text: 'Un ciervo y una cierva junto al agua, bajo un cielo de atardecer color miel. En la esquina, la firma: Transi.',
+    hyp: { transi: 1, musico: 1 } },
+  { id: 'cuadro_ermita', name: 'El cuadro de la ermita', thread: 'transi', zone: 'ermita', where: 'full', icon: 'boceto', image: 'cuadro-ermita',
+    text: 'La ermita blanca entre almendros en flor, con el pueblo detrás y un árbol grande que se dobla con el viento. Firmado: Transi.',
+    hyp: { transi: 1 } },
+  { id: 'cuadro_banco', name: 'El cuadro del hombre del banco', thread: 'transi', zone: 'paseo', where: 'full', minDay: 30, icon: 'boceto', image: 'cuadro-hombre-banco',
+    text: 'Un hombre con sombrero y barba descansa en un banco de madera, con un pañuelo rojo al cuello y la chaqueta azul a un lado. Pintado sobre tabla.',
+    hyp: { musico: 1 } },
+  { id: 'foto_olivo', name: 'Una foto del abuelo Feliciano', thread: 'feliciano', zone: 'dehesa', where: 'full', minDay: 20, icon: 'foto', image: 'foto-feliciano',
+    text: 'El abuelo Feliciano, con sombrero de paja, sentado a la sombra de un olivo en pleno verano. Detrás, los árboles recién plantados.',
+    hyp: { feliciano: 1 } },
 ];
 
 const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
@@ -1436,6 +1467,11 @@ const DAMAGES = {
     stops: { tourism: true }, worse: 0.4,
     text: 'El agua se ha comido el camino junto a las adelfas. Ningún coche sube hasta la casa.',
   },
+  tractor: {
+    zone: null, name: 'El Pascuali no arranca', hit: 0, work: 2, cost: { money: 40 }, pro: 35,
+    stops: { tractor: true }, worse: 0,
+    text: 'El Pascuali da dos vueltas de motor y se calla. Huele a gasoil y a algo quemado. Hasta que se arregle, todo a mano.',
+  },
   furgoneta: {
     zone: null, name: 'Furgoneta averiada', hit: 0, work: 3, cost: { money: 60 }, pro: 45,
     stops: { market: true }, worse: 0,
@@ -1600,6 +1636,7 @@ function canBreak(s, id) {
   if (def.zone && !s.zones[def.zone].unlocked) return false;
   if (def.zone && damageOf(s, def.zone)) return false;
   if (def.needsAnimals && !(s.animals[def.needsAnimals] > 0)) return false;
+  if (id === 'tractor' && !(s.tractor && s.tractor.ready)) return false;
   return true;
 }
 
@@ -2460,6 +2497,123 @@ function priceOf(id) { return PRODUCTS[id] ? PRODUCTS[id].price : 1; }
 return { beds, seasonalCrops, sowBlocker, sow, harvestBlocker, harvestAmount, harvest, growBeds, gardenDay, autoGarden };
 })();
 
+// ── src/data/tractor.js ──
+const __m26 = (() => {
+// El tractor Pascuali amarillo de la finca. Aparece cuando la huerta llega al 100 %:
+// estaba bajo una lona, lleno de polvo. Arreglarlo es un pequeño proyecto; una vez en marcha,
+// los trabajos de arado y acarreo (tareas con `tractor: true` en zones.js) cuestan un jornal menos.
+const TRACTOR = {
+  zone: 'huerta',
+  name: 'El Pascuali amarillo',
+  work: 5,                                   // jornales para ponerlo en marcha
+  cost: { money: 80, herramientas: 1 },      // al empezar: piezas, aceite y una batería
+  pro: 30,                                   // € por jornal si lo arregla el taller del pueblo
+  found: 'Con la huerta impecable, al quitar una lona vieja detrás del cobertizo aparece el Pascuali amarillo: polvo, óxido en los guardabarros y las ruedas medio deshinchadas. Con unos días de trabajo volverá a arrancar.',
+  ready: 'El Pascuali tose, echa una nube azul… y arranca. Ahora cavar, segar el heno, varear la bellota, desbrozar la dehesa y acarrear piedra cuestan un jornal menos.',
+};
+
+return { TRACTOR };
+})();
+
+// ── src/sim/tractor.js ──
+const __m25 = (() => {
+// El tractor Pascuali: aparece con la huerta al 100 %, se arregla con jornales (o en el taller)
+// y luego ahorra un jornal en los trabajos de carga y arado.
+const { TRACTOR } = __m26;
+const { BALANCE } = __m4;
+const { addLog, signal, canAfford, payCost, addStock, missingOf, labelOf, costLabel, clamp } = __m13;
+const { stopped } = __m18;
+
+
+
+function tractorState(s) {
+  if (!s.tractor) s.tractor = { found: false, work: 0, started: false, ready: false };
+  return s.tractor;
+}
+
+function tractorReady(s) { return !!(s.tractor && s.tractor.ready); }
+
+// ¿Ahorra un jornal en esta tarea? (solo si funciona y no está averiado)
+function tractorSaves(s, task) {
+  return !!task.tractor && tractorReady(s) && !stopped(s, 'tractor');
+}
+
+function checkTractor(s) {
+  const t = tractorState(s);
+  if (t.found) return;
+  const st = s.zones[TRACTOR.zone];
+  if (!st || !st.unlocked || Math.max(st.maxCons || 0, st.cons) < BALANCE.itemFullCons) return;
+  t.found = true;
+  addLog(s, `${TRACTOR.name}. ${TRACTOR.found}`, 'item');
+  signal(s, 'tractor', { found: true });
+}
+
+function tractorBlocker(s, jornales = s.jornales) {
+  const t = tractorState(s);
+  if (!t.found) return 'Todavía no ha aparecido';
+  if (t.ready) return 'Ya funciona';
+  if (!t.started && !canAfford(s, TRACTOR.cost)) return 'Falta ' + missingOf(s, TRACTOR.cost).map(labelOf).join(', ');
+  if (jornales < 1) return 'No quedan jornales hoy';
+  return null;
+}
+
+function finish(s) {
+  const t = tractorState(s);
+  t.ready = true;
+  s.mood = clamp(s.mood + 6, 0, 100);
+  addLog(s, TRACTOR.ready, 'good');
+  signal(s, 'tractor', { ready: true });
+}
+
+function repairTractor(s, { budget = null } = {}) {
+  const avail = budget != null ? budget : s.jornales;
+  const b = tractorBlocker(s, avail);
+  if (b) return { ok: false, text: b };
+  const t = tractorState(s);
+  if (!t.started) { payCost(s, TRACTOR.cost); s.stats.spent += TRACTOR.cost.money || 0; t.started = true; }
+  const put = Math.min(Math.floor(avail), TRACTOR.work - t.work);
+  if (budget == null) s.jornales -= put;
+  t.work += put;
+  if (t.work >= TRACTOR.work) { finish(s); return { ok: true, done: true, text: 'El Pascuali arranca', delta: 0 }; }
+  return { ok: true, done: false, used: put, text: `Arreglando el Pascuali: ${t.work}/${TRACTOR.work}`, delta: 0 };
+}
+
+function tractorProCost(s) {
+  const t = tractorState(s);
+  return Math.round((TRACTOR.work - t.work) * TRACTOR.pro + (t.started ? 0 : TRACTOR.cost.money || 0));
+}
+
+function tractorProBlocker(s) {
+  const t = tractorState(s);
+  if (!t.found) return 'Todavía no ha aparecido';
+  if (t.ready) return 'Ya funciona';
+  if (s.money < tractorProCost(s)) return 'No llega el dinero';
+  if (!t.started && !canAfford(s, { herramientas: TRACTOR.cost.herramientas })) return 'Faltan herramientas';
+  return null;
+}
+
+// Llevarlo al taller del pueblo: listo hoy, pero cuesta
+function tractorToWorkshop(s) {
+  const b = tractorProBlocker(s);
+  if (b) return { ok: false, text: b };
+  const cost = tractorProCost(s);
+  const t = tractorState(s);
+  if (!t.started) { addStock(s, 'herramientas', -(TRACTOR.cost.herramientas || 0)); t.started = true; }
+  addStock(s, 'money', -cost);
+  s.stats.spent += cost;
+  signal(s, 'coins', { amount: -cost });
+  t.work = TRACTOR.work;
+  finish(s);
+  return { ok: true, done: true, text: `El taller del pueblo deja el Pascuali como nuevo (${cost} €)`, delta: 0 };
+}
+
+function tractorCostLabel() {
+  return `${TRACTOR.work} jornales · al empezar: ${costLabel(TRACTOR.cost)}`;
+}
+
+return { tractorState, tractorReady, tractorSaves, checkTractor, tractorBlocker, repairTractor, tractorProCost, tractorProBlocker, tractorToWorkshop, tractorCostLabel, TRACTOR };
+})();
+
 // ── src/sim/farm.js ──
 const __m14 = (() => {
 // Zonas: deterioro, maleza, tareas de mantenimiento, desbloqueo y restauración.
@@ -2474,6 +2628,7 @@ const { hasSkill, skillName, traitOf, volunteerJornales, infoOf, setZoneSkillMap
 const { giveItem, checkRevelation } = __m21;
 const { growBeds, autoGarden } = __m23;
 const { damageOf, repair, stopped, agingFactor, difficulty } = __m18;
+const { checkTractor, tractorSaves } = __m25;
 
 // Qué oficios usa cada zona (para el ánimo de los voluntarios encargados)
 setZoneSkillMap(Object.fromEntries(ZONES.map((z) => [z.id, [...new Set(z.tasks.map((t) => t.skill).filter(Boolean))]])));
@@ -2533,7 +2688,8 @@ function taskSkillBonus(s, task) {
 
 function taskJornales(s, task) {
   // Quien sabe del oficio ahorra un jornal en los trabajos largos
-  const j = task.jornales - (taskSkillBonus(s, task) && task.jornales >= 3 ? 1 : 0);
+  let j = task.jornales - (taskSkillBonus(s, task) && task.jornales >= 3 ? 1 : 0);
+  if (tractorSaves(s, task)) j -= 1;   // con el Pascuali, los trabajos de carga y arado van más rápido
   return Math.max(1, j);
 }
 
@@ -2613,14 +2769,6 @@ function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   s.stats.tasks++;
   checkRestored(s, zoneId);
 
-  // A veces, mientras trabajas, aparece algo olvidado
-  const taskItems = ITEMS.filter((it) => it.where === 'task' && it.zone === zoneId && !s.items.includes(it.id));
-  if (taskItems.length && st.cons >= 55 && s.day >= 4) {
-    let p = 0.22;
-    for (const v of s.volunteers) p += traitOf(v).findBonus || 0;
-    if (s.zones.ermita.everRestored && !stopped(s, 'find')) p += 0.1; // San Antonio, que encuentra lo perdido
-    if (chance(s, p)) giveItem(s, taskItems[0].id);
-  }
 
   signal(s, 'task', { zone: zoneId, task: taskId, skilled });
   const gainTxt = gains.length ? ' (+' + gains.map(([k, v]) => `${v} ${labelOf(k)}`).join(', +') + ')' : '';
@@ -2711,23 +2859,40 @@ function unlockZone(s, zoneId, { by = null, budget = null } = {}) {
   return { ok: true, done: true, used: put, text: `${z.name} vuelve al plano`, delta: 0 };
 }
 
-// ¿Está listo un objeto para aparecer? (su zona cumple la condición y ya es su momento)
-function itemReady(s, it) {
-  if (s.items.includes(it.id) || !it.zone) return false;
-  if (it.minDay && s.day < it.minDay) return false;
-  const st = s.zones[it.zone];
-  if (it.where === 'unlock') return st.unlocked;
-  if (it.where === 'restore') return st.everRestored;
-  if (it.where === 'cons') return st.unlocked && (st.maxCons || st.cons) >= it.at;
-  return false;
+// ¿Ha llegado alguna vez esta zona al 100 %? (entonces van saliendo sus recuerdos)
+function zoneFull(s, zoneId) {
+  const st = s.zones[zoneId];
+  return !!st && st.unlocked && Math.max(st.maxCons || 0, st.cons) >= BALANCE.itemFullCons;
 }
 
-// Da los objetos que ya tocan (de una zona o de todas). Se llama tras cada acción y cada amanecer.
+// Días entre un recuerdo y el siguiente de la misma zona (San Antonio, que encuentra lo perdido, ayuda)
+function itemDripDays(s) {
+  return BALANCE.itemDripDays - (s.zones.ermita.everRestored && !stopped(s, 'find') ? 1 : 0);
+}
+
+// ¿Está listo un objeto para aparecer? Solo con su zona al 100 %, ya es su momento y no ha salido otro hace poco
+function itemReady(s, it) {
+  if (s.items.includes(it.id) || !it.zone) return false;
+  if (!['unlock', 'restore', 'cons', 'task', 'full'].includes(it.where)) return false;
+  if (it.minDay && s.day < it.minDay) return false;
+  if (!zoneFull(s, it.zone)) return false;
+  const last = (s.itemDrip || {})[it.zone];
+  return last == null || s.day - last >= itemDripDays(s);
+}
+
+// Da los objetos que ya tocan (como mucho uno por zona). Se llama tras cada acción y cada amanecer.
 function checkItems(s, zoneId = null) {
+  if (!s.itemDrip) s.itemDrip = {};
   for (const it of ITEMS) {
     if (zoneId && it.zone !== zoneId) continue;
-    if (itemReady(s, it)) giveItem(s, it.id);
+    if (itemReady(s, it)) { giveItem(s, it.id); s.itemDrip[it.zone] = s.day; }
   }
+  checkTractor(s);
+}
+
+// Recuerdos que quedan por salir en una zona (para la interfaz)
+function pendingItems(s, zoneId) {
+  return ITEMS.filter((it) => it.zone === zoneId && !s.items.includes(it.id) && it.where !== 'cat' && it.where !== 'event');
 }
 
 function checkRestored(s, zoneId) {
@@ -2807,11 +2972,11 @@ function autoMaintain(s) {
   }
 }
 
-return { avgCons, avgWeeds, restoredCount, decayHour, taskSkillBonus, taskJornales, taskBlocker, findTask, doTask, diminish, taskGain, unlockRequirement, unlockBlocker, unlockTotal, unlockCostLabel, unlockZone, itemReady, checkItems, checkRestored, autoMaintain };
+return { avgCons, avgWeeds, restoredCount, decayHour, taskSkillBonus, taskJornales, taskBlocker, findTask, doTask, diminish, taskGain, unlockRequirement, unlockBlocker, unlockTotal, unlockCostLabel, unlockZone, zoneFull, itemDripDays, itemReady, checkItems, pendingItems, checkRestored, autoMaintain };
 })();
 
 // ── src/sim/economy.js ──
-const __m25 = (() => {
+const __m27 = (() => {
 // Producción, agua, montanera, mercado y compras.
 const { BALANCE } = __m4;
 const { ZONES } = __m5;
@@ -3051,7 +3216,7 @@ return { produceDay, montaneraDay, waterDay, spoilDay, rollPriceNoise, recoverPr
 })();
 
 // ── src/data/events.js ──
-const __m27 = (() => {
+const __m29 = (() => {
 // Eventos de la finca. Todo por datos.
 //
 // weight: probabilidad relativa · seasons: estaciones en que puede pasar (0-3)
@@ -3275,6 +3440,15 @@ const EVENTS = [
     options: [
       { label: 'Echar piedra y apisonar hoy', cost: { jornales: 3, piedra: 3 }, effects: { zones: { paseo: 3 } }, result: 'Piedra, pisón y una carretilla que no para. El camino aguanta.' },
       { label: 'Poner un cartel de «despacio»', apply: (s, h) => h.breakDown('camino'), result: 'El cartel no ha servido de mucho. El camino se ha hundido.' },
+    ],
+  },
+  {
+    id: 'tractor_tose', title: 'El Pascuali tose', illus: 'furgoneta', weight: 2, cooldown: 40, crisis: true,
+    cond: (s, h) => h.canBreak('tractor'),
+    text: 'El Pascuali arranca a la tercera y suelta un humo negro que no promete nada bueno.',
+    options: [
+      { label: 'Cambiarle el filtro y el aceite', cost: { jornales: 1, money: 20 }, result: 'Manos negras hasta el codo. El motor vuelve a sonar redondo.' },
+      { label: 'Ya aguantará', apply: (s, h) => h.breakDown('tractor'), result: 'Aguantó media mañana.' },
     ],
   },
   {
@@ -3544,7 +3718,7 @@ return { EVENTS, EVENT_BY_ID };
 })();
 
 // ── src/data/texts.js ──
-const __m28 = (() => {
+const __m30 = (() => {
 // Textos sueltos: introducción, regalos del gato, postales, la finca dormida, consejos.
 
 const INTRO = [
@@ -3609,7 +3783,7 @@ return { INTRO, CAT_NAME, CAT_GIFTS, POSTCARDS, SLEEP, TIPS };
 })();
 
 // ── src/sim/tourism.js ──
-const __m29 = (() => {
+const __m31 = (() => {
 // Agroturismo: mejoras, huéspedes, actividades y conciertos.
 const { BALANCE } = __m4;
 const { UPGRADES, UPGRADE_BY_ID, TOURISM_SEASON } = __m20;
@@ -3752,12 +3926,12 @@ return { tourismOpen, capacity, appeal, guestCount, upgradeBlocker, buildUpgrade
 })();
 
 // ── src/sim/events.js ──
-const __m26 = (() => {
+const __m28 = (() => {
 // Motor de eventos: elige, encola y resuelve eventos definidos en data/events.js.
 const { BALANCE } = __m4;
-const { EVENTS, EVENT_BY_ID } = __m27;
+const { EVENTS, EVENT_BY_ID } = __m29;
 const { REVELATION } = __m7;
-const { CAT_GIFTS, POSTCARDS } = __m28;
+const { CAT_GIFTS, POSTCARDS } = __m30;
 const { PRODUCTS } = __m6;
 const { ITEM_BY_ID } = __m15;
 const { VOLUNTEER_BY_ID } = __m17;
@@ -3768,9 +3942,9 @@ const { BILLS, DAMAGES } = __m19;
 const { addLog, signal, clamp, canAfford, payCost, applyEffects, addStock, costLabel, missingOf, labelOf } = __m13;
 const { avgCons, avgWeeds } = __m14;
 const { giveItem, clue } = __m21;
-const { sellAllAt } = __m25;
+const { sellAllAt } = __m27;
 const { departVolunteer, infoOf } = __m16;
-const { concert } = __m29;
+const { concert } = __m31;
 
 // Evento sintético de la revelación (sus textos están en story.js)
 const REVELATION_EVENT = {
@@ -4057,14 +4231,14 @@ const { rand, pick, weighted } = __m11;
 const { seasonIndex, isSeasonStart, isMarketDay, yearOf, weekday } = __m12;
 const { addLog, signal, clamp } = __m13;
 const { decayHour, avgCons, autoMaintain, restoredCount, checkItems } = __m14;
-const { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices, spoilDay } = __m25;
+const { produceDay, montaneraDay, waterDay, rollPriceNoise, recoverPrices, spoilDay } = __m27;
 const { gardenDay } = __m23;
 const { tryArrival, feedVolunteers, dailyVolunteers, departVolunteer, payEmployees, dailyJornales } = __m16;
-const { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } = __m26;
+const { planDay, hourEvents, systemEvents, queueEvent, resolveEvent } = __m28;
 const { checkRevelation } = __m21;
 const { hardshipDawn, damages } = __m18;
 const { TRAITS, VOLUNTEER_BY_ID } = __m17;
-const { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } = __m29;
+const { tourismOpen, tourismDawn, tourismEvening, concertDue, appeal } = __m31;
 
 // Horas de juego por segundo real a velocidad x1
 const HOURS_PER_SECOND = 24 / BALANCE.realSecondsPerDay;
@@ -4241,7 +4415,7 @@ return { HOURS_PER_SECOND, isBlocked, advance, runDays, autoResolve, dawn, check
 })();
 
 // ── src/data/activities.js ──
-const __m31 = (() => {
+const __m33 = (() => {
 // Ratos libres: actividades artísticas y de ocio que suben el ánimo de la casa y de los voluntarios.
 // cost: jornales, dinero, materiales o productos ('food' = cualquier comida de la finca)
 // happy: cuánto se alegran los voluntarios · mood: ánimo de la casa · cooldown: días hasta repetir
@@ -4276,11 +4450,11 @@ return { ACTIVITIES, ACTIVITY_BY_ID };
 })();
 
 // ── src/sim/kitchen.js ──
-const __m30 = (() => {
+const __m32 = (() => {
 // La cocina del cortijo (conservas, mermelada, matanza) y los ratos libres.
 const { RECIPES } = __m24;
 const { PRODUCTS } = __m6;
-const { ACTIVITIES, ACTIVITY_BY_ID } = __m31;
+const { ACTIVITIES, ACTIVITY_BY_ID } = __m33;
 const { WEATHER } = __m9;
 const { ZONE_BY_ID } = __m5;
 const { seasonIndex } = __m12;
@@ -4423,11 +4597,12 @@ const __m2 = (() => {
 
 
 
-return { ...__m3, ...__m8, ...__m12, ...__m13, ...__m14, ...__m25, ...__m16, ...__m29, ...__m21, ...__m26, ...__m23, ...__m30, ...__m18, rand: __m11.rand };
+
+return { ...__m3, ...__m8, ...__m12, ...__m13, ...__m14, ...__m27, ...__m16, ...__m31, ...__m21, ...__m28, ...__m23, ...__m32, ...__m18, ...__m25, rand: __m11.rand };
 })();
 
 // ── src/art/noise.js ──
-const __m34 = (() => {
+const __m36 = (() => {
 // Aleatoriedad para el dibujo (independiente de la simulación) y ruido suave.
 
 function makeRng(seed = 1) {
@@ -4494,10 +4669,10 @@ return { makeRng, hashStr, noise1, noise2, fbm2 };
 })();
 
 // ── src/art/ink.js ──
-const __m33 = (() => {
+const __m35 = (() => {
 // Trazo «a mano»: líneas con temblor, doble trazo, rayado y aguadas de acuarela.
 // Todo se dibuja sobre capas cacheadas, nunca por fotograma.
-const { makeRng, noise1 } = __m34;
+const { makeRng, noise1 } = __m36;
 
 // ── Color ──
 function hexToRgb(hex) {
@@ -4788,10 +4963,10 @@ return { hexToRgb, rgba, mix, INK, INK_LIGHT, PENCIL, Pen, blobPts, canopyPts, s
 })();
 
 // ── src/art/paper.js ──
-const __m35 = (() => {
+const __m37 = (() => {
 // Papel antiguo generado por código: fibras, manchas de café y humedad, bordes gastados.
-const { makeRng, noise2, fbm2 } = __m34;
-const { rgba, mix, blobPts, wash } = __m33;
+const { makeRng, noise2, fbm2 } = __m36;
+const { rgba, mix, blobPts, wash } = __m35;
 
 function makeCanvas(w, h) {
   if (typeof OffscreenCanvas !== 'undefined' && !makeCanvas.forceDom) {
@@ -4967,9 +5142,9 @@ return { makeCanvas, makePaper, coffeeRing, paperDataURL, mix };
 })();
 
 // ── src/art/palette.js ──
-const __m36 = (() => {
+const __m38 = (() => {
 // Colores de las aguadas según la estación, y el tinte del papel según la hora.
-const { mix } = __m33;
+const { mix } = __m35;
 
 const BASE = {
   whitewash: '#f4efe4', wallShade: '#a9b4c2', tile: '#2f5f9e', tileLight: '#7fa6d6',
@@ -5032,11 +5207,11 @@ return { palette, timeTint, SEASON_PAPER };
 })();
 
 // ── src/art/sketches.js ──
-const __m37 = (() => {
+const __m39 = (() => {
 // Ilustraciones a boceto de la finca, dibujadas a partir de las fotos de referencia.
 // Cada función dibuja en coordenadas locales de su zona (0,0 → w,h) sobre dos capas:
 //   d.pen → tinta (capa de líneas)      d.wash(...) → acuarela (capa de color)
-const { canopyPts, blobPts, rgba, mix } = __m33;
+const { canopyPts, blobPts, rgba, mix } = __m35;
 const { GRANDCHILDREN } = __m22;
 
 // ───────────────────────── Elementos reutilizables ─────────────────────────
@@ -6340,7 +6515,7 @@ return { groundShadow, groundPatch, encina, olivo, pino, eucalipto, mimosa, higu
 })();
 
 // ── src/art/cat.js ──
-const __m38 = (() => {
+const __m40 = (() => {
 // El gato de la finca: blanco con manchas atigradas. Te sigue, duerme al sol y a veces encuentra cosas.
 const { ZONES, ZONE_BY_ID } = __m5;
 
@@ -6526,7 +6701,7 @@ return { Cat };
 })();
 
 // ── src/art/critters.js ──
-const __m39 = (() => {
+const __m41 = (() => {
 // Pequeños seres vivos del plano, dibujados en vivo con pocos trazos.
 const INK = 'rgba(59,42,28,0.9)';
 
@@ -6651,21 +6826,73 @@ function drawFigure(ctx, x, y, { hat = false, color = '#7a5a3a', work = null, sc
   ctx.restore();
 }
 
-return { drawHen, drawSheep, drawPig, drawBee, drawDeer, drawFigure };
+// El tractor Pascuali amarillo, de lado: cuatro ruedas de tacos, guardabarros curvos, asiento de chapa,
+// volante negro y el motor delante. dusty = recién encontrado, con polvo y media lona encima.
+function drawTractor(ctx, x, y, { dir = 1, s = 1, dusty = false, shake = 0 } = {}) {
+  ctx.save();
+  ctx.translate(x, y + shake);
+  ctx.scale(dir * s, s);
+  inkLine(ctx, 1);
+  const yellow = dusty ? 'rgba(196,170,96,0.95)' : 'rgba(230,186,40,0.95)';
+  const tyre = 'rgba(38,34,30,0.92)';
+  const wheel = (cx, r) => {
+    ctx.fillStyle = tyre;
+    ctx.beginPath(); ctx.arc(cx, -r, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Tacos
+    ctx.save(); ctx.strokeStyle = 'rgba(90,80,70,0.9)'; ctx.lineWidth = 0.6;
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) { ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * 0.75, -r + Math.sin(a) * r * 0.75); ctx.lineTo(cx + Math.cos(a + 0.2) * r, -r + Math.sin(a + 0.2) * r); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle = yellow;
+    ctx.beginPath(); ctx.arc(cx, -r, r * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(60,50,40,0.9)';
+    ctx.beginPath(); ctx.arc(cx, -r, r * 0.12, 0, Math.PI * 2); ctx.fill();
+  };
+  // Chasis
+  ctx.fillStyle = yellow;
+  ctx.beginPath(); ctx.rect(-14, -14, 30, 6); ctx.fill(); ctx.stroke();
+  // Motor y depósito delante
+  ctx.beginPath(); ctx.rect(10, -22, 14, 12); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(16, -23, 6, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(60,50,40,0.85)';
+  ctx.beginPath(); ctx.rect(22, -20, 3, 9); ctx.fill();
+  wheel(-12, 9);
+  wheel(16, 8.5);
+  // Guardabarros curvos
+  ctx.fillStyle = yellow;
+  ctx.beginPath(); ctx.moveTo(-24, -9); ctx.quadraticCurveTo(-23, -24, -12, -24); ctx.quadraticCurveTo(-1, -24, -1, -12);
+  ctx.lineTo(-3, -12); ctx.quadraticCurveTo(-3, -21, -12, -21); ctx.quadraticCurveTo(-20, -21, -21, -9); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Asiento de chapa
+  ctx.beginPath(); ctx.moveTo(-17, -27); ctx.quadraticCurveTo(-12, -31, -6, -27); ctx.lineTo(-8, -24); ctx.lineTo(-15, -24); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Columna y volante
+  ctx.beginPath(); ctx.moveTo(2, -14); ctx.lineTo(5, -30); ctx.stroke();
+  ctx.save(); ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(30,28,26,0.95)';
+  ctx.beginPath(); ctx.ellipse(5, -31, 6, 1.8, -0.15, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  // Óxido
+  ctx.fillStyle = 'rgba(150,70,30,0.55)';
+  for (const [ox, oy] of [[-16, -20], [14, -16], [-10, -13], [20, -21]]) { ctx.beginPath(); ctx.arc(ox, oy, 1.2, 0, Math.PI * 2); ctx.fill(); }
+  if (dusty) {
+    // Media lona encima
+    ctx.fillStyle = 'rgba(120,128,104,0.85)';
+    ctx.beginPath(); ctx.moveTo(-26, -10); ctx.quadraticCurveTo(-20, -36, 4, -30); ctx.quadraticCurveTo(10, -24, 8, -14); ctx.lineTo(-2, -12); ctx.quadraticCurveTo(-14, -18, -26, -10); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+return { drawHen, drawSheep, drawPig, drawBee, drawDeer, drawFigure, drawTractor };
 })();
 
 // ── src/art/map.js ──
-const __m32 = (() => {
+const __m34 = (() => {
 // El plano de la finca: capas cacheadas (papel, terreno, zonas) y elementos vivos
 // (gato, animales, voluntarios, clima, luz). Lo estático solo se redibuja cuando cambia.
 const { ZONES, ZONE_BY_ID, DECOR } = __m5;
-const { Pen, wash, blobPts, rgba, mix, INK, PENCIL, canopyPts } = __m33;
-const { makeRng, hashStr } = __m34;
-const { makePaper, makeCanvas } = __m35;
-const { palette, timeTint } = __m36;
-const { SKETCHES, village, compass, encina: encinaFree, arbusto: matorral } = __m37;
-const { Cat } = __m38;
-const { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } = __m39;
+const { Pen, wash, blobPts, rgba, mix, INK, PENCIL, canopyPts } = __m35;
+const { makeRng, hashStr } = __m36;
+const { makePaper, makeCanvas } = __m37;
+const { palette, timeTint } = __m38;
+const { SKETCHES, village, compass, encina: encinaFree, arbusto: matorral } = __m39;
+const { Cat } = __m40;
+const { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee, drawTractor } = __m41;
 const { CROPS } = __m24;
 const { DAMAGES } = __m19;
 
@@ -7034,6 +7261,14 @@ class FarmMap {
         }
       });
     }
+    // El Pascuali junto a la huerta (cuando aparece; con lona y polvo hasta que se arregla)
+    if (s.tractor && s.tractor.found && s.zones.huerta.unlocked) {
+      const hz = ZONE_BY_ID.huerta;
+      const ready = s.tractor.ready;
+      const working = ready && day && s.hour > 8 && s.hour < 13;
+      const bx = working ? hz.x + 90 + ((T * 6) % (hz.w - 200)) : hz.x + hz.w - 150;
+      drawTractor(ctx, bx, hz.y + hz.h - 8, { dusty: !ready, s: 1.05, shake: working ? Math.sin(T * 30) * 0.4 : 0 });
+    }
     // Cerdos de montanera bajo las encinas
     if (s.animals.cerdos > 0) {
       const dz = ZONE_BY_ID.dehesa;
@@ -7307,9 +7542,9 @@ return { WORLD, singleCtx, FarmMap, canopyPts, mix };
 })();
 
 // ── src/engine/camera.js ──
-const __m40 = (() => {
+const __m42 = (() => {
 // Cámara del plano: encaje en pantalla, arrastre, pellizco y rueda.
-const { WORLD } = __m32;
+const { WORLD } = __m34;
 
 class Camera {
   constructor() {
@@ -7456,7 +7691,7 @@ return { Camera, attachGestures };
 })();
 
 // ── src/ui/dom.js ──
-const __m42 = (() => {
+const __m44 = (() => {
 // Ayudas mínimas para construir la interfaz sin librerías.
 
 function h(tag, attrs = {}, ...children) {
@@ -7501,13 +7736,24 @@ function btn(label, onclick, { cls = '', disabled = null, title = null } = {}) {
   return b;
 }
 
-return { h, $, clear, fmtMoney, fmtNum, bar, btn };
+// Lámina con la imagen de un recuerdo (cuadros de Transi, fotos). Si no carga, se queda el icono.
+function lamina(it, fallback, cls = 'lamina') {
+  const img = document.createElement('img');
+  img.className = cls;
+  img.alt = it.name;
+  img.loading = 'lazy';
+  img.src = `assets/cuadros/${it.image}.jpg`;
+  img.addEventListener('error', () => { if (fallback) img.replaceWith(fallback); else img.remove(); });
+  return img;
+}
+
+return { h, $, clear, fmtMoney, fmtNum, bar, btn, lamina };
 })();
 
 // ── src/ui/hud.js ──
-const __m43 = (() => {
+const __m45 = (() => {
 // Barra superior: fecha, hora, tiempo, recursos y velocidad.
-const { h, fmtMoney } = __m42;
+const { h, fmtMoney } = __m44;
 const { WEATHER } = __m9;
 const { dateLabel, clockLabel, daysToMarket, isMarketDay } = __m12;
 const { dailyJornales } = __m16;
@@ -7584,14 +7830,14 @@ return { Hud };
 })();
 
 // ── src/art/illus.js ──
-const __m45 = (() => {
+const __m47 = (() => {
 // Ilustraciones a boceto para eventos, recuerdos y la portada.
-const { Pen, wash, blobPts, canopyPts, rgba, mix, INK } = __m33;
-const { makeRng, hashStr } = __m34;
-const { palette } = __m36;
-const { encina, pino, eucalipto, adelfa, yuca, boulder, lavanda, grassTufts, mimosa, village } = __m37;
-const { singleCtx } = __m32;
-const { drawDeer } = __m39;
+const { Pen, wash, blobPts, canopyPts, rgba, mix, INK } = __m35;
+const { makeRng, hashStr } = __m36;
+const { palette } = __m38;
+const { encina, pino, eucalipto, adelfa, yuca, boulder, lavanda, grassTufts, mimosa, village } = __m39;
+const { singleCtx } = __m34;
+const { drawDeer } = __m41;
 
 const W = 360, H = 210;
 
@@ -8192,7 +8438,7 @@ return { drawIllus, drawIcon, drawTitleArt, ILLUS_W: W, ILLUS_H: H };
 })();
 
 // ── src/audio/audio.js ──
-const __m47 = (() => {
+const __m49 = (() => {
 // Motor de audio: buses separados (música, ambiente, efectos), reverberación generada,
 // capa lo-fi y desbloqueo en iOS/Android (incluido el interruptor de silencio del iPhone).
 
@@ -8358,10 +8604,10 @@ return { AudioEngine, silentWav, audio };
 })();
 
 // ── src/audio/ambience.js ──
-const __m46 = (() => {
+const __m48 = (() => {
 // Ambiente: viento en las encinas, lluvia, chicharras, grillos, fuente, pájaros,
 // ovejas, cencerros, gallinas y el gato. Y los efectos de papel, pluma, sello y monedas.
-const { audio } = __m47;
+const { audio } = __m49;
 
 function noiseSrc(loop = true) {
   const c = audio.ctx;
@@ -8688,9 +8934,9 @@ return { Ambience, sfx, ambience };
 })();
 
 // ── src/ui/troubles.js ──
-const __m48 = (() => {
+const __m50 = (() => {
 // Tarjeta de una avería: qué ha pasado, cuánto falta y cómo arreglarlo (a mano o pagando).
-const { h, bar, btn } = __m42;
+const { h, bar, btn } = __m44;
 const { DAMAGES, repairBlocker, repair, hireBlocker, hireRepair, proTotal, repairCostLabel, repairLeft } = __m2;
 
 function repairCard(game, s, id, after) {
@@ -8723,21 +8969,21 @@ return { repairCard };
 })();
 
 // ── src/ui/zonePanel.js ──
-const __m44 = (() => {
+const __m46 = (() => {
 // Nota sujeta con clip: una zona de la finca, su estado y sus tareas.
-const { h, clear, bar, btn, fmtNum } = __m42;
+const { h, clear, bar, btn, fmtNum } = __m44;
 const { ZONE_BY_ID } = __m5;
 const { ANIMALS, PRODUCTS } = __m6;
 const { ITEMS } = __m15;
 const { SEASONS } = __m9;
 const { VOLUNTEER_BY_ID } = __m17;
 const { taskBlocker, taskJornales, taskSkillBonus, doTask, unlockBlocker, unlockZone, unlockCostLabel, unlockTotal, unlockRequirement, taskGain, costLabel, seasonIndex, hasSkill, skillName, assignVolunteer, buyAnimal, animalBlocker, infoOf } = __m2;
-const { drawIcon } = __m45;
+const { drawIcon } = __m47;
 const { CROPS, RECIPES, SOW_JORNALES, HARVEST_JORNALES } = __m24;
 const { beds, seasonalCrops, sow, sowBlocker, harvest, harvestBlocker, harvestAmount, recipeBlocker, recipeJornales, cook, ingredientLabel } = __m2;
-const { sfx } = __m46;
-const { damageOf } = __m2;
-const { repairCard } = __m48;
+const { sfx } = __m48;
+const { damageOf, pendingItems, zoneFull, TRACTOR, tractorState, tractorBlocker, repairTractor, tractorProCost, tractorProBlocker, tractorToWorkshop, tractorCostLabel, stopped } = __m2;
+const { repairCard } = __m50;
 
 class ZonePanel {
   constructor(root, game) {
@@ -8767,7 +9013,7 @@ class ZonePanel {
     if (!this.zone) return;
     const st = s.zones[this.zone];
     const key = [this.zone, Math.round(st.cons), st.weeds == null ? '' : Math.round(st.weeds / 2), st.unlocked, s.jornales, Math.round(s.money),
-      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length, JSON.stringify(s.damages || {}), (s.beds || []).map((b) => b.crop + (b.ready ?? '')).join()].join('|');
+      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length, JSON.stringify(s.damages || {}), JSON.stringify(s.tractor || {}), (s.beds || []).map((b) => b.crop + (b.ready ?? '')).join()].join('|');
     if (!force && key === this.key) return;
     this.key = key;
     this.render(s);
@@ -8852,6 +9098,7 @@ class ZonePanel {
         }, { disabled: why })));
     }
     if (z.beds) this._beds(s);
+    if (z.id === TRACTOR.zone && tractorState(s).found) this._tractor(s);
     this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Cuidados'), tasks));
     if (z.id === 'cortijo') this._kitchen(s);
 
@@ -8890,7 +9137,7 @@ class ZonePanel {
 
     // Recuerdos de la zona
     const found = ITEMS.filter((it) => it.zone === z.id && s.items.includes(it.id));
-    const pending = ITEMS.filter((it) => it.zone === z.id && !s.items.includes(it.id)).length;
+    const pending = pendingItems(s, z.id).length;
     if (found.length || pending) {
       const box = h('div', {});
       for (const it of found) {
@@ -8898,7 +9145,10 @@ class ZonePanel {
         drawIcon(cv, it.icon, 44);
         box.append(h('div', { class: 'row', style: { marginBottom: '6px' } }, cv, h('span', { class: 'small' }, it.name)));
       }
-      if (pending) box.append(h('p', { class: 'small muted' }, pending === 1 ? 'Aquí todavía hay algo olvidado.' : `Aquí todavía hay ${pending} cosas olvidadas.`));
+      if (pending) {
+        const when = zoneFull(s, z.id) ? 'Irán apareciendo, de uno en uno, en los próximos días.' : 'Aparecerán cuando la zona esté al 100 %.';
+        box.append(h('p', { class: 'small muted' }, (pending === 1 ? 'Aquí todavía hay algo olvidado. ' : `Aquí todavía hay ${pending} cosas olvidadas. `) + when));
+      }
       this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Recuerdos'), box));
     }
     this.el.scrollTop = scroll;
@@ -8933,6 +9183,34 @@ class ZonePanel {
     });
     this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Bancales'),
       h('p', { class: 'small muted' }, `Agua del pozo y la alberca: ${Math.round(s.water)} %. Cada estación tiene sus cultivos.`), box));
+  }
+
+  // El tractor Pascuali (aparece con la huerta al 100 %)
+  _tractor(s) {
+    const g = this.game;
+    const t = tractorState(s);
+    let body;
+    if (t.ready) {
+      const broken = stopped(s, 'tractor');
+      body = h('p', { class: 'small' + (broken ? '' : ' tractor-ok') }, broken
+        ? 'El Pascuali está averiado: míralo en «Cuentas» del cuaderno. Mientras, todo a mano.'
+        : '✓ Funciona. Cavar, segar el heno, varear la bellota, desbrozar la dehesa y rehacer muros cuestan un jornal menos.');
+    } else {
+      const why = tractorBlocker(s);
+      const whyPro = tractorProBlocker(s);
+      const put = Math.min(Math.floor(s.jornales), TRACTOR.work - t.work);
+      body = h('div', { class: 'task' },
+        h('div', { class: 'info' },
+          h('div', { class: 'name' }, 'Ponerlo en marcha'),
+          h('div', { class: 'small' }, 'Estaba bajo una lona detrás del cobertizo: polvo, óxido y las ruedas medio deshinchadas.'),
+          h('div', { class: 'meta' }, t.started ? `${TRACTOR.work} jornales de trabajo` : tractorCostLabel()),
+          t.work ? h('div', {}, h('div', { class: 'statline small' }, h('span', {}, 'Arreglo'), h('span', {}, `${t.work} / ${TRACTOR.work} jornales`)), bar(t.work / TRACTOR.work * 100, 'green')) : null,
+          why ? h('div', { class: 'why' }, why) : null),
+        h('div', { class: 'col' },
+          btn(`${t.work ? 'Seguir' : 'Arreglar'} (−${put || 0})`, () => g.afterAction(repairTractor(s), 'huerta', 'tools'), { cls: 'primary', disabled: why }),
+          btn(`Al taller · ${tractorProCost(s)} €`, () => g.afterAction(tractorToWorkshop(s), 'huerta', 'coins'), { cls: 'small', disabled: whyPro })));
+    }
+    this.el.append(h('div', { class: 'section' }, h('h3', {}, TRACTOR.name), body));
   }
 
   // La cocina del cortijo
@@ -8980,9 +9258,9 @@ return { ZonePanel, fmtNum };
 })();
 
 // ── src/ui/notebook.js ──
-const __m49 = (() => {
+const __m51 = (() => {
 // El cuaderno: diario, despensa y mercado, gente, recuerdos, huéspedes, álbum y ajustes.
-const { h, clear, bar, btn, fmtMoney, fmtNum } = __m42;
+const { h, clear, bar, btn, fmtMoney, fmtNum, lamina } = __m44;
 const { PRODUCTS, MATERIALS, ANIMALS, CHANNELS } = __m6;
 const { VOLUNTEER_BY_ID, TRAITS, SKILLS } = __m17;
 const { ZONES, ZONE_BY_ID } = __m5;
@@ -8993,10 +9271,10 @@ const { UPGRADES } = __m20;
 const { THEME } = __m7;
 const { BALANCE } = __m4;
 const { unitPrice, sell, sellBlocker, channelOpen, basketCapacity, buyMaterial, hireEmployee, fireEmployee, bedsTotal, assignVolunteer, threads, themeNotesKnown, hypothesesRanked, upgradeBlocker, buildUpgrade, capacity, guestCount, WEEKDAYS, daysToMarket, isMarketDay, costLabel, dailyJornales, volunteerJornales, activityBlocker, doActivity, ACTIVITIES } = __m2;
-const { drawIcon } = __m45;
-const { sfx } = __m46;
+const { drawIcon } = __m47;
+const { sfx } = __m48;
 const { troubles, damages, upcomingBills, heatingNeed, feedNeed, feedStock, winterEstimate, reserveDays, buyPrice, taxableProfit, DIFFICULTY, difficulty, seasonIndex } = __m2;
-const { repairCard } = __m48;
+const { repairCard } = __m50;
 
 const TABS = [
   ['diario', 'Diario'], ['despensa', 'Despensa'], ['cuentas', 'Cuentas'], ['gente', 'Gente'], ['recuerdos', 'Recuerdos'],
@@ -9261,13 +9539,19 @@ class Notebook {
     for (const it of ITEMS) {
       const have = s.items.includes(it.id);
       if (!have) continue;
-      const icon = h('canvas', { class: 'icon-cv' });
+      let icon = h('canvas', { class: 'icon-cv' });
       drawIcon(icon, it.icon, 64);
-      grid.append(h('div', { class: 'card' }, icon, h('h3', {}, it.name), h('p', { class: 'small' }, it.text),
+      if (it.image) {
+        const fb = icon;
+        icon = lamina(it, fb, 'lamina');
+        icon.addEventListener('click', () => this.game.ui.showLamina(it));
+        icon.title = 'Verla en grande';
+      }
+      grid.append(h('div', { class: 'card' + (it.image ? ' wide' : '') }, icon, h('h3', {}, it.name), h('p', { class: 'small' }, it.text),
         h('div', { class: 'tiny muted' }, it.zone ? `Encontrado en: ${ZONE_BY_ID[it.zone].name}` : 'Llegó por su cuenta')));
     }
     const missing = ITEMS.length - s.items.length;
-    if (missing) grid.append(h('div', { class: 'card faded' }, h('h3', {}, `${missing} por encontrar`), h('p', { class: 'small' }, 'Al recuperar y restaurar zonas aparecen cosas olvidadas. El gato también ayuda.')));
+    if (missing) grid.append(h('div', { class: 'card faded' }, h('h3', {}, `${missing} por encontrar`), h('p', { class: 'small' }, 'Cada zona guarda sus recuerdos: aparecen, de uno en uno, cuando la dejas al 100 %. El gato también ayuda.')));
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Objetos'), grid));
   }
 
@@ -9407,9 +9691,9 @@ return { Notebook, drawStaff, WEEKDAYS };
 })();
 
 // ── src/ui/toast.js ──
-const __m50 = (() => {
+const __m52 = (() => {
 // Notas emergentes sujetas al borde del cuaderno.
-const { h } = __m42;
+const { h } = __m44;
 
 class Toasts {
   constructor(root) {
@@ -9432,12 +9716,12 @@ return { Toasts };
 })();
 
 // ── src/ui/screens.js ──
-const __m51 = (() => {
+const __m53 = (() => {
 // Diálogos de eventos, confirmaciones, importación, portada, introducción y la finca dormida.
-const { h, clear, btn } = __m42;
-const { drawIllus, drawTitleArt } = __m45;
-const { INTRO, SLEEP } = __m28;
-const { sfx } = __m46;
+const { h, clear, btn } = __m44;
+const { drawIllus, drawTitleArt } = __m47;
+const { INTRO, SLEEP } = __m30;
+const { sfx } = __m48;
 
 function modal(root, content, { onClose = null, closable = false } = {}) {
   const card = h('div', { class: 'modal paper', role: 'dialog' }, content);
@@ -9560,19 +9844,19 @@ return { modal, eventDialog, confirmDialog, importDialog, titleScreen, introScre
 })();
 
 // ── src/ui/ui.js ──
-const __m41 = (() => {
+const __m43 = (() => {
 // Coordinador de la interfaz: HUD, panel de zona, cuaderno, notas y diálogos.
-const { h } = __m42;
-const { Hud } = __m43;
-const { ZonePanel } = __m44;
-const { Notebook } = __m49;
-const { Toasts } = __m50;
-const { eventDialog, confirmDialog, importDialog, modal } = __m51;
-const { drawIcon } = __m45;
+const { h, lamina } = __m44;
+const { Hud } = __m45;
+const { ZonePanel } = __m46;
+const { Notebook } = __m51;
+const { Toasts } = __m52;
+const { eventDialog, confirmDialog, importDialog, modal } = __m53;
+const { drawIcon } = __m47;
 const { ITEM_BY_ID } = __m15;
-const { TIPS } = __m28;
-const { sfx } = __m46;
-const { btn } = __m42;
+const { TIPS } = __m30;
+const { sfx } = __m48;
+const { btn } = __m44;
 
 class UI {
   constructor(game) {
@@ -9632,6 +9916,18 @@ class UI {
     return true;
   }
 
+  // Ver un cuadro o una foto en grande
+  showLamina(it) {
+    if (this.modalOpen) return;
+    const m = modal(this.layer, h('div', {},
+      h('h2', {}, it.name),
+      lamina(it, null, 'lamina big'),
+      h('p', { class: 'text' }, it.text),
+      h('div', { class: 'opts' }, btn('Cerrar', () => { this.modalOpen = null; m.close(); sfx('paper'); }, { cls: 'primary' }))));
+    this.modalOpen = m;
+    sfx('page');
+  }
+
   // Notas de recuerdos encontrados: una cada vez
   queueItemNote(id) { this.noteQueue.push(id); }
 
@@ -9640,8 +9936,9 @@ class UI {
     const id = this.noteQueue.shift();
     const it = ITEM_BY_ID[id];
     if (!it) return;
-    const cv = h('canvas', { style: { display: 'block', margin: '6px auto' } });
+    let cv = h('canvas', { style: { display: 'block', margin: '6px auto' } });
     drawIcon(cv, it.icon, 96);
+    if (it.image) cv = lamina(it, cv, 'lamina big');
     const m = modal(this.layer, h('div', {},
       h('h2', {}, 'Un recuerdo'),
       cv,
@@ -9690,7 +9987,7 @@ return { UI };
 })();
 
 // ── src/save/save.js ──
-const __m52 = (() => {
+const __m54 = (() => {
 // Guardado automático en localStorage, copia del inicio de estación y exportar/importar.
 const { migrate, STATE_VERSION } = __m3;
 
@@ -9791,10 +10088,10 @@ return { pack, unpack, save, load, hasSave, savedInfo, clearSave, saveSeasonSnap
 })();
 
 // ── src/audio/music.js ──
-const __m53 = (() => {
+const __m55 = (() => {
 // Música generativa: piano tranquilo con mucho espacio, que cambia con la estación,
 // la hora y la situación. Y el tema del pianista, que gana notas con cada partitura.
-const { audio } = __m47;
+const { audio } = __m49;
 const { THEME, THEME_TEMPO } = __m7;
 
 const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
@@ -10054,11 +10351,11 @@ return { pianoNote, Music, music };
 })();
 
 // ── src/audio/bso.js ──
-const __m54 = (() => {
+const __m56 = (() => {
 // Banda sonora grabada (audio/bso.mp3): suena en bucle por el bus de música, así respeta el
 // volumen de «Música». Se aparta (baja) cuando alguien toca el tema del pianista y se pausa
 // con la página oculta. Si el archivo no carga, vuelve la música generativa.
-const { audio } = __m47;
+const { audio } = __m49;
 
 const BSO_SRC = 'audio/bso.mp3';
 const LEVEL = 0.55;      // nivel de la grabación frente al ambiente y los efectos
@@ -10139,22 +10436,22 @@ return { BSO_SRC, Bso, bso };
 const __m1 = (() => {
 // El juego: bucle, tiempo con pausa y velocidades, plano, interfaz, audio y guardado.
 const S = __m2;
-const { FarmMap, WORLD } = __m32;
-const { Camera, attachGestures } = __m40;
-const { UI } = __m41;
-const { titleScreen, introScreen, sleepScreen, confirmDialog, importDialog } = __m51;
-const { paperDataURL } = __m35;
-const { SEASON_PAPER } = __m36;
+const { FarmMap, WORLD } = __m34;
+const { Camera, attachGestures } = __m42;
+const { UI } = __m43;
+const { titleScreen, introScreen, sleepScreen, confirmDialog, importDialog } = __m53;
+const { paperDataURL } = __m37;
+const { SEASON_PAPER } = __m38;
 const { ITEM_BY_ID } = __m15;
 const { MILESTONES } = __m10;
 const { ZONE_BY_ID } = __m5;
 const { VOLUNTEER_BY_ID } = __m17;
 const { SEASONS } = __m9;
-const Save = __m52;
-const { audio } = __m47;
-const { music } = __m53;
-const { bso } = __m54;
-const { ambience, sfx } = __m46;
+const Save = __m54;
+const { audio } = __m49;
+const { music } = __m55;
+const { bso } = __m56;
+const { ambience, sfx } = __m48;
 
 class Game {
   constructor() {
@@ -10398,6 +10695,13 @@ class Game {
           this.ui.toast(`⚠ ${def.name}. ${def.zone ? 'Toca la zona para repararla.' : 'Míralo en «Cuentas».'}`, 'bad');
           if (def.zone) { const z = ZONE_BY_ID[def.zone]; this.map.addFloat(z.x + z.w / 2, z.y + z.h / 2, '¡Averiado!', '#a0382a'); }
           sfx('warn');
+          break;
+        }
+        case 'tractor': {
+          this.ui.toast(g.ready ? 'El Pascuali arranca: los trabajos de carga y arado cuestan un jornal menos.' : 'Detrás del cobertizo, bajo una lona… ¡el Pascuali amarillo! Míralo en la huerta.', 'good');
+          const z = ZONE_BY_ID.huerta;
+          this.map.addFloat(z.x + z.w - 90, z.y + z.h - 30, g.ready ? '¡Brrrum!' : '¡El Pascuali!', '#b88a10');
+          sfx(g.ready ? 'tools' : 'stamp');
           break;
         }
         case 'repaired': {

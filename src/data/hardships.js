@@ -78,6 +78,11 @@ export const DAMAGES = {
     stops: { tourism: true }, worse: 0.4,
     text: 'El agua se ha comido el camino junto a las adelfas. Ningún coche sube hasta la casa.',
   },
+  tractor: {
+    zone: null, name: 'El Pascuali no arranca', hit: 0, work: 2, cost: { money: 40 }, pro: 35,
+    stops: { tractor: true }, worse: 0,
+    text: 'El Pascuali da dos vueltas de motor y se calla. Huele a gasoil y a algo quemado. Hasta que se arregle, todo a mano.',
+  },
   furgoneta: {
     zone: null, name: 'Furgoneta averiada', hit: 0, work: 3, cost: { money: 60 }, pro: 45,
     stops: { market: true }, worse: 0,

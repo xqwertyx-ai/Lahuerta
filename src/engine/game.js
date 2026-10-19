@@ -261,6 +261,13 @@ export class Game {
           sfx('warn');
           break;
         }
+        case 'tractor': {
+          this.ui.toast(g.ready ? 'El Pascuali arranca: los trabajos de carga y arado cuestan un jornal menos.' : 'Detrás del cobertizo, bajo una lona… ¡el Pascuali amarillo! Míralo en la huerta.', 'good');
+          const z = ZONE_BY_ID.huerta;
+          this.map.addFloat(z.x + z.w - 90, z.y + z.h - 30, g.ready ? '¡Brrrum!' : '¡El Pascuali!', '#b88a10');
+          sfx(g.ready ? 'tools' : 'stamp');
+          break;
+        }
         case 'repaired': {
           const def = S.DAMAGES[g.id];
           this.ui.toast(`Reparado: ${def.name.toLowerCase()}.`, 'good');

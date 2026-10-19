@@ -65,26 +65,53 @@ test('la tarea de temporada se bloquea fuera de su estación', () => {
   assert.match(S.taskBlocker(s, 'pozo', t), /temporada/);
 });
 
-test('desbloquear una zona la vuelve a dibujar y puede dar un recuerdo', () => {
+test('desbloquear una zona la vuelve a dibujar; su recuerdo espera al 100 %', () => {
   const s = fresh();
   s.jornales = 20;
   const r = S.unlockZone(s, 'huerta');
   assert.ok(r.ok, r.text);
   assert.ok(s.zones.huerta.unlocked);
+  assert.ok(!s.items.includes('receta'));
+  s.zones.huerta.cons = 100; S.checkItems(s);
   assert.ok(s.items.includes('receta'));
   // el colmenar necesita apicultura
   assert.match(S.unlockBlocker(s, 'colmenar'), /apicultura/);
 });
 
-test('restaurar una zona por encima de 70 da su objeto', () => {
+test('los recuerdos solo salen con la zona al 100 % y de uno en uno', () => {
   const s = fresh();
   s.day = 30;
-  s.zones.patio.cons = 69;
+  s.zones.patio.cons = 80;
   s.jornales = 5;
   S.doTask(s, 'patio', 'barrer');
   assert.ok(s.zones.patio.everRestored);
-  assert.ok(s.items.includes('partitura1'));
+  assert.ok(!s.items.includes('partitura1'));
+  s.zones.patio.cons = 99.8; s.jornales = 5;
+  S.doTask(s, 'patio', 'barrer');
+  const got = ['partitura1', 'foto_fuente'].filter((id) => s.items.includes(id));
+  assert.equal(got.length, 1);                 // uno por zona…
+  s.day += 3; S.checkItems(s);
+  assert.equal(['partitura1', 'foto_fuente'].filter((id) => s.items.includes(id)).length, 2);   // …y el siguiente días después
   assert.ok(S.themeNotesKnown(s) > THEME_START);
+});
+
+test('el Pascuali aparece con la huerta al 100 % y ahorra jornales', () => {
+  const s = fresh();
+  for (const z of Object.values(s.zones)) z.unlocked = true;
+  const cavar = S.findTask('huerta', 'cavar');
+  assert.equal(S.taskJornales(s, cavar), 2);
+  s.zones.huerta.cons = 100; S.checkItems(s);
+  assert.ok(s.tractor.found && !s.tractor.ready);
+  s.money = 500; s.jornales = 3;
+  let r = S.repairTractor(s);
+  assert.ok(r.ok && !r.done);
+  s.jornales = 5;
+  r = S.repairTractor(s);
+  assert.ok(r.done && s.tractor.ready);
+  assert.equal(S.taskJornales(s, cavar), 1);
+  assert.equal(S.taskJornales(s, S.findTask('huerta', 'regar')), 1);
+  S.breakDown(s, 'tractor');
+  assert.equal(S.taskJornales(s, cavar), 2);   // averiado, todo a mano
 });
 
 test('vender baja el precio del canal y luego se recupera', () => {
@@ -240,16 +267,14 @@ test('la revelación espera a su día aunque todo esté listo', () => {
 
 test('todos los objetos se pueden encontrar', () => {
   for (const it of ITEMS) {
-    assert.ok(['unlock', 'restore', 'cons', 'task', 'cat', 'event'].includes(it.where), it.id);
-    if (it.where === 'cons') assert.ok(it.at > 0 && it.zone, it.id);
-    if (['unlock', 'restore', 'cons', 'task'].includes(it.where)) assert.ok(it.zone, it.id);
-    if (it.where === 'unlock') assert.equal(ZONES.find((z) => z.id === it.zone).unlocked, false, it.id + ': su zona empieza desbloqueada');
+    assert.ok(['full', 'cat', 'event'].includes(it.where), it.id);
+    if (it.where === 'full') assert.ok(ZONES.some((z) => z.id === it.zone), it.id);
   }
   const s = fresh(2);
   s.day = 200;
   for (const z of Object.values(s.zones)) { z.unlocked = true; z.cons = 100; z.maxCons = 100; z.everRestored = true; }
-  S.checkItems(s);
-  const pending = ITEMS.filter((i) => ['unlock', 'restore', 'cons'].includes(i.where) && !s.items.includes(i.id));
+  for (let i = 0; i < 20; i++) { S.checkItems(s); s.day += 3; }
+  const pending = ITEMS.filter((i) => i.where === 'full' && !s.items.includes(i.id));
   assert.deepEqual(pending.map((i) => i.id), []);
 });
 

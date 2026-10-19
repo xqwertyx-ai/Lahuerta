@@ -64,9 +64,12 @@ def run(url, tag, browser):
     time.sleep(0.4)
     c1 = pg.evaluate("() => __huerta.s.zones.cortijo.cons")
     check('encalar sube la conservación', c1 > c0 + 10, f'{c0:.1f} → {c1:.1f}')
-    # Debe aparecer el recuerdo de la firma de Transi
+    # A medias no sale nada: los recuerdos esperan a que la zona esté al 100 %
+    check('sin recuerdo antes del 100 %', pg.locator('.modal').count() == 0)
+    pg.evaluate("() => { const s = __huerta.s; s.zones.cortijo.cons = 99.8; s.jornales = 5; }")
+    pg.locator('.sheet .task').filter(has_text='Limpiar la chimenea').locator('button').click()
     pg.wait_for_selector('.modal', timeout=3000)
-    check('aparece un recuerdo (la firma de los cuadros)', 'Transi' in pg.locator('.modal').inner_text())
+    check('al 100 % aparece un recuerdo', 'Un recuerdo' in pg.locator('.modal').inner_text())
     pg.screenshot(path=f'{SHOTS}/{tag}-04-recuerdo.png')
     pg.click('text=Guardarlo en el cuaderno')
     time.sleep(0.3)

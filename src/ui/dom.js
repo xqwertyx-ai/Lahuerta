@@ -41,3 +41,14 @@ export function btn(label, onclick, { cls = '', disabled = null, title = null } 
   if (disabled) b.disabled = true;
   return b;
 }
+
+// Lámina con la imagen de un recuerdo (cuadros de Transi, fotos). Si no carga, se queda el icono.
+export function lamina(it, fallback, cls = 'lamina') {
+  const img = document.createElement('img');
+  img.className = cls;
+  img.alt = it.name;
+  img.loading = 'lazy';
+  img.src = `assets/cuadros/${it.image}.jpg`;
+  img.addEventListener('error', () => { if (fallback) img.replaceWith(fallback); else img.remove(); });
+  return img;
+}

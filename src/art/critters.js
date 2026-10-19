@@ -121,3 +121,55 @@ export function drawFigure(ctx, x, y, { hat = false, color = '#7a5a3a', work = n
   }
   ctx.restore();
 }
+
+// El tractor Pascuali amarillo, de lado: cuatro ruedas de tacos, guardabarros curvos, asiento de chapa,
+// volante negro y el motor delante. dusty = recién encontrado, con polvo y media lona encima.
+export function drawTractor(ctx, x, y, { dir = 1, s = 1, dusty = false, shake = 0 } = {}) {
+  ctx.save();
+  ctx.translate(x, y + shake);
+  ctx.scale(dir * s, s);
+  inkLine(ctx, 1);
+  const yellow = dusty ? 'rgba(196,170,96,0.95)' : 'rgba(230,186,40,0.95)';
+  const tyre = 'rgba(38,34,30,0.92)';
+  const wheel = (cx, r) => {
+    ctx.fillStyle = tyre;
+    ctx.beginPath(); ctx.arc(cx, -r, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    // Tacos
+    ctx.save(); ctx.strokeStyle = 'rgba(90,80,70,0.9)'; ctx.lineWidth = 0.6;
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) { ctx.beginPath(); ctx.moveTo(cx + Math.cos(a) * r * 0.75, -r + Math.sin(a) * r * 0.75); ctx.lineTo(cx + Math.cos(a + 0.2) * r, -r + Math.sin(a + 0.2) * r); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle = yellow;
+    ctx.beginPath(); ctx.arc(cx, -r, r * 0.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(60,50,40,0.9)';
+    ctx.beginPath(); ctx.arc(cx, -r, r * 0.12, 0, Math.PI * 2); ctx.fill();
+  };
+  // Chasis
+  ctx.fillStyle = yellow;
+  ctx.beginPath(); ctx.rect(-14, -14, 30, 6); ctx.fill(); ctx.stroke();
+  // Motor y depósito delante
+  ctx.beginPath(); ctx.rect(10, -22, 14, 12); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(16, -23, 6, 3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(60,50,40,0.85)';
+  ctx.beginPath(); ctx.rect(22, -20, 3, 9); ctx.fill();
+  wheel(-12, 9);
+  wheel(16, 8.5);
+  // Guardabarros curvos
+  ctx.fillStyle = yellow;
+  ctx.beginPath(); ctx.moveTo(-24, -9); ctx.quadraticCurveTo(-23, -24, -12, -24); ctx.quadraticCurveTo(-1, -24, -1, -12);
+  ctx.lineTo(-3, -12); ctx.quadraticCurveTo(-3, -21, -12, -21); ctx.quadraticCurveTo(-20, -21, -21, -9); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Asiento de chapa
+  ctx.beginPath(); ctx.moveTo(-17, -27); ctx.quadraticCurveTo(-12, -31, -6, -27); ctx.lineTo(-8, -24); ctx.lineTo(-15, -24); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // Columna y volante
+  ctx.beginPath(); ctx.moveTo(2, -14); ctx.lineTo(5, -30); ctx.stroke();
+  ctx.save(); ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(30,28,26,0.95)';
+  ctx.beginPath(); ctx.ellipse(5, -31, 6, 1.8, -0.15, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+  // Óxido
+  ctx.fillStyle = 'rgba(150,70,30,0.55)';
+  for (const [ox, oy] of [[-16, -20], [14, -16], [-10, -13], [20, -21]]) { ctx.beginPath(); ctx.arc(ox, oy, 1.2, 0, Math.PI * 2); ctx.fill(); }
+  if (dusty) {
+    // Media lona encima
+    ctx.fillStyle = 'rgba(120,128,104,0.85)';
+    ctx.beginPath(); ctx.moveTo(-26, -10); ctx.quadraticCurveTo(-20, -36, 4, -30); ctx.quadraticCurveTo(10, -24, 8, -14); ctx.lineTo(-2, -12); ctx.quadraticCurveTo(-14, -18, -26, -10); ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}

@@ -12,4 +12,5 @@ export * from './events.js';
 export * from './garden.js';
 export * from './kitchen.js';
 export * from './hardship.js';
+export * from './tractor.js';
 export { rand } from './rng.js';

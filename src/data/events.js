@@ -224,6 +224,15 @@ export const EVENTS = [
     ],
   },
   {
+    id: 'tractor_tose', title: 'El Pascuali tose', illus: 'furgoneta', weight: 2, cooldown: 40, crisis: true,
+    cond: (s, h) => h.canBreak('tractor'),
+    text: 'El Pascuali arranca a la tercera y suelta un humo negro que no promete nada bueno.',
+    options: [
+      { label: 'Cambiarle el filtro y el aceite', cost: { jornales: 1, money: 20 }, result: 'Manos negras hasta el codo. El motor vuelve a sonar redondo.' },
+      { label: 'Ya aguantará', apply: (s, h) => h.breakDown('tractor'), result: 'Aguantó media mañana.' },
+    ],
+  },
+  {
     id: 'furgoneta', title: 'La furgoneta tose', illus: 'furgoneta', weight: 3, cooldown: 35, minDay: 8, crisis: true,
     cond: (s, h) => h.canBreak('furgoneta'),
     text: 'La furgoneta arranca a la tercera y echa un humo azul que no gusta nada.',

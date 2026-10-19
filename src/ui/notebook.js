@@ -1,5 +1,5 @@
 // El cuaderno: diario, despensa y mercado, gente, recuerdos, huéspedes, álbum y ajustes.
-import { h, clear, bar, btn, fmtMoney, fmtNum } from './dom.js';
+import { h, clear, bar, btn, fmtMoney, fmtNum, lamina } from './dom.js';
 import { PRODUCTS, MATERIALS, ANIMALS, CHANNELS } from '../data/products.js';
 import { VOLUNTEER_BY_ID, TRAITS, SKILLS } from '../data/volunteers.js';
 import { ZONES, ZONE_BY_ID } from '../data/zones.js';
@@ -284,13 +284,19 @@ export class Notebook {
     for (const it of ITEMS) {
       const have = s.items.includes(it.id);
       if (!have) continue;
-      const icon = h('canvas', { class: 'icon-cv' });
+      let icon = h('canvas', { class: 'icon-cv' });
       drawIcon(icon, it.icon, 64);
-      grid.append(h('div', { class: 'card' }, icon, h('h3', {}, it.name), h('p', { class: 'small' }, it.text),
+      if (it.image) {
+        const fb = icon;
+        icon = lamina(it, fb, 'lamina');
+        icon.addEventListener('click', () => this.game.ui.showLamina(it));
+        icon.title = 'Verla en grande';
+      }
+      grid.append(h('div', { class: 'card' + (it.image ? ' wide' : '') }, icon, h('h3', {}, it.name), h('p', { class: 'small' }, it.text),
         h('div', { class: 'tiny muted' }, it.zone ? `Encontrado en: ${ZONE_BY_ID[it.zone].name}` : 'Llegó por su cuenta')));
     }
     const missing = ITEMS.length - s.items.length;
-    if (missing) grid.append(h('div', { class: 'card faded' }, h('h3', {}, `${missing} por encontrar`), h('p', { class: 'small' }, 'Al recuperar y restaurar zonas aparecen cosas olvidadas. El gato también ayuda.')));
+    if (missing) grid.append(h('div', { class: 'card faded' }, h('h3', {}, `${missing} por encontrar`), h('p', { class: 'small' }, 'Cada zona guarda sus recuerdos: aparecen, de uno en uno, cuando la dejas al 100 %. El gato también ayuda.')));
     el.append(h('div', { class: 'section' }, h('h3', {}, 'Objetos'), grid));
   }
 

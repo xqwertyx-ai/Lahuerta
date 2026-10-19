@@ -1,5 +1,5 @@
 // Coordinador de la interfaz: HUD, panel de zona, cuaderno, notas y diálogos.
-import { h } from './dom.js';
+import { h, lamina } from './dom.js';
 import { Hud } from './hud.js';
 import { ZonePanel } from './zonePanel.js';
 import { Notebook } from './notebook.js';
@@ -69,6 +69,18 @@ export class UI {
     return true;
   }
 
+  // Ver un cuadro o una foto en grande
+  showLamina(it) {
+    if (this.modalOpen) return;
+    const m = modal(this.layer, h('div', {},
+      h('h2', {}, it.name),
+      lamina(it, null, 'lamina big'),
+      h('p', { class: 'text' }, it.text),
+      h('div', { class: 'opts' }, btn('Cerrar', () => { this.modalOpen = null; m.close(); sfx('paper'); }, { cls: 'primary' }))));
+    this.modalOpen = m;
+    sfx('page');
+  }
+
   // Notas de recuerdos encontrados: una cada vez
   queueItemNote(id) { this.noteQueue.push(id); }
 
@@ -77,8 +89,9 @@ export class UI {
     const id = this.noteQueue.shift();
     const it = ITEM_BY_ID[id];
     if (!it) return;
-    const cv = h('canvas', { style: { display: 'block', margin: '6px auto' } });
+    let cv = h('canvas', { style: { display: 'block', margin: '6px auto' } });
     drawIcon(cv, it.icon, 96);
+    if (it.image) cv = lamina(it, cv, 'lamina big');
     const m = modal(this.layer, h('div', {},
       h('h2', {}, 'Un recuerdo'),
       cv,

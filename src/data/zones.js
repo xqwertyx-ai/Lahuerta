@@ -61,7 +61,7 @@ export const ZONES = [
     start: 30, unlocked: false, decay: 1.2, weeds: true, beds: true,
     unlock: { text: 'Desbrozar y cavar los bancales', jornales: 14, cost: { herramientas: 0.5 } },
     tasks: [
-      { id: 'cavar', name: 'Cavar y abonar', jornales: 2, effect: { cons: 15 }, skill: 'huerta' },
+      { id: 'cavar', name: 'Cavar y abonar', jornales: 2, tractor: true, effect: { cons: 15 }, skill: 'huerta' },
       { id: 'regar', name: 'Regar los bancales', jornales: 1, effect: { cons: 5 }, water: 6, growBeds: 0.15, skill: 'agua', notWeather: ['lluvia', 'tormenta'] },
       { id: 'desbrozar', name: 'Quitar malas hierbas', jornales: 1, effect: { cons: 4, weeds: -40 }, skill: 'huerta' },
     ],
@@ -85,9 +85,9 @@ export const ZONES = [
     start: 36, unlocked: true, decay: 0.7, weeds: true,
     tasks: [
       { id: 'podar', name: 'Podar encinas', jornales: 3, effect: { cons: 14 }, gain: { lena: 3 }, seasons: [2, 3], skill: 'monte' },
-      { id: 'desbrozar', name: 'Desbrozar el pasto', jornales: 2, effect: { cons: 6, weeds: -50 }, skill: 'monte' },
-      { id: 'bellota', name: 'Varear y recoger bellota', jornales: 2, effect: { cons: 2 }, gainScaled: { bellota: 5 }, seasons: [2] },
-      { id: 'heno', name: 'Segar y empacar el heno', jornales: 2, effect: { cons: 3 }, gainScaled: { heno: 9 }, seasons: [0, 1], skill: 'ganado' },
+      { id: 'desbrozar', name: 'Desbrozar el pasto', jornales: 2, tractor: true, effect: { cons: 6, weeds: -50 }, skill: 'monte' },
+      { id: 'bellota', name: 'Varear y recoger bellota', jornales: 2, tractor: true, effect: { cons: 2 }, gainScaled: { bellota: 5 }, seasons: [2] },
+      { id: 'heno', name: 'Segar y empacar el heno', jornales: 2, tractor: true, effect: { cons: 3 }, gainScaled: { heno: 9 }, seasons: [0, 1], skill: 'ganado' },
       { id: 'piedra', name: 'Recoger piedra suelta', jornales: 1, effect: { cons: 2 }, gain: { piedra: 3 } },
       { id: 'carbon', name: 'Hacer carbón de encina', jornales: 2, cost: { lena: 3 }, effect: { cons: 1 }, gain: { carbon: 2 }, skill: 'monte' },
     ],
@@ -99,7 +99,7 @@ export const ZONES = [
     start: 25, unlocked: false, decay: 0.8, weeds: true,
     unlock: { text: 'Limpiar las zarzas y apilar la piedra caída', jornales: 21, cost: { piedra: 6 }, requires: { zones: { dehesa: 45 } } },
     tasks: [
-      { id: 'rehacer', name: 'Rehacer un tramo', jornales: 3, cost: { piedra: 3 }, effect: { cons: 20 }, skill: 'albanileria', notWeather: ['helada'] },
+      { id: 'rehacer', name: 'Rehacer un tramo', jornales: 3, tractor: true, cost: { piedra: 3 }, effect: { cons: 20 }, skill: 'albanileria', notWeather: ['helada'] },
       { id: 'zarzas', name: 'Quitar zarzas', jornales: 1, effect: { cons: 4, weeds: -40 }, skill: 'monte' },
     ],
   },

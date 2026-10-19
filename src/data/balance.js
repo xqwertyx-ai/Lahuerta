@@ -94,4 +94,6 @@ export const BALANCE = {
   catFindChancePerDay: 0.06,
   itemChanceOnRestore: 1.0,     // al restaurar una zona por primera vez aparece su objeto
   itemChanceOnTask: 0.05,
+  itemFullCons: 99.5,           // los recuerdos de una zona solo aparecen cuando llega al 100 %
+  itemDripDays: 3,              // y de uno en uno: como mucho uno por zona cada 3 días (2 con la ermita restaurada)
 };

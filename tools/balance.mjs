@@ -74,6 +74,8 @@ function playDay(s, p) {
         if (e.weeds && st.weeds != null) sc += Math.max(0, st.weeds - 30) * -e.weeds / 80;
         if (t.gainScaled || t.gainPerAnimal) sc += 10;
         if (t.gain?.piedra && s.materials.piedra < 4) sc += 6;
+        // Rematar una zona hasta el 100 % para que salgan sus recuerdos
+        if (e.cons && st.cons >= 82 && !S.zoneFull(s, z.id) && S.pendingItems(s, z.id).length) sc += 8;
         if (t.gain?.lena && (s.materials.lena || 0) < lenaTarget) sc += 9;
         if (t.gainScaled?.heno && (s.products.heno || 0) < win.feed * 1.5) sc += 12;
         sc /= S.taskJornales(s, t);

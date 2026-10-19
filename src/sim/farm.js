@@ -10,6 +10,7 @@ import { hasSkill, skillName, traitOf, volunteerJornales, infoOf, setZoneSkillMa
 import { giveItem, checkRevelation } from './mystery.js';
 import { growBeds, autoGarden } from './garden.js';
 import { damageOf, repair, stopped, agingFactor, difficulty } from './hardship.js';
+import { checkTractor, tractorSaves } from './tractor.js';
 
 // Qué oficios usa cada zona (para el ánimo de los voluntarios encargados)
 setZoneSkillMap(Object.fromEntries(ZONES.map((z) => [z.id, [...new Set(z.tasks.map((t) => t.skill).filter(Boolean))]])));
@@ -69,7 +70,8 @@ export function taskSkillBonus(s, task) {
 
 export function taskJornales(s, task) {
   // Quien sabe del oficio ahorra un jornal en los trabajos largos
-  const j = task.jornales - (taskSkillBonus(s, task) && task.jornales >= 3 ? 1 : 0);
+  let j = task.jornales - (taskSkillBonus(s, task) && task.jornales >= 3 ? 1 : 0);
+  if (tractorSaves(s, task)) j -= 1;   // con el Pascuali, los trabajos de carga y arado van más rápido
   return Math.max(1, j);
 }
 
@@ -149,14 +151,6 @@ export function doTask(s, zoneId, taskId, { byVolunteer = null } = {}) {
   s.stats.tasks++;
   checkRestored(s, zoneId);
 
-  // A veces, mientras trabajas, aparece algo olvidado
-  const taskItems = ITEMS.filter((it) => it.where === 'task' && it.zone === zoneId && !s.items.includes(it.id));
-  if (taskItems.length && st.cons >= 55 && s.day >= 4) {
-    let p = 0.22;
-    for (const v of s.volunteers) p += traitOf(v).findBonus || 0;
-    if (s.zones.ermita.everRestored && !stopped(s, 'find')) p += 0.1; // San Antonio, que encuentra lo perdido
-    if (chance(s, p)) giveItem(s, taskItems[0].id);
-  }
 
   signal(s, 'task', { zone: zoneId, task: taskId, skilled });
   const gainTxt = gains.length ? ' (+' + gains.map(([k, v]) => `${v} ${labelOf(k)}`).join(', +') + ')' : '';
@@ -247,23 +241,40 @@ export function unlockZone(s, zoneId, { by = null, budget = null } = {}) {
   return { ok: true, done: true, used: put, text: `${z.name} vuelve al plano`, delta: 0 };
 }
 
-// ¿Está listo un objeto para aparecer? (su zona cumple la condición y ya es su momento)
-export function itemReady(s, it) {
-  if (s.items.includes(it.id) || !it.zone) return false;
-  if (it.minDay && s.day < it.minDay) return false;
-  const st = s.zones[it.zone];
-  if (it.where === 'unlock') return st.unlocked;
-  if (it.where === 'restore') return st.everRestored;
-  if (it.where === 'cons') return st.unlocked && (st.maxCons || st.cons) >= it.at;
-  return false;
+// ¿Ha llegado alguna vez esta zona al 100 %? (entonces van saliendo sus recuerdos)
+export function zoneFull(s, zoneId) {
+  const st = s.zones[zoneId];
+  return !!st && st.unlocked && Math.max(st.maxCons || 0, st.cons) >= BALANCE.itemFullCons;
 }
 
-// Da los objetos que ya tocan (de una zona o de todas). Se llama tras cada acción y cada amanecer.
+// Días entre un recuerdo y el siguiente de la misma zona (San Antonio, que encuentra lo perdido, ayuda)
+export function itemDripDays(s) {
+  return BALANCE.itemDripDays - (s.zones.ermita.everRestored && !stopped(s, 'find') ? 1 : 0);
+}
+
+// ¿Está listo un objeto para aparecer? Solo con su zona al 100 %, ya es su momento y no ha salido otro hace poco
+export function itemReady(s, it) {
+  if (s.items.includes(it.id) || !it.zone) return false;
+  if (!['unlock', 'restore', 'cons', 'task', 'full'].includes(it.where)) return false;
+  if (it.minDay && s.day < it.minDay) return false;
+  if (!zoneFull(s, it.zone)) return false;
+  const last = (s.itemDrip || {})[it.zone];
+  return last == null || s.day - last >= itemDripDays(s);
+}
+
+// Da los objetos que ya tocan (como mucho uno por zona). Se llama tras cada acción y cada amanecer.
 export function checkItems(s, zoneId = null) {
+  if (!s.itemDrip) s.itemDrip = {};
   for (const it of ITEMS) {
     if (zoneId && it.zone !== zoneId) continue;
-    if (itemReady(s, it)) giveItem(s, it.id);
+    if (itemReady(s, it)) { giveItem(s, it.id); s.itemDrip[it.zone] = s.day; }
   }
+  checkTractor(s);
+}
+
+// Recuerdos que quedan por salir en una zona (para la interfaz)
+export function pendingItems(s, zoneId) {
+  return ITEMS.filter((it) => it.zone === zoneId && !s.items.includes(it.id) && it.where !== 'cat' && it.where !== 'event');
 }
 
 export function checkRestored(s, zoneId) {

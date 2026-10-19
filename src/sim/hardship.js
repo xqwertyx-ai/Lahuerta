@@ -44,6 +44,7 @@ export function canBreak(s, id) {
   if (def.zone && !s.zones[def.zone].unlocked) return false;
   if (def.zone && damageOf(s, def.zone)) return false;
   if (def.needsAnimals && !(s.animals[def.needsAnimals] > 0)) return false;
+  if (id === 'tractor' && !(s.tractor && s.tractor.ready)) return false;
   return true;
 }
 

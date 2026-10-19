@@ -63,7 +63,9 @@ export function createState(seed = Date.now() % 2147483647, overrides = {}) {
     damages: {},             // averías en marcha: { id: { id, work, started, since } }
     mods: [],                // avisos temporales: [{ id, until }]
     taxBase: { earned: 0, spent: 0 },
-    loan: null,              // préstamo de la cooperativa: { weekly, left }
+    loan: null,
+    tractor: { found: false, work: 0, started: false, ready: false },
+    itemDrip: {},            // día del último recuerdo de cada zona              // préstamo de la cooperativa: { weekly, left }
     cold: false, coldDays: 0, hungry: false, hungryDays: 0,
     guests: [],              // [{ n, nights }]
     log: [],

@@ -13,7 +13,7 @@ import { drawIcon } from '../art/illus.js';
 import { CROPS, RECIPES, SOW_JORNALES, HARVEST_JORNALES } from '../data/crops.js';
 import { beds, seasonalCrops, sow, sowBlocker, harvest, harvestBlocker, harvestAmount, recipeBlocker, recipeJornales, cook, ingredientLabel } from '../sim/index.js';
 import { sfx } from '../audio/ambience.js';
-import { damageOf } from '../sim/index.js';
+import { damageOf, pendingItems, zoneFull, TRACTOR, tractorState, tractorBlocker, repairTractor, tractorProCost, tractorProBlocker, tractorToWorkshop, tractorCostLabel, stopped } from '../sim/index.js';
 import { repairCard } from './troubles.js';
 
 export class ZonePanel {
@@ -44,7 +44,7 @@ export class ZonePanel {
     if (!this.zone) return;
     const st = s.zones[this.zone];
     const key = [this.zone, Math.round(st.cons), st.weeds == null ? '' : Math.round(st.weeds / 2), st.unlocked, s.jornales, Math.round(s.money),
-      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length, JSON.stringify(s.damages || {}), (s.beds || []).map((b) => b.crop + (b.ready ?? '')).join()].join('|');
+      JSON.stringify(s.materials), s.volunteers.map((v) => v.id + v.zone).join(), s.weather, s.day, JSON.stringify(s.animals), s.items.length, JSON.stringify(s.damages || {}), JSON.stringify(s.tractor || {}), (s.beds || []).map((b) => b.crop + (b.ready ?? '')).join()].join('|');
     if (!force && key === this.key) return;
     this.key = key;
     this.render(s);
@@ -129,6 +129,7 @@ export class ZonePanel {
         }, { disabled: why })));
     }
     if (z.beds) this._beds(s);
+    if (z.id === TRACTOR.zone && tractorState(s).found) this._tractor(s);
     this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Cuidados'), tasks));
     if (z.id === 'cortijo') this._kitchen(s);
 
@@ -167,7 +168,7 @@ export class ZonePanel {
 
     // Recuerdos de la zona
     const found = ITEMS.filter((it) => it.zone === z.id && s.items.includes(it.id));
-    const pending = ITEMS.filter((it) => it.zone === z.id && !s.items.includes(it.id)).length;
+    const pending = pendingItems(s, z.id).length;
     if (found.length || pending) {
       const box = h('div', {});
       for (const it of found) {
@@ -175,7 +176,10 @@ export class ZonePanel {
         drawIcon(cv, it.icon, 44);
         box.append(h('div', { class: 'row', style: { marginBottom: '6px' } }, cv, h('span', { class: 'small' }, it.name)));
       }
-      if (pending) box.append(h('p', { class: 'small muted' }, pending === 1 ? 'Aquí todavía hay algo olvidado.' : `Aquí todavía hay ${pending} cosas olvidadas.`));
+      if (pending) {
+        const when = zoneFull(s, z.id) ? 'Irán apareciendo, de uno en uno, en los próximos días.' : 'Aparecerán cuando la zona esté al 100 %.';
+        box.append(h('p', { class: 'small muted' }, (pending === 1 ? 'Aquí todavía hay algo olvidado. ' : `Aquí todavía hay ${pending} cosas olvidadas. `) + when));
+      }
       this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Recuerdos'), box));
     }
     this.el.scrollTop = scroll;
@@ -210,6 +214,34 @@ export class ZonePanel {
     });
     this.el.append(h('div', { class: 'section' }, h('h3', {}, 'Bancales'),
       h('p', { class: 'small muted' }, `Agua del pozo y la alberca: ${Math.round(s.water)} %. Cada estación tiene sus cultivos.`), box));
+  }
+
+  // El tractor Pascuali (aparece con la huerta al 100 %)
+  _tractor(s) {
+    const g = this.game;
+    const t = tractorState(s);
+    let body;
+    if (t.ready) {
+      const broken = stopped(s, 'tractor');
+      body = h('p', { class: 'small' + (broken ? '' : ' tractor-ok') }, broken
+        ? 'El Pascuali está averiado: míralo en «Cuentas» del cuaderno. Mientras, todo a mano.'
+        : '✓ Funciona. Cavar, segar el heno, varear la bellota, desbrozar la dehesa y rehacer muros cuestan un jornal menos.');
+    } else {
+      const why = tractorBlocker(s);
+      const whyPro = tractorProBlocker(s);
+      const put = Math.min(Math.floor(s.jornales), TRACTOR.work - t.work);
+      body = h('div', { class: 'task' },
+        h('div', { class: 'info' },
+          h('div', { class: 'name' }, 'Ponerlo en marcha'),
+          h('div', { class: 'small' }, 'Estaba bajo una lona detrás del cobertizo: polvo, óxido y las ruedas medio deshinchadas.'),
+          h('div', { class: 'meta' }, t.started ? `${TRACTOR.work} jornales de trabajo` : tractorCostLabel()),
+          t.work ? h('div', {}, h('div', { class: 'statline small' }, h('span', {}, 'Arreglo'), h('span', {}, `${t.work} / ${TRACTOR.work} jornales`)), bar(t.work / TRACTOR.work * 100, 'green')) : null,
+          why ? h('div', { class: 'why' }, why) : null),
+        h('div', { class: 'col' },
+          btn(`${t.work ? 'Seguir' : 'Arreglar'} (−${put || 0})`, () => g.afterAction(repairTractor(s), 'huerta', 'tools'), { cls: 'primary', disabled: why }),
+          btn(`Al taller · ${tractorProCost(s)} €`, () => g.afterAction(tractorToWorkshop(s), 'huerta', 'coins'), { cls: 'small', disabled: whyPro })));
+    }
+    this.el.append(h('div', { class: 'section' }, h('h3', {}, TRACTOR.name), body));
   }
 
   // La cocina del cortijo

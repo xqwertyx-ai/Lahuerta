@@ -10,6 +10,7 @@ export const MILESTONES = [
   { id: 'matanza', name: 'Día de matanza', text: 'Un jamón curándose con el aire de la sierra.', check: (s) => (s.stats.produced.jamon || 0) >= 1 },
   { id: 'bancos', name: 'Los bancos de los nietos', text: 'Cada nombre se lee otra vez entre las teselas.', check: (s) => s.zones.bancos.cons >= 80 },
   { id: 'ratos', name: 'Ratos libres', text: 'No todo es trabajar: diez tardes de música, pintura y estrellas.', check: (s) => (s.stats.activities || 0) >= 10 },
+  { id: 'pascuali', name: 'El Pascuali arranca', text: 'Amarillo, viejo y con más carácter que nadie.', check: (s) => !!(s.tractor && s.tractor.ready) },
   { id: 'cortijo_encalado', name: 'Cortijo encalado', text: 'Blanco como el pueblo de enfrente.', check: (s) => s.zones.cortijo.cons >= 85 },
   { id: 'recuerdos5', name: 'Cinco recuerdos', text: 'La casa empieza a contarte cosas.', check: (s) => s.items.length >= 5 },
   { id: 'primera_miel', name: 'Primera miel', text: 'Sabe a romero y a encina.', check: (s) => s.stats.produced.miel >= 1 },

@@ -7,7 +7,7 @@ import { makePaper, makeCanvas } from './paper.js';
 import { palette, timeTint } from './palette.js';
 import { SKETCHES, village, compass, encina as encinaFree, arbusto as matorral } from './sketches.js';
 import { Cat } from './cat.js';
-import { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee } from './critters.js';
+import { drawHen, drawSheep, drawPig, drawFigure, drawDeer, drawBee, drawTractor } from './critters.js';
 import { CROPS } from '../data/crops.js';
 import { DAMAGES } from '../data/hardships.js';
 
@@ -375,6 +375,14 @@ export class FarmMap {
           }
         }
       });
+    }
+    // El Pascuali junto a la huerta (cuando aparece; con lona y polvo hasta que se arregla)
+    if (s.tractor && s.tractor.found && s.zones.huerta.unlocked) {
+      const hz = ZONE_BY_ID.huerta;
+      const ready = s.tractor.ready;
+      const working = ready && day && s.hour > 8 && s.hour < 13;
+      const bx = working ? hz.x + 90 + ((T * 6) % (hz.w - 200)) : hz.x + hz.w - 150;
+      drawTractor(ctx, bx, hz.y + hz.h - 8, { dusty: !ready, s: 1.05, shake: working ? Math.sin(T * 30) * 0.4 : 0 });
     }
     // Cerdos de montanera bajo las encinas
     if (s.animals.cerdos > 0) {
