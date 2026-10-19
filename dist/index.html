@@ -312,10 +312,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
 }
 
 /* Láminas de los recuerdos: cuadros de Transi y fotos, como pegados en el cuaderno */
-.lamina { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; margin: 4px 0 8px; cursor: zoom-in;
-  filter: sepia(0.18) saturate(0.92) contrast(0.96);
-  -webkit-mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, rgba(0,0,0,0.55) 82%, transparent 100%);
-          mask-image: radial-gradient(ellipse 72% 70% at 50% 50%, #000 62%, rgba(0,0,0,0.55) 82%, transparent 100%); }
+.lamina { display: block; width: 100%; height: auto; max-height: 220px; object-fit: contain; margin: 4px 0 8px; cursor: zoom-in; border-radius: 3px; }
 .lamina.big { max-height: min(56vh, 520px); margin: 6px auto 10px; cursor: default; }
 .card.wide { grid-column: span 2; }
 @media (max-width: 560px) { .card.wide { grid-column: auto; } }
@@ -328,7 +325,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610191004
+// La Huerta del Pianista · build 202610191016
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
