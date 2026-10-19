@@ -14,7 +14,7 @@ export const FAMILY = [
   {
     id: 'feliciano', name: 'El abuelo Feliciano', relation: 'abuelo',
     intro: 'Manos de cal y de tierra. Silbaba mientras trabajaba.',
-    complete: 'Feliciano levantó la fuente azulejo a azulejo y apuntaba en sus cuentas, entre sacos y jornales, las cuerdas del piano. Silbaba siempre la misma melodía.',
+    complete: 'Feliciano apuntaba en sus cuentas, entre sacos y jornales, las cuerdas del piano. En verano, la siesta a la sombra de un olivo. Silbaba siempre la misma melodía.',
   },
   {
     id: 'transi', name: 'La abuela Transi', relation: 'abuela',
@@ -29,7 +29,7 @@ export const FAMILY = [
   {
     id: 'loli', name: 'La tía Loli', relation: 'tía abuela',
     intro: 'Hermana de Transi. Membrillo, risas y canciones en la cocina.',
-    complete: 'Loli removía el membrillo con música, que sale mejor. En la foto de las tres hermanas, todas miran hacia el cenador.',
+    complete: 'Loli removía el membrillo con música, que sale mejor.',
   },
 ];
 

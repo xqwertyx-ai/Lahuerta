@@ -52,9 +52,6 @@ export const ITEMS = [
   { id: 'cuentas', name: 'El cuaderno de cuentas', thread: 'feliciano', zone: 'cortijo', where: 'full', icon: 'cuaderno',
     text: 'Sacos de bellota, kilos de cal, jornales. En una esquina, a lápiz: «cuerdas del piano — pendiente».',
     hyp: { feliciano: 1, mueble: 1 } },
-  { id: 'foto_fuente', name: 'Una foto de la fuente a medio hacer', thread: 'feliciano', zone: 'patio', where: 'full', minDay: 3, icon: 'foto',
-    text: 'Un hombre con boina, de espaldas, sujeta un azulejo azul. Al dorso: «Feliciano, la fuente, primer verano».',
-    hyp: { feliciano: 1 } },
 
   // ── Transi ──
   { id: 'firma', name: 'La firma de los cuadros', thread: 'transi', zone: 'cortijo', where: 'full', icon: 'firma',
@@ -74,9 +71,6 @@ export const ITEMS = [
   { id: 'receta', name: 'La receta de membrillo de Loli', thread: 'loli', zone: 'huerta', where: 'full', icon: 'receta',
     text: 'Membrillo, azúcar, paciencia. Y al final: «remover despacio, con música, que sale mejor».',
     hyp: {} },
-  { id: 'foto_hermanas', name: 'Una foto de tres hermanas', thread: 'loli', zone: 'paseo', where: 'full', minDay: 18, icon: 'foto',
-    text: 'Tres mujeres de espaldas bajo las adelfas, mirando hacia el cenador. Una lleva un pañuelo, otra un cesto. La tercera, un cuaderno.',
-    hyp: { transi: 1 } },
   { id: 'panuelo', name: 'Un pañuelo bordado', thread: 'elisa', zone: 'bosquete', where: 'full', icon: 'panuelo',
     text: 'Colgado de una rama de la higuera, descolorido. Bordadas, unas iniciales: E. y, más pequeño, una corchea.',
     hyp: { musico: 1 } },
@@ -101,6 +95,22 @@ export const ITEMS = [
     hyp: { transi: 1 } },
   { id: 'san_antonio', name: 'La imagen de San Antonio', thread: 'finca', zone: 'ermita', where: 'full', icon: 'foto', image: 'san-antonio',
     text: 'San Antonio con el Niño en brazos y un libro con azucenas, sobre su peana, entre dos candelabros de latón. El santo que encuentra lo perdido.',
+    hyp: {} },
+  // ── Fotos de la familia y el último cuadro (reales) ──
+  { id: 'foto_carlos', name: 'El tío Carlos en el banco de ajedrez', thread: 'finca', zone: 'patio', where: 'full', icon: 'foto', image: 'foto-carlos',
+    text: 'El tío Carlos de pequeño, sentado en el banco de azulejos blancos y negros, junto a la ventana de los geranios. Sol de verano entre las hojas y una sonrisa de oreja a oreja.',
+    hyp: {} },
+  { id: 'foto_carmen', name: 'Carmen y Montse en la rueda de carro', thread: 'finca', zone: 'barbacoa', where: 'full', icon: 'foto', image: 'foto-carmen-montse',
+    text: 'Carmen, recién levantada, sentada en una de las ruedas de carro. Detrás, su amiga Montse se despereza delante de la casa blanca.',
+    hyp: {} },
+  { id: 'foto_cazadores', name: 'Juan Manuel y Juan Luis, de caza', thread: 'finca', zone: 'dehesa', where: 'full', minDay: 12, icon: 'foto', image: 'foto-cazadores',
+    text: 'El tío Juan Manuel y su primo Juan Luis, de niños, con sombrero, cartuchera y escopeta, después de salir a cazar perdices por la dehesa.',
+    hyp: {} },
+  { id: 'cuadro_huerta', name: 'El cuadro de la huerta en sus inicios', thread: 'transi', zone: 'cortijo', where: 'full', minDay: 25, icon: 'boceto', image: 'cuadro-huerta',
+    text: 'Óleo de Transi: la casa como era antes de las reformas, baja y blanca, con su porche de postes, el árbol grande, el camino de tierra y las adelfas en flor.',
+    hyp: { transi: 1 } },
+  { id: 'foto_botijos', name: 'Los botijos de la huerta', thread: 'finca', zone: null, where: 'matanza', icon: 'foto', image: 'foto-botijos',
+    text: 'En la cocina, junto al jamón y los chorizos de la matanza, los botijos de barro de toda la vida y la olla con su tapa de ganchillo azul.',
     hyp: {} },
 ];
 

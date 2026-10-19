@@ -88,10 +88,10 @@ test('los recuerdos solo salen con la zona al 100 % y de uno en uno', () => {
   assert.ok(!s.items.includes('partitura1'));
   s.zones.patio.cons = 99.8; s.jornales = 5;
   S.doTask(s, 'patio', 'barrer');
-  const got = ['partitura1', 'foto_fuente'].filter((id) => s.items.includes(id));
+  const got = ['partitura1', 'foto_carlos'].filter((id) => s.items.includes(id));
   assert.equal(got.length, 1);                 // uno por zona…
   s.day += 3; S.checkItems(s);
-  assert.equal(['partitura1', 'foto_fuente'].filter((id) => s.items.includes(id)).length, 2);   // …y el siguiente días después
+  assert.equal(['partitura1', 'foto_carlos'].filter((id) => s.items.includes(id)).length, 2);   // …y el siguiente días después
   assert.ok(S.themeNotesKnown(s) > THEME_START);
 });
 
@@ -267,7 +267,7 @@ test('la revelación espera a su día aunque todo esté listo', () => {
 
 test('todos los objetos se pueden encontrar', () => {
   for (const it of ITEMS) {
-    assert.ok(['full', 'cat', 'event'].includes(it.where), it.id);
+    assert.ok(['full', 'cat', 'event', 'matanza'].includes(it.where), it.id);
     if (it.where === 'full') assert.ok(ZONES.some((z) => z.id === it.zone), it.id);
   }
   const s = fresh(2);
@@ -527,4 +527,17 @@ test('un año entero con contratiempos sin errores', () => {
   S.runDays(s, 56, (st) => S.resolveEvent(st, 1));
   assert.ok(s.day >= 57 || s.asleep);
   assert.ok(Number.isFinite(s.money));
+});
+
+test('los botijos aparecen tras la primera matanza', () => {
+  const s = fresh(21);
+  S.checkItems(s);
+  assert.ok(!s.items.includes('foto_botijos'));
+  s.animals.cerdos = 0; s.products.cerdo = 1;
+  s.day = 20;   // invierno
+  s.jornales = 5;
+  const r = S.cook(s, 'matanza');
+  assert.ok(r.ok, r.text);
+  S.checkItems(s);
+  assert.ok(s.items.includes('foto_botijos'));
 });

@@ -254,7 +254,9 @@ export function itemDripDays(s) {
 
 // ¿Está listo un objeto para aparecer? Solo con su zona al 100 %, ya es su momento y no ha salido otro hace poco
 export function itemReady(s, it) {
-  if (s.items.includes(it.id) || !it.zone) return false;
+  if (s.items.includes(it.id)) return false;
+  if (it.where === 'matanza') return (s.stats.produced.jamon || 0) >= 1;
+  if (!it.zone) return false;
   if (!['unlock', 'restore', 'cons', 'task', 'full'].includes(it.where)) return false;
   if (it.minDay && s.day < it.minDay) return false;
   if (!zoneFull(s, it.zone)) return false;
@@ -266,8 +268,8 @@ export function itemReady(s, it) {
 export function checkItems(s, zoneId = null) {
   if (!s.itemDrip) s.itemDrip = {};
   for (const it of ITEMS) {
-    if (zoneId && it.zone !== zoneId) continue;
-    if (itemReady(s, it)) { giveItem(s, it.id); s.itemDrip[it.zone] = s.day; }
+    if (zoneId && it.zone !== zoneId && it.zone) continue;
+    if (itemReady(s, it)) { giveItem(s, it.id); if (it.zone) s.itemDrip[it.zone] = s.day; }
   }
   checkTractor(s);
 }

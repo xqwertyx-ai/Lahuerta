@@ -325,7 +325,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610191206
+// La Huerta del Pianista · build 202610191337
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
@@ -1235,9 +1235,6 @@ const ITEMS = [
   { id: 'cuentas', name: 'El cuaderno de cuentas', thread: 'feliciano', zone: 'cortijo', where: 'full', icon: 'cuaderno',
     text: 'Sacos de bellota, kilos de cal, jornales. En una esquina, a lápiz: «cuerdas del piano — pendiente».',
     hyp: { feliciano: 1, mueble: 1 } },
-  { id: 'foto_fuente', name: 'Una foto de la fuente a medio hacer', thread: 'feliciano', zone: 'patio', where: 'full', minDay: 3, icon: 'foto',
-    text: 'Un hombre con boina, de espaldas, sujeta un azulejo azul. Al dorso: «Feliciano, la fuente, primer verano».',
-    hyp: { feliciano: 1 } },
 
   // ── Transi ──
   { id: 'firma', name: 'La firma de los cuadros', thread: 'transi', zone: 'cortijo', where: 'full', icon: 'firma',
@@ -1257,9 +1254,6 @@ const ITEMS = [
   { id: 'receta', name: 'La receta de membrillo de Loli', thread: 'loli', zone: 'huerta', where: 'full', icon: 'receta',
     text: 'Membrillo, azúcar, paciencia. Y al final: «remover despacio, con música, que sale mejor».',
     hyp: {} },
-  { id: 'foto_hermanas', name: 'Una foto de tres hermanas', thread: 'loli', zone: 'paseo', where: 'full', minDay: 18, icon: 'foto',
-    text: 'Tres mujeres de espaldas bajo las adelfas, mirando hacia el cenador. Una lleva un pañuelo, otra un cesto. La tercera, un cuaderno.',
-    hyp: { transi: 1 } },
   { id: 'panuelo', name: 'Un pañuelo bordado', thread: 'elisa', zone: 'bosquete', where: 'full', icon: 'panuelo',
     text: 'Colgado de una rama de la higuera, descolorido. Bordadas, unas iniciales: E. y, más pequeño, una corchea.',
     hyp: { musico: 1 } },
@@ -1284,6 +1278,22 @@ const ITEMS = [
     hyp: { transi: 1 } },
   { id: 'san_antonio', name: 'La imagen de San Antonio', thread: 'finca', zone: 'ermita', where: 'full', icon: 'foto', image: 'san-antonio',
     text: 'San Antonio con el Niño en brazos y un libro con azucenas, sobre su peana, entre dos candelabros de latón. El santo que encuentra lo perdido.',
+    hyp: {} },
+  // ── Fotos de la familia y el último cuadro (reales) ──
+  { id: 'foto_carlos', name: 'El tío Carlos en el banco de ajedrez', thread: 'finca', zone: 'patio', where: 'full', icon: 'foto', image: 'foto-carlos',
+    text: 'El tío Carlos de pequeño, sentado en el banco de azulejos blancos y negros, junto a la ventana de los geranios. Sol de verano entre las hojas y una sonrisa de oreja a oreja.',
+    hyp: {} },
+  { id: 'foto_carmen', name: 'Carmen y Montse en la rueda de carro', thread: 'finca', zone: 'barbacoa', where: 'full', icon: 'foto', image: 'foto-carmen-montse',
+    text: 'Carmen, recién levantada, sentada en una de las ruedas de carro. Detrás, su amiga Montse se despereza delante de la casa blanca.',
+    hyp: {} },
+  { id: 'foto_cazadores', name: 'Juan Manuel y Juan Luis, de caza', thread: 'finca', zone: 'dehesa', where: 'full', minDay: 12, icon: 'foto', image: 'foto-cazadores',
+    text: 'El tío Juan Manuel y su primo Juan Luis, de niños, con sombrero, cartuchera y escopeta, después de salir a cazar perdices por la dehesa.',
+    hyp: {} },
+  { id: 'cuadro_huerta', name: 'El cuadro de la huerta en sus inicios', thread: 'transi', zone: 'cortijo', where: 'full', minDay: 25, icon: 'boceto', image: 'cuadro-huerta',
+    text: 'Óleo de Transi: la casa como era antes de las reformas, baja y blanca, con su porche de postes, el árbol grande, el camino de tierra y las adelfas en flor.',
+    hyp: { transi: 1 } },
+  { id: 'foto_botijos', name: 'Los botijos de la huerta', thread: 'finca', zone: null, where: 'matanza', icon: 'foto', image: 'foto-botijos',
+    text: 'En la cocina, junto al jamón y los chorizos de la matanza, los botijos de barro de toda la vida y la olla con su tapa de ganchillo azul.',
     hyp: {} },
 ];
 
@@ -2233,7 +2243,7 @@ const FAMILY = [
   {
     id: 'feliciano', name: 'El abuelo Feliciano', relation: 'abuelo',
     intro: 'Manos de cal y de tierra. Silbaba mientras trabajaba.',
-    complete: 'Feliciano levantó la fuente azulejo a azulejo y apuntaba en sus cuentas, entre sacos y jornales, las cuerdas del piano. Silbaba siempre la misma melodía.',
+    complete: 'Feliciano apuntaba en sus cuentas, entre sacos y jornales, las cuerdas del piano. En verano, la siesta a la sombra de un olivo. Silbaba siempre la misma melodía.',
   },
   {
     id: 'transi', name: 'La abuela Transi', relation: 'abuela',
@@ -2248,7 +2258,7 @@ const FAMILY = [
   {
     id: 'loli', name: 'La tía Loli', relation: 'tía abuela',
     intro: 'Hermana de Transi. Membrillo, risas y canciones en la cocina.',
-    complete: 'Loli removía el membrillo con música, que sale mejor. En la foto de las tres hermanas, todas miran hacia el cenador.',
+    complete: 'Loli removía el membrillo con música, que sale mejor.',
   },
 ];
 
@@ -2888,7 +2898,9 @@ function itemDripDays(s) {
 
 // ¿Está listo un objeto para aparecer? Solo con su zona al 100 %, ya es su momento y no ha salido otro hace poco
 function itemReady(s, it) {
-  if (s.items.includes(it.id) || !it.zone) return false;
+  if (s.items.includes(it.id)) return false;
+  if (it.where === 'matanza') return (s.stats.produced.jamon || 0) >= 1;
+  if (!it.zone) return false;
   if (!['unlock', 'restore', 'cons', 'task', 'full'].includes(it.where)) return false;
   if (it.minDay && s.day < it.minDay) return false;
   if (!zoneFull(s, it.zone)) return false;
@@ -2900,8 +2912,8 @@ function itemReady(s, it) {
 function checkItems(s, zoneId = null) {
   if (!s.itemDrip) s.itemDrip = {};
   for (const it of ITEMS) {
-    if (zoneId && it.zone !== zoneId) continue;
-    if (itemReady(s, it)) { giveItem(s, it.id); s.itemDrip[it.zone] = s.day; }
+    if (zoneId && it.zone !== zoneId && it.zone) continue;
+    if (itemReady(s, it)) { giveItem(s, it.id); if (it.zone) s.itemDrip[it.zone] = s.day; }
   }
   checkTractor(s);
 }
