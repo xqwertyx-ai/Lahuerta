@@ -488,8 +488,8 @@ export class FarmMap {
     // Luces de noche: ventanas del cortijo, farola y pueblo
     if (s.hour > 19.8 || s.hour < 6.8) {
       const k = s.hour > 19.8 ? Math.min(1, (s.hour - 19.8) / 1.2) : Math.min(1, (6.8 - s.hour) / 1);
-      const lights = [[755, 657, 16], [757, 682, 10], [898, 744 - 70, 14]];
-      if (s.zones.cortijo.cons > 30) lights.push([737, 617, 12]);
+      const lights = [[764, 644, 14], [768, 709, 12], [731, 639, 10]];   // ventanas del cortijo y el farolillo
+      if (s.zones.cortijo.cons > 30) lights.push([702, 646, 10]);
       const vx = DECOR.village.x, vy = DECOR.village.y;
       const r = makeRng(55);
       for (let i = 0; i < 14; i++) lights.push([vx + 90 + r() * 500, vy + 50 + r() * 40, 5]);

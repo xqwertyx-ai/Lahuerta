@@ -318,7 +318,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610190905
+// La Huerta del Pianista · build 202610190929
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
@@ -5402,160 +5402,345 @@ function stones(d, x0, y0, w, h, rows = 3, size = 9) {
   pen.set({ width: 1.4 });
 }
 
+// Marco de azulejo alrededor de una ventana (blanco con cenefa azul, como en la casa)
+function tileFrame(d, x, y, w, h, b = 5) {
+  const { pen, P } = d;
+  const frame = [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
+  d.wash(frame, '#eef0f2', { alpha: 0.95, spread: 0.4, edge: 0.15, grain: 0 });
+  d.wash([[x, y], [x + w, y], [x + w, y + b], [x, y + b]], P.tile, { alpha: 0.35, edge: 0, grain: 0 });
+  d.wash([[x, y + h - b], [x + w, y + h - b], [x + w, y + h], [x, y + h]], P.tile, { alpha: 0.35, edge: 0, grain: 0 });
+  d.wash([[x, y], [x + b, y], [x + b, y + h], [x, y + h]], P.tile, { alpha: 0.3, edge: 0, grain: 0 });
+  d.wash([[x + w - b, y], [x + w, y], [x + w, y + h], [x + w - b, y + h]], P.tile, { alpha: 0.3, edge: 0, grain: 0 });
+  pen.set({ width: 0.4, double: false });
+  for (let xx = x + b / 2; xx < x + w; xx += b) { pen.dot(xx, y + b / 2, 0.7, '#1c2f55', 0.7); pen.dot(xx, y + h - b / 2, 0.7, '#1c2f55', 0.7); }
+  for (let yy = y + b * 1.5; yy < y + h - b; yy += b) { pen.dot(x + b / 2, yy, 0.7, '#1c2f55', 0.7); pen.dot(x + w - b / 2, yy, 0.7, '#1c2f55', 0.7); }
+  pen.set({ width: 0.9, double: true });
+  pen.rect(x, y, w, h);
+  pen.set({ width: 1.4 });
+}
+
+// Cenefa estrecha de azulejo
+function tileStrip(d, x, y, w, h) {
+  const { pen, P } = d;
+  d.wash([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], mix('#eef0f2', P.tile, 0.3), { alpha: 0.85, edge: 0, grain: 0 });
+  pen.set({ width: 0.4, double: false });
+  for (let xx = x + 2.5; xx < x + w; xx += 5) pen.dot(xx, y + h / 2, 0.75, '#1c2f55', 0.75);
+  pen.line(x, y, x + w, y); pen.line(x, y + h, x + w, y + h);
+  pen.set({ width: 1.4, double: true });
+}
+
+// Pilar de ladrillo visto
+function brickPillar(d, x, y0, y1, w = 9) {
+  const { pen } = d;
+  d.wash([[x, y0], [x + w, y0], [x + w, y1], [x, y1]], '#b5654a', { alpha: 0.75, spread: 0.4, edge: 0.3 });
+  pen.set({ width: 0.35, double: false });
+  let row = 0;
+  for (let y = y0 + 3; y < y1; y += 3, row++) {
+    pen.line(x, y, x + w, y);
+    const off = row % 2 ? w / 2 : 0;
+    for (let xx = x + off; xx < x + w; xx += w) if (xx > x) pen.line(xx, y - 3, xx, y);
+  }
+  pen.set({ width: 1, double: true });
+  pen.rect(x, y0, w, y1 - y0);
+  pen.set({ width: 1.4 });
+}
+
+// Barandilla de hierro con barrotes y algún adorno
+function railing(d, x0, x1, y, h) {
+  const { pen } = d;
+  pen.set({ width: 0.9, color: '#2b2420', double: false });
+  pen.line(x0, y - h, x1, y - h);
+  pen.line(x0, y - 2, x1, y - 2);
+  for (let x = x0; x <= x1; x += 4.2) pen.line(x, y - h, x, y);
+  for (let x = x0 + 12; x < x1 - 6; x += 24) pen.curve([[x - 2, y - 4], [x, y - 9], [x + 2, y - 4]]);
+  pen.set({ width: 1.4, color: '#3b2a1c', double: true });
+}
+
+// Limpiatubos (arbusto de flores rojas en espiga) junto a la esquina de la casa
+function callistemon(d, x, y, s = 1) {
+  const { pen, r, P } = d;
+  const pts = blobPts(x, y - 30 * s, 20 * s, 32 * s, r, 0.22, 24);
+  d.wash(pts, P.foliageDark, { alpha: 0.45 });
+  pen.set({ width: 0.9 });
+  pen.path(pts, true);
+  pen.set({ width: 0.6 });
+  for (let i = 0; i < 18; i++) {
+    const px = x + r.range(-15, 15) * s, py = y - r.range(8, 56) * s;
+    pen.line(px, py, px + r.range(-3, 3), py - 4);
+  }
+  for (let i = 0; i < 9; i++) d.washBlob(x + r.range(-14, 14) * s, y - r.range(20, 58) * s, 1.6 * s, 3.6 * s, '#c8322a', { alpha: 0.85, layers: 1, edge: 0, grain: 0 });
+  pen.set({ width: 1.4 });
+}
+
 // ───────────────────────── Zonas ─────────────────────────
 
 const SKETCHES = {
   cortijo(d) {
+    // Según la foto: casa de dos plantas en L. Porche abajo con pilares de ladrillo, balcón corrido
+    // con barandilla de hierro, ventanas con marco de azulejo azul y reja, farolillo, vigas bajo el
+    // alero y zócalo de baldosa. A la derecha, el ala alta con dos macetas verdes en la reja.
     const { pen, r, P } = d;
-    const gy = 202;
-    groundShadow(d, 140, gy + 2, 120, 10);
-    // Fachada, lateral y tejado
-    const front = [[40, 78], [192, 78], [192, gy], [40, gy]];
-    const side = [[192, 78], [240, 60], [240, gy - 14], [192, gy]];
+    const gy = 204;
+    groundShadow(d, 140, gy + 2, 130, 10);
+    // ── Cuerpo principal (izquierda) ──
+    const front = [[22, 74], [178, 74], [178, gy], [22, gy]];
     d.wash(front, P.whitewash, { alpha: 1.0, spread: 0.8, edge: 0.2, grain: 0.002 });
-    d.wash(side, mix(P.whitewash, P.wallShade, 0.5), { alpha: 0.95, spread: 0.8 });
-    // Sombras de hojas sobre la cal (como en la foto)
-    for (let i = 0; i < 9; i++) d.washBlob(r.range(130, 188), r.range(100, 190), r.range(5, 12), r.range(3, 6), P.wallShade, { alpha: 0.18, edge: 0, grain: 0 });
+    // ── Ala alta (derecha), vista de lado ──
+    const wing = [[178, 52], [252, 66], [252, gy - 6], [178, gy]];
+    d.wash(wing, mix(P.whitewash, P.wallShade, 0.22), { alpha: 1.0, spread: 0.8, edge: 0.2 });
+    // Sombras de hojas sobre la cal
+    for (let i = 0; i < 12; i++) d.washBlob(r.range(26, 120), r.range(80, 196), r.range(5, 13), r.range(3, 6), P.wallShade, { alpha: 0.16, edge: 0, grain: 0 });
     pen.set({ width: 1.6 });
     pen.path(front, true);
-    pen.path(side, false);
-    pen.hatch(side, { angle: -1.1, gap: 4.5, alpha: 0.45 });
-    // Tejado
-    const roofF = [[32, 80], [200, 80], [178, 44], [58, 44]];
-    const roofS = [[200, 80], [248, 62], [226, 30], [178, 44]];
-    roofTiles(d, roofF, 5);
-    d.wash(roofS, P.roofDark, { alpha: 0.5 });
+    pen.path(wing, true);
+    pen.hatch([[236, 70], [252, 66], [252, gy - 6], [236, gy - 4]], { angle: -1.1, gap: 4.5, alpha: 0.35 });
+    // Tejados: faldón largo del cuerpo y el del ala
+    const roofF = [[14, 76], [186, 76], [170, 50], [30, 50]];
+    roofTiles(d, roofF, 4);
     pen.path(roofF, true);
-    pen.path(roofS, false);
-    pen.hatch(roofS, { angle: 0.6, gap: 3.5, alpha: 0.4 });
+    const roofW = [[172, 54], [258, 68], [250, 54], [180, 40]];
+    d.wash(roofW, P.roofDark, { alpha: 0.5 });
+    pen.path(roofW, true);
+    pen.hatch(roofW, { angle: 0.5, gap: 3.5, alpha: 0.4 });
+    // Vigas oscuras bajo el alero
+    pen.set({ width: 1.1 });
+    for (let x = 40; x < 176; x += 26) { d.wash([[x, 76], [x + 7, 76], [x + 7, 81], [x, 81]], '#2b2420', { alpha: 0.7, edge: 0, grain: 0 }); }
     // Chimenea
-    const ch = [[150, 46], [162, 46], [162, 26], [150, 26]];
-    d.wash(ch, P.whitewash, { alpha: 0.7 });
+    const ch = [[150, 50], [162, 50], [162, 28], [150, 28]];
+    d.wash(ch, P.whitewash, { alpha: 0.8 });
+    pen.set({ width: 1.3 });
     pen.path(ch, true);
-    pen.line(147, 26, 165, 26);
-    // Zócalo
-    d.wash([[40, gy - 10], [192, gy - 10], [192, gy], [40, gy]], '#d9b8a8', { alpha: 0.5 });
-    pen.set({ width: 0.8 });
-    pen.line(40, gy - 10, 192, gy - 10);
-    for (let x = 52; x < 192; x += 14) pen.line(x, gy - 10, x, gy);
-    // Ventana de arriba: marco de azulejo, reja y macetas
-    tilePattern(d, 86, 94, 42, 46, P.tile, 5.2);
-    d.wash([[96, 100], [118, 100], [118, 134], [96, 134]], '#e8e4da', { alpha: 0.9, edge: 0 });
-    pen.set({ width: 1.2 });
-    pen.rect(96, 100, 22, 34);
-    pen.set({ width: 0.6 });
-    for (let yy = 104; yy < 134; yy += 3) pen.line(97, yy, 117, yy); // persiana
-    ironGrille(d, 92, 98, 30, 40);
-    maceta(d, 95, 139); maceta(d, 119, 139);
-    // Puerta de abajo
-    tilePattern(d, 92, 146, 46, 46, P.tile, 5.2);
-    d.wash([[102, 152], [128, 152], [128, gy - 10], [102, gy - 10]], '#f2efe8', { alpha: 0.95, edge: 0 });
-    pen.set({ width: 1.2 });
-    pen.rect(102, 152, 26, gy - 162);
-    pen.set({ width: 0.7 });
-    pen.rect(106, 158, 18, 12);
-    pen.rect(106, 174, 18, 14);
-    pen.dot(124, 176, 1.1);
-    // Farolillo sobre la puerta
-    pen.rect(112, 136, 6, 7);
-    d.washBlob(115, 140, 2.5, 3, '#f5e6a0', { alpha: 0.7, edge: 0, grain: 0 });
-    // Ventanuco lateral
+    pen.line(147, 28, 165, 28);
+    // ── Planta alta: ventana con marco de azulejo y reja, puerta al balcón ──
+    tileFrame(d, 104, 86, 40, 36, 5);
+    d.wash([[110, 92], [138, 92], [138, 116], [110, 116]], '#3a3530', { alpha: 0.35, edge: 0 });
+    ironGrille(d, 110, 92, 28, 24);
+    tileFrame(d, 46, 86, 32, 36, 4);
+    d.wash([[51, 91], [73, 91], [73, 122], [51, 122]], '#3a3530', { alpha: 0.4, edge: 0 });
     pen.set({ width: 1.0 });
-    pen.path([[210, 110], [222, 105], [222, 125], [210, 130]], true);
-    // Farola blanca y arbusto de flores rojas
-    farola(d, 258, gy + 2, 84);
-    adelfa(d, 18, gy + 2, 0.85, '#c8322a');
+    pen.rect(51, 91, 22, 31);
+    // Farolillo entre las dos
+    pen.set({ width: 0.9 });
+    pen.line(91, 88, 91, 94);
+    pen.path([[87, 94], [95, 94], [94, 104], [88, 104]], true);
+    pen.path([[86, 94], [91, 90], [96, 94]], false);
+    d.washBlob(91, 99, 2.6, 3.5, '#f5e6a0', { alpha: 0.75, edge: 0, grain: 0 });
+    // ── Balcón corrido con barandilla de hierro y pilares de ladrillo ──
+    const by = 124;
+    d.wash([[22, by], [178, by], [178, by + 6], [22, by + 6]], mix(P.whitewash, P.wallShade, 0.35), { alpha: 0.9, edge: 0.2 });
+    pen.set({ width: 1.1 });
+    pen.line(22, by + 6, 178, by + 6);
+    railing(d, 40, 172, by, 20);
+    brickPillar(d, 30, by - 22, by + 2, 9);
+    brickPillar(d, 166, by - 22, by + 2, 8);
+    // Tira de azulejo bajo el balcón
+    tileStrip(d, 22, by + 6, 156, 5);
+    // ── Planta baja: porche con pilares de ladrillo ──
+    d.wash([[22, by + 11], [92, by + 11], [92, gy - 9], [22, gy - 9]], '#5a4e44', { alpha: 0.32, edge: 0.1 });
+    for (const x of [26, 56, 86]) brickPillar(d, x, by + 11, gy - 9, 9);
+    // Cortina clara al fondo del porche
+    d.wash([[63, by + 18], [83, by + 18], [83, gy - 10], [63, gy - 10]], '#efe9dc', { alpha: 0.85, edge: 0 });
+    pen.set({ width: 0.5 });
+    for (let x = 65; x < 83; x += 3) pen.line(x, by + 19, x, gy - 11);
+    // Ventana baja con reja y cenefa de azulejo encima
+    tileStrip(d, 104, by + 22, 48, 5);
+    d.wash([[108, by + 30], [148, by + 30], [148, by + 60], [108, by + 60]], '#3a3530', { alpha: 0.35, edge: 0 });
+    ironGrille(d, 108, by + 30, 40, 30);
+    // Zócalo de baldosa
+    d.wash([[22, gy - 9], [252, gy - 15], [252, gy - 6], [22, gy]], '#d9b48a', { alpha: 0.5 });
+    pen.set({ width: 0.8 });
+    pen.line(92, gy - 9, 178, gy - 9);
+    for (let x = 100; x < 178; x += 12) pen.line(x, gy - 9, x, gy);
+    // ── Ala: ventana con marco de azulejo, reja y dos macetas verdes; ventanuco abajo ──
+    tileFrame(d, 196, 82, 36, 42, 5);
+    d.wash([[202, 88], [226, 88], [226, 118], [202, 118]], '#3a3530', { alpha: 0.35, edge: 0 });
+    ironGrille(d, 202, 88, 24, 30);
+    maceta(d, 206, 112); maceta(d, 222, 112);
+    tileFrame(d, 200, 150, 26, 24, 4);
+    ironGrille(d, 205, 155, 16, 14);
+    // ── Árbol grande de hoja amarilla a la izquierda (tapa la esquina) y arbusto de flores rojas ──
+    pen.set({ width: 1.5 });
+    pen.curve([[6, gy + 4], [8, 160], [4, 120], [10, 80]]);
+    pen.curve([[16, gy + 4], [17, 160], [14, 120], [18, 84]]);
+    const canopy = canopyPts(18, 54, 44, 34, r, 11, 0.25);
+    d.wash(canopy, mix(P.foliage, P.mimosa, 0.35), { alpha: 0.42, spread: 2 });
+    d.washBlob(30, 66, 24, 14, P.foliageDark, { alpha: 0.18, edge: 0, grain: 0 });
+    pen.set({ width: 0.9 });
+    pen.path(canopy, true);
+    for (let i = 0; i < 16; i++) {
+      const a = r() * 6.28, rr = Math.sqrt(r()) * 0.8;
+      const px = 18 + Math.cos(a) * 40 * rr, py = 54 + Math.sin(a) * 30 * rr;
+      pen.line(px, py, px + 3, py + 3);
+    }
+    callistemon(d, 262, gy + 2, 0.9);
+    pen.set({ width: 1.4 });
   },
 
   patio(d) {
+    // Según la foto: suelo de cantos rodados con franjas de granito que lo cuadriculan en rombos,
+    // fuente cuadrada de azulejo blanco y azul con taza doble de piedra, figura sentada, lavanda,
+    // hojas secas, y la mesa de tablero de ajedrez junto a los pilares.
     const { pen, r, P } = d;
     const W = d.w, H = d.h;
-    groundPatch(d, 4, 12, W - 8, H - 16, mix(P.path, '#c8b08a', 0.5), 0.42, 30);
+    const ground = groundPatch(d, 4, 10, W - 8, H - 14, mix(P.path, '#c8b08a', 0.5), 0.42, 30);
     // Cantos rodados
     pen.set({ width: 0.5, double: false });
-    for (let i = 0; i < 360; i++) {
-      const x = 12 + r() * (W - 24), y = 22 + r() * (H - 32);
-      pen.ellipse(x, y, 1.6 + r() * 1.6, 1 + r(), 0.3);
+    for (let i = 0; i < 420; i++) {
+      const x = 12 + r() * (W - 24), y = 20 + r() * (H - 30);
+      pen.ellipse(x, y, 1.5 + r() * 1.7, 0.9 + r() * 0.9, 0.3);
     }
-    // Franjas de granito
-    const strips = [[[14, 72], [W - 14, 44]], [[80, H - 12], [150, 20]], [[210, H - 12], [262, 18]]];
-    for (const [[x1, y1], [x2, y2]] of strips) {
+    // Franjas de granito en dos direcciones (cuadrícula en rombo, como en la foto)
+    // Recorta cada franja al suelo del patio (Liang-Barsky)
+    const X0 = 22, X1 = W - 22, Y0 = 24, Y1 = H - 18;
+    const clip = (x1, y1, x2, y2) => {
+      let t0 = 0, t1 = 1;
+      const dx = x2 - x1, dy = y2 - y1;
+      for (const [p, q] of [[-dx, x1 - X0], [dx, X1 - x1], [-dy, y1 - Y0], [dy, Y1 - y1]]) {
+        if (p === 0) { if (q < 0) return null; continue; }
+        const u = q / p;
+        if (p < 0) { if (u > t1) return null; if (u > t0) t0 = u; } else { if (u < t0) return null; if (u < t1) t1 = u; }
+      }
+      return [x1 + dx * t0, y1 + dy * t0, x1 + dx * t1, y1 + dy * t1];
+    };
+    const strip = (ax, ay, bx, by) => {
+      const c = clip(ax, ay, bx, by);
+      if (!c) return;
+      const [x1, y1, x2, y2] = c;
       const dx = x2 - x1, dy = y2 - y1, L = Math.hypot(dx, dy);
-      const nx = -dy / L * 5, ny = dx / L * 5;
-      const poly = [[x1 - nx, y1 - ny], [x2 - nx, y2 - ny], [x2 + nx, y2 + ny], [x1 + nx, y1 + ny]];
-      d.wash(poly, '#d2cfc8', { alpha: 0.5, spread: 0.8, edge: 0.15, grain: 0 });
-      pen.set({ width: 0.5, double: false, alpha: 0.6 });
-      const n = Math.round(L / 16);
+      if (L < 12) return;
+      const nx = -dy / L * 2.8, ny = dx / L * 2.8;
+      d.wash([[x1 - nx, y1 - ny], [x2 - nx, y2 - ny], [x2 + nx, y2 + ny], [x1 + nx, y1 + ny]], '#d6d3cc', { alpha: 0.42, spread: 0.5, edge: 0.15, grain: 0 });
+      pen.set({ width: 0.4, double: false, alpha: 0.4 });
+      const n = Math.round(L / 10);
       for (let k = 0; k <= n; k++) {
         const t = k / n;
-        pen.line(x1 + dx * t - nx * 0.8, y1 + dy * t - ny * 0.8, x1 + dx * t + nx * 0.8, y1 + dy * t + ny * 0.8);
+        pen.line(x1 + dx * t - nx, y1 + dy * t - ny, x1 + dx * t + nx, y1 + dy * t + ny);
       }
       pen.line(x1 - nx, y1 - ny, x2 - nx, y2 - ny);
       pen.line(x1 + nx, y1 + ny, x2 + nx, y2 + ny);
       pen.set({ alpha: 1 });
-    }
+    };
+    for (let k = -3; k < 6; k++) strip(20 + k * 96, H, 20 + k * 96 + 190, 0);
+    for (let k = -1; k < 6; k++) strip(-60 + k * 96, 0, -60 + k * 96 + 190, H);
+    // Bordillo de granito delante
+    pen.set({ width: 0.6, double: false });
+    for (let x = 30; x < W - 30; x += 12) pen.rect(x, H - 14, 10, 6);
     pen.set({ width: 1.4, double: true });
-    // Fuente de azulejo azul
-    const fx = 70, fy = 120;
-    groundShadow(d, fx + 4, fy + 22, 54, 8);
-    tilePattern(d, fx - 48, fy, 96, 20, P.tile, 6);
-    pen.set({ width: 1.3 });
-    pen.rect(fx - 48, fy, 96, 20);
-    pen.path([[fx - 48, fy], [fx - 40, fy - 10], [fx + 56, fy - 10], [fx + 48, fy]], false);
-    pen.line(fx + 56, fy - 10, fx + 56, fy + 10);
-    pen.line(fx + 48, fy + 20, fx + 56, fy + 10);
-    d.wash([[fx - 40, fy - 9], [fx + 54, fy - 9], [fx + 47, fy - 1], [fx - 46, fy - 1]], P.water, { alpha: 0.6 });
-    // Rocalla con la figura sentada encima
-    for (let i = 0; i < 6; i++) boulder(d, fx - 14 + r.range(-12, 12), fy - 16 - i * 4, r.range(6, 10), r.range(4, 6));
-    estatuaSentada(d, fx - 12, fy - 36, 0.8);
-    pen.set({ width: 0.7 });
-    pen.curve([[fx - 4, fy - 52], [fx + 2, fy - 44], [fx + 4, fy - 30], [fx + 6, fy - 12]]); // chorro
-    // León junto a las yucas y figura sobre pedestal con lavanda
-    leon(d, 205, 84, 1.1);
-    yuca(d, 180, 82, 0.9);
-    lavanda(d, 270, 66, 1.1); lavanda(d, 298, 76, 1); lavanda(d, 286, 54, 0.9);
-    estatuaSentada(d, 252, 92, 1);
-    // Hojas secas
-    leafLitter(d, 10, 20, W - 20, H - 30, 40, [P.flowers, '#c9a24a', '#9a6a35']);
+    // ── Fuente cuadrada de azulejo con taza doble ──
+    const fx = 190, fy = 92, fw = 74, fh = 30;
+    groundShadow(d, fx + fw / 2 + 4, fy + fh + 12, fw / 2 + 8, 7);
+    // Lados de azulejo azul oscuro
+    d.wash([[fx, fy + fh], [fx + fw, fy + fh], [fx + fw, fy + fh + 10], [fx, fy + fh + 10]], '#22346a', { alpha: 0.75 });
+    // Borde de azulejo blanco con dibujo azul
+    d.wash([[fx, fy], [fx + fw, fy], [fx + fw, fy + fh], [fx, fy + fh]], '#f2ede0', { alpha: 0.95 });
+    pen.set({ width: 0.4, double: false });
+    for (let x = fx; x <= fx + fw; x += 7.4) pen.line(x, fy, x, fy + 6), pen.line(x, fy + fh - 6, x, fy + fh);
+    for (let x = fx + 3.7; x < fx + fw; x += 7.4) { pen.dot(x, fy + 3, 1, P.tile, 0.8); pen.dot(x, fy + fh - 3, 1, P.tile, 0.8); }
+    for (let y = fy + 6; y < fy + fh - 6; y += 6) { pen.dot(fx + 3, y + 3, 1, P.tile, 0.8); pen.dot(fx + fw - 3, y + 3, 1, P.tile, 0.8); }
+    pen.set({ width: 1.3, double: true });
+    pen.rect(fx, fy, fw, fh + 10);
+    pen.line(fx, fy + fh, fx + fw, fy + fh);
+    // Agua verdosa
+    const water = [[fx + 6, fy + 6], [fx + fw - 6, fy + 6], [fx + fw - 6, fy + fh - 6], [fx + 6, fy + fh - 6]];
+    d.wash(water, mix(P.water, '#7a8a3a', 0.45), { alpha: 0.6 });
+    pen.set({ width: 0.9 });
+    pen.rect(fx + 6, fy + 6, fw - 12, fh - 12);
+    // Taza doble de piedra con guijarros
+    const cx = fx + fw / 2;
+    pen.set({ width: 1.1 });
+    pen.line(cx - 3, fy + fh - 8, cx - 3, fy - 16);
+    pen.line(cx + 3, fy + fh - 8, cx + 3, fy - 16);
+    d.wash([[cx - 3, fy + fh - 8], [cx + 3, fy + fh - 8], [cx + 3, fy - 16], [cx - 3, fy - 16]], P.granite, { alpha: 0.5, edge: 0 });
+    for (const [ty, rx] of [[fy + 6, 17], [fy - 16, 11]]) {
+      d.washBlob(cx, ty, rx, rx * 0.36, P.graniteDark, { alpha: 0.5 });
+      pen.ellipse(cx, ty, rx, rx * 0.36, 0.08);
+      for (let i = 0; i < 7; i++) pen.dot(cx + r.range(-rx, rx) * 0.85, ty + r.range(-1.5, 1.5), 0.9);
+    }
+    pen.set({ width: 0.6 });
+    pen.curve([[cx, fy - 22], [cx - 5, fy - 24], [cx - 9, fy - 15]]); // agua que cae
+    pen.curve([[cx, fy - 22], [cx + 5, fy - 24], [cx + 9, fy - 15]]);
+    // Figura sentada sobre su pedestal, delante a la derecha, y la lavanda
+    estatuaSentada(d, 248, 162, 0.85);
+    lavanda(d, 286, 150, 1.25); lavanda(d, 312, 132, 1.1); lavanda(d, 300, 168, 1.0);
+    // Mesa con tablero de ajedrez
+    const tx = 92, ty = 74;
+    d.wash([[tx, ty], [tx + 26, ty], [tx + 30, ty + 8], [tx + 4, ty + 8]], '#f4efe4', { alpha: 0.95 });
+    pen.set({ width: 0.4, double: false });
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) if ((i + j) % 2) d.wash([[tx + i * 6.5 + j * 2, ty + j * 4], [tx + i * 6.5 + 6.5 + j * 2, ty + j * 4], [tx + i * 6.5 + 6.5 + (j + 1) * 2, ty + (j + 1) * 4], [tx + i * 6.5 + (j + 1) * 2, ty + (j + 1) * 4]], '#2b2420', { alpha: 0.75, edge: 0, grain: 0 });
+    pen.set({ width: 0.9, double: true });
+    pen.path([[tx, ty], [tx + 26, ty], [tx + 30, ty + 8], [tx + 4, ty + 8]], true);
+    pen.line(tx + 4, ty + 8, tx + 2, ty + 24); pen.line(tx + 30, ty + 8, tx + 32, ty + 24);
+    pen.line(tx + 26, ty, tx + 27, ty + 18);
+    // Silla de hierro
+    pen.set({ width: 0.8 });
+    pen.path([[tx + 40, ty - 6], [tx + 40, ty + 22], [tx + 52, ty + 24], [tx + 52, ty + 4]], false);
+    pen.line(tx + 40, ty + 10, tx + 52, ty + 12);
+    // Muchas hojas secas, como en otoño
+    leafLitter(d, 10, 18, W - 20, H - 28, 70, [P.flowers, '#c9a24a', '#9a6a35', '#b08a3a']);
+    void ground;
   },
 
   paseo(d) {
+    // Según la foto: camino de tierra bajo un túnel de árboles finos (ailantos y acacias) camino de
+    // la ermita; leña apilada a un lado, un banco de piedra al pie de un árbol, sol entre las hojas.
+    // Siguen las adelfas blancas que dan nombre al paseo, más bajas.
     const { pen, r, P } = d;
     const W = d.w;
-    // Camino de tierra
     const top = [], bot = [];
     for (let x = 0; x <= W; x += 30) {
-      top.push([x, 52 + Math.sin(x / 70) * 4]);
-      bot.push([x, 86 + Math.sin(x / 60 + 1) * 4]);
+      top.push([x, 50 + Math.sin(x / 70) * 3]);
+      bot.push([x, 88 + Math.sin(x / 60 + 1) * 3]);
     }
-    d.wash([...top, ...bot.slice().reverse()], P.path, { alpha: 0.5, spread: 2 });
-    pen.set({ width: 1.1 });
-    pen.curve(top); pen.curve(bot);
-    // Sombras moteadas sobre el camino
-    for (let i = 0; i < 16; i++) d.washBlob(r() * W, 60 + r() * 22, 8 + r() * 10, 3 + r() * 3, '#6b5a48', { alpha: 0.14, edge: 0, grain: 0 });
-    // Túnel de árboles: copas arriba
-    for (let x = 10; x < W; x += 34 + r() * 10) {
-      if (r() < 0.55) adelfa(d, x, 52, 1.05);
-      else {
-        const cx = x, cy = 22;
-        const pts = canopyPts(cx, cy, 26, 18, r, 8, 0.22);
-        d.wash(pts, r() < 0.3 ? mix(P.foliage, P.flowers, 0.35) : P.foliage, { alpha: 0.5 });
-        pen.set({ width: 1.0 });
-        pen.path(pts, true);
-        pen.line(cx - 1, 38, cx - 2, 54);
-      }
-    }
-    // Abajo: yucas, arbustos y adelfas pequeñas
-    for (let x = 20; x < W; x += 46 + r() * 20) {
-      const k = r();
-      if (k < 0.35) yuca(d, x, 116, 0.8);
-      else if (k < 0.7) adelfa(d, x, 118, 0.75);
-      else arbusto(d, x, 116, 1);
-    }
-    leafLitter(d, 0, 56, W, 28, 50, ['#b08a3a', '#8a6a30', P.flowers]);
-    // Postes blancos
+    d.wash([...top, ...bot.slice().reverse()], mix(P.path, '#8a6a4a', 0.25), { alpha: 0.5, spread: 2 });
     pen.set({ width: 1.0 });
-    for (const x of [30, 150]) { pen.line(x, 90, x, 70); pen.line(x + 2, 90, x + 2, 70); }
+    pen.curve(top); pen.curve(bot);
+    // Sombras moteadas y manchas de sol
+    for (let i = 0; i < 26; i++) d.washBlob(r() * W, 56 + r() * 26, 7 + r() * 12, 2.5 + r() * 3, '#5a4a38', { alpha: 0.16, edge: 0, grain: 0 });
+    for (let i = 0; i < 8; i++) d.washBlob(r() * W, 60 + r() * 20, 6 + r() * 6, 2 + r() * 2, '#f6e6b0', { alpha: 0.35, edge: 0, grain: 0 });
+    // Árboles finos a lo largo del lado de arriba: troncos oscuros que se inclinan hacia el camino
+    for (let x = 14; x < W; x += 26 + r() * 22) {
+      const lean = r.range(-6, 9);
+      pen.set({ width: 1.1 });
+      pen.curve([[x - 1.5, 52], [x - 1, 34], [x + lean * 0.6, 16], [x + lean, 2]]);
+      pen.curve([[x + 1.5, 52], [x + 2, 34], [x + lean * 0.6 + 2, 16], [x + lean + 2, 2]]);
+      pen.set({ width: 0.7 });
+      pen.line(x + 1, 24, x - 8, 10);
+      const cx = x + lean + r.range(-4, 4), cy = r.range(-14, 4);
+      const pts = canopyPts(cx, cy, r.range(22, 34), r.range(14, 22), r, 10, 0.34);
+      d.wash(pts, r() < 0.3 ? mix(P.foliage, P.mimosa, 0.3) : mix(P.foliage, '#7aa04a', 0.3), { alpha: 0.4, spread: 2 });
+      pen.set({ width: 0.8 });
+      pen.path(pts, true);
+      for (let i = 0; i < 6; i++) { const px = cx + r.range(-18, 18), py = cy + r.range(-8, 8); pen.line(px, py, px + 3, py + 2); }
+    }
+    // Adelfas blancas bajitas entre los troncos
+    for (let x = 40; x < W; x += 70 + r() * 30) adelfa(d, x, 52, 0.7);
+    // Abajo: árboles más bajos y el banco de piedra al pie de uno
+    for (let x = 30; x < W; x += 58 + r() * 24) {
+      pen.set({ width: 1.1 });
+      pen.line(x - 1.5, 118, x - 1, 94);
+      pen.line(x + 1.5, 118, x + 2, 94);
+      const pts = canopyPts(x + 1, 92, 16, 9, r, 8, 0.3);
+      d.wash(pts, mix(P.foliage, '#7aa04a', 0.3), { alpha: 0.4 });
+      pen.set({ width: 0.8 });
+      pen.path(pts, true);
+    }
+    const bx = 300;
+    d.wash([[bx, 104], [bx + 30, 102], [bx + 32, 108], [bx + 2, 110]], P.granite, { alpha: 0.6 });
+    pen.set({ width: 1.0 });
+    pen.path([[bx, 104], [bx + 30, 102], [bx + 32, 108], [bx + 2, 110]], true);
+    pen.line(bx + 4, 110, bx + 4, 116); pen.line(bx + 28, 108, bx + 28, 114);
+    // Leña apilada a la izquierda: cara de troncos redondos
+    const lx = 6, ly = 92;
+    d.wash([[lx, ly], [lx + 34, ly - 4], [lx + 36, ly + 22], [lx, ly + 24]], P.wood, { alpha: 0.35 });
+    pen.set({ width: 0.7 });
+    for (let row = 0; row < 4; row++) for (let k = 0; k < 6; k++) {
+      const ox = lx + 4 + k * 5.4 + (row % 2) * 2.5, oy = ly + 2 + row * 5.6 - k * 0.5;
+      d.washBlob(ox, oy, 2.5, 2.4, '#c08a5a', { alpha: 0.6, layers: 1, edge: 0.5, grain: 0 });
+      pen.ellipse(ox, oy, 2.5, 2.4, 0.1);
+    }
+    pen.path([[lx, ly], [lx + 34, ly - 4], [lx + 36, ly + 22], [lx, ly + 24]], true);
+    leafLitter(d, 0, 54, W, 30, 60, ['#b08a3a', '#8a6a30', P.flowers, '#c9a24a']);
+    pen.set({ width: 1.4 });
   },
 
   ermita(d) {
@@ -5941,46 +6126,86 @@ const SKETCHES = {
   },
 
   bancos(d) {
+    // Según la foto: bancos bajos de piedra artificial, sin respaldo. Encima, un mosaico de trencadís:
+    // cemento gris, esquinas de azulejo blanco con dibujo azul y rojo, chinas de azulejo azul
+    // y el nombre de cada nieto hecho con trozos de azulejo blanco.
     const { pen, r, P } = d;
     const W = d.w, H = d.h;
     const names = GRANDCHILDREN.length ? GRANDCHILDREN : [];
     const n = Math.max(4, Math.min(6, names.length || 4));
     const gap = W / n;
-    const bw = gap * 0.78;
-    const tiles = ['#2f5f9e', '#7fa6d6', '#c9412f', '#e2b33a', '#4f8a3a', '#f4efe4'];
+    const bw = gap * 0.74;
     for (let i = 0; i < n; i++) {
-      const x = i * gap + (gap - bw) / 2, seatY = H - 22, backTop = H - 52;
-      groundShadow(d, x + bw / 2, H - 10, bw / 2 + 4, 5);
-      // Respaldo con mosaico
-      d.wash([[x, backTop], [x + bw, backTop], [x + bw, seatY], [x, seatY]], P.whitewash, { alpha: 1, edge: 0.2 });
-      const cell = 4.2;
-      for (let yy = backTop + 3; yy < seatY - 3; yy += cell) {
-        for (let xx = x + 3; xx < x + bw - 3; xx += cell) {
-          const edge = yy < backTop + 8 || yy > seatY - 8 || xx < x + 8 || xx > x + bw - 8;
-          if (!edge && names[i]) continue; // el centro, para el nombre
-          d.wash([[xx, yy], [xx + cell - 0.8, yy], [xx + cell - 0.8, yy + cell - 0.8], [xx, yy + cell - 0.8]], r.pick(tiles), { alpha: 0.85, layers: 1, spread: 0.2, edge: 0, grain: 0 });
+      const x = i * gap + (gap - bw) / 2;
+      const top = 26, th = 26, face = 7, legs = 10;
+      groundShadow(d, x + bw / 2 + 3, top + th + face + legs, bw / 2 + 6, 5);
+      // Patas acanaladas
+      for (const lx of [x + 6, x + bw - 20]) {
+        d.wash([[lx, top + th + face], [lx + 14, top + th + face], [lx + 14, top + th + face + legs], [lx, top + th + face + legs]], '#e4e0d6', { alpha: 1, edge: 0.2 });
+        pen.set({ width: 0.9 });
+        pen.rect(lx, top + th + face, 14, legs);
+        pen.set({ width: 0.4 });
+        for (let k = 3; k < 14; k += 3.5) pen.line(lx + k, top + th + face + 1, lx + k, top + th + face + legs - 1);
+      }
+      // Canto del asiento
+      d.wash([[x, top + th], [x + bw, top + th], [x + bw, top + th + face], [x, top + th + face]], '#d8d4ca', { alpha: 1, edge: 0.2 });
+      // Tablero de cemento
+      const seat = [[x, top], [x + bw, top], [x + bw, top + th], [x, top + th]];
+      d.wash(seat, '#c9c4b8', { alpha: 1, edge: 0.25 });
+      // Esquinas de azulejo blanco con dibujo
+      const cw = 11, chh = 8;
+      for (const [cx0, cy0] of [[x + 1, top + 1], [x + bw - cw - 1, top + 1], [x + 1, top + th - chh - 1], [x + bw - cw - 1, top + th - chh - 1]]) {
+        d.wash([[cx0, cy0], [cx0 + cw, cy0], [cx0 + cw, cy0 + chh], [cx0, cy0 + chh]], '#f4efe4', { alpha: 1, edge: 0, grain: 0 });
+        pen.set({ width: 0.45, double: false, color: P.tile });
+        pen.curve([[cx0 + 1.5, cy0 + chh - 1.5], [cx0 + cw * 0.3, cy0 + 2], [cx0 + cw * 0.7, cy0 + chh - 2], [cx0 + cw - 1.5, cy0 + 1.5]]);
+        pen.dot(cx0 + cw / 2, cy0 + chh / 2, 0.8, '#b8402f', 0.8);
+        pen.set({ color: '#3b2a1c', double: true });
+      }
+      // Chinas azules (y alguna amarilla)
+      for (let k = 0; k < 16; k++) {
+        const px = x + 13 + r() * (bw - 26), py = top + 3 + r() * (th - 6);
+        d.washBlob(px, py, 1.2 + r() * 1.1, 1 + r() * 0.8, r() < 0.85 ? '#2340a8' : '#e2b33a', { alpha: 0.95, layers: 1, edge: 0.3, grain: 0, irregular: 0.35 });
+      }
+      // El nombre, en trozos de azulejo blanco (si aún no hay nombres, unos trazos sueltos)
+      const name = names[i];
+      if (name) {
+        d.ctx.save();
+        const fs = Math.min(17, (bw - 22) / Math.max(3, name.length) * 1.5);
+        d.ctx.font = `900 ${fs}px "Patrick Hand", "Caveat", sans-serif`;
+        d.ctx.textAlign = 'center';
+        d.ctx.lineJoin = 'round';
+        d.ctx.lineWidth = 1.2;
+        d.ctx.strokeStyle = 'rgba(80,72,60,0.7)';
+        d.ctx.fillStyle = '#fbf8f0';
+        d.ctx.strokeText(name.toUpperCase(), x + bw / 2, top + th / 2 + fs * 0.36);
+        d.ctx.fillText(name.toUpperCase(), x + bw / 2, top + th / 2 + fs * 0.36);
+        // Grietas del trencadís sobre las letras
+        d.ctx.strokeStyle = 'rgba(120,110,95,0.6)';
+        d.ctx.lineWidth = 0.5;
+        for (let k = 0; k < 6; k++) {
+          const sx = x + 14 + r() * (bw - 28), sy = top + 6 + r() * (th - 12);
+          d.ctx.beginPath(); d.ctx.moveTo(sx, sy); d.ctx.lineTo(sx + r.range(-4, 4), sy + r.range(3, 6)); d.ctx.stroke();
+        }
+        d.ctx.restore();
+      } else {
+        for (let k = 0; k < 4; k++) {
+          const px = x + 16 + k * (bw - 32) / 4;
+          d.wash([[px, top + 8], [px + 6, top + 7], [px + 7, top + th - 8], [px + 1, top + th - 7]], '#fbf8f0', { alpha: 0.95, edge: 0, grain: 0 });
         }
       }
-      // Asiento y patas de obra
-      d.wash([[x - 3, seatY], [x + bw + 3, seatY], [x + bw + 3, seatY + 7], [x - 3, seatY + 7]], mix(P.whitewash, P.wallShade, 0.25), { alpha: 1 });
-      d.wash([[x + 3, seatY + 7], [x + 12, seatY + 7], [x + 12, H - 10], [x + 3, H - 10]], P.whitewash, { alpha: 1, edge: 0.2 });
-      d.wash([[x + bw - 12, seatY + 7], [x + bw - 3, seatY + 7], [x + bw - 3, H - 10], [x + bw - 12, H - 10]], P.whitewash, { alpha: 1, edge: 0.2 });
       pen.set({ width: 1.2 });
-      pen.rect(x, backTop, bw, seatY - backTop);
-      pen.rect(x - 3, seatY, bw + 6, 7);
-      pen.rect(x + 3, seatY + 7, 9, H - 10 - seatY - 7);
-      pen.rect(x + bw - 12, seatY + 7, 9, H - 10 - seatY - 7);
-      if (names[i]) {
-        d.ctx.save();
-        d.ctx.fillStyle = '#2f5f9e';
-        d.ctx.font = `700 ${Math.min(15, bw / Math.max(4, names[i].length) * 1.6)}px "Caveat", cursive`;
-        d.ctx.textAlign = 'center';
-        d.ctx.fillText(names[i], x + bw / 2, (backTop + seatY) / 2 + 5);
-        d.ctx.restore();
-      }
+      pen.path(seat, true);
+      pen.rect(x, top + th, bw, face);
     }
-    // Arbustos entre bancos
-    for (let i = 1; i < n; i++) arbusto(d, i * gap, H - 12, 0.7);
+    // Plantones de mimosa y hojas secas alrededor, como en la foto
+    for (let i = 0; i <= n; i++) {
+      const sx = i * gap + r.range(-6, 6), sy = 22 + r() * 10;
+      pen.set({ width: 0.5, double: false, color: '#5a6b35' });
+      pen.line(sx, sy + 12, sx + 1, sy);
+      for (let k = 0; k < 5; k++) { pen.line(sx + 1, sy + k * 2.2, sx - 4, sy + k * 2.2 - 1); pen.line(sx + 1, sy + k * 2.2, sx + 6, sy + k * 2.2 - 1); }
+      pen.set({ width: 1.4, double: true, color: '#3b2a1c' });
+    }
+    leafLitter(d, 0, 10, W, H - 14, 26, ['#9a6a35', '#b08a3a', '#c9a24a']);
   },
 
   piano(d) {
@@ -6921,8 +7146,8 @@ class FarmMap {
     // Luces de noche: ventanas del cortijo, farola y pueblo
     if (s.hour > 19.8 || s.hour < 6.8) {
       const k = s.hour > 19.8 ? Math.min(1, (s.hour - 19.8) / 1.2) : Math.min(1, (6.8 - s.hour) / 1);
-      const lights = [[755, 657, 16], [757, 682, 10], [898, 744 - 70, 14]];
-      if (s.zones.cortijo.cons > 30) lights.push([737, 617, 12]);
+      const lights = [[764, 644, 14], [768, 709, 12], [731, 639, 10]];   // ventanas del cortijo y el farolillo
+      if (s.zones.cortijo.cons > 30) lights.push([702, 646, 10]);
       const vx = DECOR.village.x, vy = DECOR.village.y;
       const r = makeRng(55);
       for (let i = 0; i < 14; i++) lights.push([vx + 90 + r() * 500, vy + 50 + r() * 40, 5]);
