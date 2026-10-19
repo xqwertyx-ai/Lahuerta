@@ -86,7 +86,7 @@ export function activityBlocker(s, id) {
   const last = (s.activityLast || {})[id];
   if (last != null && s.day - last < a.cooldown) return `Otra vez dentro de ${a.cooldown - (s.day - last)} días`;
   const r = a.requires || {};
-  if (r.seasons && !r.seasons.includes(seasonIndex(s))) return 'No es la estación';
+  if (r.seasons && !r.seasons.includes(seasonIndex(s))) return r.seasonWhy || 'No es la estación';
   if (r.notWeather && r.notWeather.includes(s.weather)) return `Hoy no: ${WEATHER[s.weather].name.toLowerCase()}`;
   if (r.zones) for (const [z, min] of Object.entries(r.zones)) {
     if (!s.zones[z].unlocked || s.zones[z].cons < min) return `Hace falta ${ZONE_BY_ID[z].name.toLowerCase()} a ${min}`;

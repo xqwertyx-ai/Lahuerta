@@ -96,6 +96,12 @@ export const ITEMS = [
   { id: 'foto_olivo', name: 'Una foto del abuelo Feliciano', thread: 'feliciano', zone: 'dehesa', where: 'full', minDay: 20, icon: 'foto', image: 'foto-feliciano',
     text: 'El abuelo Feliciano, con sombrero de paja, sentado a la sombra de un olivo en pleno verano. Detrás, los árboles recién plantados.',
     hyp: { feliciano: 1 } },
+  { id: 'reloj_sol', name: 'El reloj de sol de Transi', thread: 'transi', zone: 'barbacoa', where: 'full', icon: 'boceto', image: 'reloj-solar',
+    text: 'En el pilar junto al camino, doce azulejos blancos con los números en azul rodean la sombra. Lo hizo la abuela Transi: la sombra va pasando de número en número a lo largo del día.',
+    hyp: { transi: 1 } },
+  { id: 'san_antonio', name: 'La imagen de San Antonio', thread: 'finca', zone: 'ermita', where: 'full', icon: 'foto', image: 'san-antonio',
+    text: 'San Antonio con el Niño en brazos y un libro con azucenas, sobre su peana, entre dos candelabros de latón. El santo que encuentra lo perdido.',
+    hyp: {} },
 ];
 
 export const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));

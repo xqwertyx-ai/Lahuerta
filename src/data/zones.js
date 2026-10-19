@@ -127,7 +127,7 @@ export const ZONES = [
   },
   {
     id: 'corral', name: 'El corral', x: 1320, y: 150, w: 250, h: 270,
-    desc: 'Gallinas rojas bajo la yuca, una rueda de carro y una valla que pide clavos.',
+    desc: 'El cobertizo de chapa verde con sus dos puertas, los tinglados abiertos, la leña de eucalipto apilada, gallinas bajo la yuca y una valla que pide clavos.',
     start: 28, unlocked: false, decay: 1.1, weeds: false,
     unlock: { text: 'Arreglar la valla y el gallinero', jornales: 18, cost: { herramientas: 1, piedra: 4, money: 30 }, requires: { zones: { huerta: 1 } } },
     tasks: [
@@ -139,7 +139,7 @@ export const ZONES = [
   },
   {
     id: 'pozo', name: 'El pozo y el emparrado', x: 942, y: 420, w: 132, h: 155,
-    desc: 'Un pozo de brocal encalado bajo un emparrado de viña. Agua dulce y fresca para la huerta y la casa, y racimos al final del verano.',
+    desc: 'Un pozo de brocal de lajas de piedra sobre una plataforma de losas, bajo un emparrado de hierro con su parra y un álamo detrás. Agua dulce para la huerta y la casa, y racimos al final del verano.',
     start: 30, unlocked: false, decay: 0.9, weeds: true,
     unlock: { text: 'Destapar el pozo y apuntalar el emparrado', jornales: 9, cost: { herramientas: 0.5 } },
     tasks: [
@@ -159,6 +159,19 @@ export const ZONES = [
       { id: 'encalar', name: 'Encalar los bancos', jornales: 2, cost: { cal: 1 }, effect: { cons: 16 }, skill: 'pintura', notWeather: ['lluvia', 'tormenta', 'helada'] },
       { id: 'teselas', name: 'Reponer las teselas del mosaico', jornales: 2, cost: { money: 10 }, effect: { cons: 14 }, skill: 'pintura' },
       { id: 'nombres', name: 'Repasar los nombres', jornales: 1, effect: { cons: 7, mood: 2 } },
+    ],
+  },
+  {
+    id: 'barbacoa', name: 'La barbacoa y los columpios', x: 1335, y: 455, w: 240, h: 200,
+    desc: 'Bajo los árboles, junto al camino: la barbacoa de ladrillo, bancos de obra, tocones de asiento, una mesa redonda de mosaico, el tobogán y el viejo eje de rueda de carro que hacía de columpio.',
+    start: 26, unlocked: false, decay: 1.0, weeds: true,
+    unlock: { text: 'Sacar la barbacoa de entre la maleza', jornales: 10, cost: { cal: 1, herramientas: 0.5 } },
+    tasks: [
+      { id: 'barrer', name: 'Barrer la hojarasca y recoger ramas', jornales: 1, effect: { cons: 8, weeds: -30 }, gain: { lena: 1 } },
+      { id: 'ladrillo', name: 'Rejuntar la barbacoa de ladrillo', jornales: 2, cost: { cal: 1 }, effect: { cons: 15 }, skill: 'albanileria' },
+      { id: 'columpio', name: 'Restaurar el columpio del eje de carro', jornales: 2, cost: { herramientas: 0.25, money: 8 }, effect: { cons: 13 }, skill: 'carpinteria' },
+      { id: 'tobogan', name: 'Lijar y pintar el tobogán', jornales: 2, cost: { money: 12 }, effect: { cons: 12 }, skill: 'pintura', notWeather: ['lluvia', 'tormenta'] },
+      { id: 'mesa', name: 'Reponer el mosaico de la mesa', jornales: 1, cost: { cal: 0.25 }, effect: { cons: 7 }, skill: 'pintura' },
     ],
   },
   {

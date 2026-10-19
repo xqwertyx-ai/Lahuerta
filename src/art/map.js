@@ -17,7 +17,7 @@ const PAD = 46;
 const LABELS = {
   cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], pozo: [1000, 414], bancos: [1115, 994], huerta: [330, 582],
   bosquete: [290, 818], dehesa: [250, 140], muros: [640, 462], alberca: [940, 184], colmenar: [1205, 134],
-  corral: [1445, 140], piano: [1195, 424],
+  corral: [1445, 140], piano: [1195, 424], barbacoa: [1455, 452],
 };
 
 function drawCtx(ctx, seed, P, w, h) {
@@ -119,8 +119,8 @@ export class FarmMap {
     }
     pen.set({ width: 1.4, double: true, alpha: 1 });
     // Árboles y matas sueltas en los huecos del plano
-    const loose = [[1080, 360, 'e', 0.7], [620, 470, 'a', 0.9], [1340, 560, 'e', 0.9],
-      [1350, 650, 'a', 1], [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8],
+    const loose = [[1080, 360, 'e', 0.7], [620, 470, 'a', 0.9],
+      [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8],
       [560, 990, 'a', 0.8], [1250, 300, 'a', 0.8], [800, 410, 'e', 0.7], [1050, 120, 'e', 0.6], [520, 400, 'a', 0.6]];
     for (const [x, y, k, s] of loose) {
       if (k === 'e') encinaFree(d, x, y, s); else matorral(d, x, y, s);

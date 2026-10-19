@@ -188,7 +188,7 @@ test('todos los eventos tienen opciones válidas y se pueden resolver', () => {
 
 test('los objetos referencian zonas e hilos que existen', () => {
   const zoneIds = new Set(ZONES.map((z) => z.id));
-  const threads = new Set(['pianista', 'manuel', 'feliciano', 'transi', 'elisa', 'loli']);
+  const threads = new Set(['pianista', 'manuel', 'feliciano', 'transi', 'elisa', 'loli', 'finca']);
   for (const it of ITEMS) {
     if (it.zone) assert.ok(zoneIds.has(it.zone), it.id);
     assert.ok(threads.has(it.thread), it.id);

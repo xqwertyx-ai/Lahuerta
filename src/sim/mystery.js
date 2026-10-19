@@ -17,7 +17,7 @@ export function giveItem(s, id) {
   addLog(s, `Encuentras ${lowerFirst(it.name)}. ${it.text}`, 'item');
   signal(s, 'item', { id });
   // Al completar el hilo de un familiar, una página con su recuerdo
-  if (it.thread !== 'pianista' && threadCount(s, it.thread) === threadTotal(it.thread)) {
+  if (it.thread !== 'pianista' && it.thread !== 'finca' && threadCount(s, it.thread) === threadTotal(it.thread)) {
     const fam = FAMILY_BY_ID[it.thread];
     if (fam && fam.complete) {
       addLog(s, `✎ ${fam.name}: ${fam.complete}`, 'family');
@@ -42,7 +42,7 @@ export function threadTotal(thread) {
 }
 
 export function threads(s) {
-  const list = [{ id: 'pianista', name: 'El pianista' }, ...FAMILY.map((f) => ({ id: f.id, name: f.name }))];
+  const list = [{ id: 'pianista', name: 'El pianista' }, ...FAMILY.map((f) => ({ id: f.id, name: f.name })), { id: 'finca', name: 'La finca' }];
   return list.map((t) => ({ ...t, found: threadCount(s, t.id), total: threadTotal(t.id) }));
 }
 

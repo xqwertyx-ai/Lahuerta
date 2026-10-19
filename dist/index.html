@@ -325,7 +325,7 @@ select { font-family: var(--body); font-size: 0.95em; min-height: 38px; backgrou
   <div id="ui"></div>
   <noscript>La Huerta del Pianista necesita JavaScript.</noscript>
   <script type="module">
-// La Huerta del Pianista · build 202610191016
+// La Huerta del Pianista · build 202610191200
 // ── src/data/balance.js ──
 const __m4 = (() => {
 // Números de equilibrio del juego. Todo lo que se quiera ajustar sin tocar el código está aquí.
@@ -562,7 +562,7 @@ const ZONES = [
   },
   {
     id: 'corral', name: 'El corral', x: 1320, y: 150, w: 250, h: 270,
-    desc: 'Gallinas rojas bajo la yuca, una rueda de carro y una valla que pide clavos.',
+    desc: 'El cobertizo de chapa verde con sus dos puertas, los tinglados abiertos, la leña de eucalipto apilada, gallinas bajo la yuca y una valla que pide clavos.',
     start: 28, unlocked: false, decay: 1.1, weeds: false,
     unlock: { text: 'Arreglar la valla y el gallinero', jornales: 18, cost: { herramientas: 1, piedra: 4, money: 30 }, requires: { zones: { huerta: 1 } } },
     tasks: [
@@ -574,7 +574,7 @@ const ZONES = [
   },
   {
     id: 'pozo', name: 'El pozo y el emparrado', x: 942, y: 420, w: 132, h: 155,
-    desc: 'Un pozo de brocal encalado bajo un emparrado de viña. Agua dulce y fresca para la huerta y la casa, y racimos al final del verano.',
+    desc: 'Un pozo de brocal de lajas de piedra sobre una plataforma de losas, bajo un emparrado de hierro con su parra y un álamo detrás. Agua dulce para la huerta y la casa, y racimos al final del verano.',
     start: 30, unlocked: false, decay: 0.9, weeds: true,
     unlock: { text: 'Destapar el pozo y apuntalar el emparrado', jornales: 9, cost: { herramientas: 0.5 } },
     tasks: [
@@ -594,6 +594,19 @@ const ZONES = [
       { id: 'encalar', name: 'Encalar los bancos', jornales: 2, cost: { cal: 1 }, effect: { cons: 16 }, skill: 'pintura', notWeather: ['lluvia', 'tormenta', 'helada'] },
       { id: 'teselas', name: 'Reponer las teselas del mosaico', jornales: 2, cost: { money: 10 }, effect: { cons: 14 }, skill: 'pintura' },
       { id: 'nombres', name: 'Repasar los nombres', jornales: 1, effect: { cons: 7, mood: 2 } },
+    ],
+  },
+  {
+    id: 'barbacoa', name: 'La barbacoa y los columpios', x: 1335, y: 455, w: 240, h: 200,
+    desc: 'Bajo los árboles, junto al camino: la barbacoa de ladrillo, bancos de obra, tocones de asiento, una mesa redonda de mosaico, el tobogán y el viejo eje de rueda de carro que hacía de columpio.',
+    start: 26, unlocked: false, decay: 1.0, weeds: true,
+    unlock: { text: 'Sacar la barbacoa de entre la maleza', jornales: 10, cost: { cal: 1, herramientas: 0.5 } },
+    tasks: [
+      { id: 'barrer', name: 'Barrer la hojarasca y recoger ramas', jornales: 1, effect: { cons: 8, weeds: -30 }, gain: { lena: 1 } },
+      { id: 'ladrillo', name: 'Rejuntar la barbacoa de ladrillo', jornales: 2, cost: { cal: 1 }, effect: { cons: 15 }, skill: 'albanileria' },
+      { id: 'columpio', name: 'Restaurar el columpio del eje de carro', jornales: 2, cost: { herramientas: 0.25, money: 8 }, effect: { cons: 13 }, skill: 'carpinteria' },
+      { id: 'tobogan', name: 'Lijar y pintar el tobogán', jornales: 2, cost: { money: 12 }, effect: { cons: 12 }, skill: 'pintura', notWeather: ['lluvia', 'tormenta'] },
+      { id: 'mesa', name: 'Reponer el mosaico de la mesa', jornales: 1, cost: { cal: 0.25 }, effect: { cons: 7 }, skill: 'pintura' },
     ],
   },
   {
@@ -1266,6 +1279,12 @@ const ITEMS = [
   { id: 'foto_olivo', name: 'Una foto del abuelo Feliciano', thread: 'feliciano', zone: 'dehesa', where: 'full', minDay: 20, icon: 'foto', image: 'foto-feliciano',
     text: 'El abuelo Feliciano, con sombrero de paja, sentado a la sombra de un olivo en pleno verano. Detrás, los árboles recién plantados.',
     hyp: { feliciano: 1 } },
+  { id: 'reloj_sol', name: 'El reloj de sol de Transi', thread: 'transi', zone: 'barbacoa', where: 'full', icon: 'boceto', image: 'reloj-solar',
+    text: 'En el pilar junto al camino, doce azulejos blancos con los números en azul rodean la sombra. Lo hizo la abuela Transi: la sombra va pasando de número en número a lo largo del día.',
+    hyp: { transi: 1 } },
+  { id: 'san_antonio', name: 'La imagen de San Antonio', thread: 'finca', zone: 'ermita', where: 'full', icon: 'foto', image: 'san-antonio',
+    text: 'San Antonio con el Niño en brazos y un libro con azucenas, sobre su peana, entre dos candelabros de latón. El santo que encuentra lo perdido.',
+    hyp: {} },
 ];
 
 const ITEM_BY_ID = Object.fromEntries(ITEMS.map((i) => [i.id, i]));
@@ -2263,7 +2282,7 @@ function giveItem(s, id) {
   addLog(s, `Encuentras ${lowerFirst(it.name)}. ${it.text}`, 'item');
   signal(s, 'item', { id });
   // Al completar el hilo de un familiar, una página con su recuerdo
-  if (it.thread !== 'pianista' && threadCount(s, it.thread) === threadTotal(it.thread)) {
+  if (it.thread !== 'pianista' && it.thread !== 'finca' && threadCount(s, it.thread) === threadTotal(it.thread)) {
     const fam = FAMILY_BY_ID[it.thread];
     if (fam && fam.complete) {
       addLog(s, `✎ ${fam.name}: ${fam.complete}`, 'family');
@@ -2288,7 +2307,7 @@ function threadTotal(thread) {
 }
 
 function threads(s) {
-  const list = [{ id: 'pianista', name: 'El pianista' }, ...FAMILY.map((f) => ({ id: f.id, name: f.name }))];
+  const list = [{ id: 'pianista', name: 'El pianista' }, ...FAMILY.map((f) => ({ id: f.id, name: f.name })), { id: 'finca', name: 'La finca' }];
   return list.map((t) => ({ ...t, found: threadCount(s, t.id), total: threadTotal(t.id) }));
 }
 
@@ -4435,6 +4454,9 @@ const ACTIVITIES = [
     text: 'Agua fría, risas y los juncos de testigo.' },
   { id: 'mosaico', name: 'Taller de mosaico en los bancos', cost: { jornales: 1, cal: 0.5 }, happy: 7, mood: 3, cooldown: 5, zoneCare: { bancos: 6 },
     text: 'Teselas de azulejo roto, cemento cola y paciencia. Los bancos lo agradecen.' },
+  { id: 'barbacoa', name: 'Barbacoa bajo los árboles', cost: { lena: 2, food: 3 }, happy: 14, mood: 7, cooldown: 6,
+    requires: { seasons: [0, 2, 3], seasonWhy: 'En verano no: con el campo seco hay peligro de incendio', zones: { barbacoa: 50 }, notWeather: ['lluvia', 'tormenta', 'viento'] },
+    text: 'Brasas de encina, lo de la huerta a la parrilla, los tocones de asiento y alguien en el columpio del eje de carro.' },
   { id: 'candela', name: 'Candela y castañas', cost: { lena: 2 }, happy: 8, mood: 4, cooldown: 5, requires: { seasons: [2, 3] },
     text: 'Fuego de encina en el patio, castañas asadas y alguna historia de miedo.' },
   { id: 'cine', name: 'Cine de verano en la pared del cortijo', cost: { money: 5 }, happy: 8, mood: 4, cooldown: 6, requires: { seasons: [1], zones: { cortijo: 60 } },
@@ -4536,7 +4558,7 @@ function activityBlocker(s, id) {
   const last = (s.activityLast || {})[id];
   if (last != null && s.day - last < a.cooldown) return `Otra vez dentro de ${a.cooldown - (s.day - last)} días`;
   const r = a.requires || {};
-  if (r.seasons && !r.seasons.includes(seasonIndex(s))) return 'No es la estación';
+  if (r.seasons && !r.seasons.includes(seasonIndex(s))) return r.seasonWhy || 'No es la estación';
   if (r.notWeather && r.notWeather.includes(s.weather)) return `Hoy no: ${WEATHER[s.weather].name.toLowerCase()}`;
   if (r.zones) for (const [z, min] of Object.entries(r.zones)) {
     if (!s.zones[z].unlocked || s.zones[z].cons < min) return `Hace falta ${ZONE_BY_ID[z].name.toLowerCase()} a ${min}`;
@@ -6196,23 +6218,59 @@ const SKETCHES = {
   },
 
   corral(d) {
+    // Según la foto: cobertizo de chapa ondulada verde (cuerpo alto con dos puertas de marco naranja
+    // y paneles grises) y tinglado bajo abierto a su lado; leña de eucalipto apilada. Delante, el
+    // corral con su valla, la yuca y la rueda de carro roja.
     const { pen, r, P } = d;
     const W = d.w, H = d.h;
-    const yard = [[16, 70], [W - 16, 60], [W - 8, H - 12], [10, H - 8]];
-    groundPatch(d, 14, 58, W - 24, H - 66, mix(P.ground, '#c9b490', 0.4), 0.34, 20);
+    const yard = [[16, 112], [W - 16, 104], [W - 8, H - 12], [10, H - 8]];
+    groundPatch(d, 14, 100, W - 24, H - 108, mix(P.ground, '#c9b490', 0.4), 0.34, 20);
     pen.stipple(yard, 0.012, 0.8, '#8a6a40');
-    // Gallinero con tejado de teja
-    const hx = 30, hy = 116;
-    d.wash([[hx, hy], [hx + 70, hy], [hx + 70, hy - 36], [hx, hy - 36]], P.whitewash, { alpha: 0.95 });
+    // ── Cobertizo de chapa verde ──
+    const green = '#3f6a52', gy = 100;
+    const tall = [[26, gy], [110, gy], [110, 36], [26, 36]];
+    d.wash(tall, green, { alpha: 0.72, spread: 0.6 });
     pen.set({ width: 1.3 });
-    pen.rect(hx, hy - 36, 70, 36);
-    roofTiles(d, [[hx - 6, hy - 34], [hx + 76, hy - 34], [hx + 66, hy - 52], [hx + 4, hy - 52]], 3);
-    pen.path([[hx - 6, hy - 34], [hx + 76, hy - 34], [hx + 66, hy - 52], [hx + 4, hy - 52]], true);
-    pen.rect(hx + 26, hy - 20, 14, 20);
-    pen.line(hx + 40, hy, hx + 52, hy + 10);
-    // Valla
+    pen.path(tall, true);
+    pen.set({ width: 0.4, double: false, alpha: 0.6 });
+    for (let x = 29; x < 110; x += 3.2) pen.line(x, 37, x, gy - 1);   // ondas de la chapa
+    pen.set({ alpha: 1, double: true });
+    // Dos puertas: marco naranja, panel gris y rejilla arriba; una abierta hacia fuera
+    for (const [dx, open] of [[34, true], [72, false]]) {
+      const x0 = dx, x1 = dx + 30, y0 = 54;
+      d.wash([[x0, y0], [x1, y0], [x1, gy], [x0, gy]], open ? '#2a2420' : '#b8b4aa', { alpha: open ? 0.55 : 0.85, edge: 0 });
+      if (open) {
+        const door = [[x0, y0], [x0 - 14, y0 + 6], [x0 - 14, gy + 4], [x0, gy]];
+        d.wash(door, '#b8b4aa', { alpha: 0.9, edge: 0 });
+        pen.set({ width: 1.1, color: '#b8541c' }); pen.path(door, true);
+        pen.set({ color: '#3b2a1c' });
+      } else {
+        pen.set({ width: 1.1, color: '#b8541c' }); pen.rect(x0, y0, 30, gy - y0);
+        pen.set({ width: 0.5 }); for (let y = y0 + 2; y < y0 + 8; y += 2) pen.line(x0 + 2, y, x1 - 2, y);
+        pen.set({ color: '#3b2a1c' });
+      }
+    }
+    // Tinglado bajo, abierto, a la derecha
+    const low = [[110, gy], [196, gy], [196, 56], [110, 56]];
+    d.wash([[110, 50], [200, 50], [200, 58], [110, 58]], green, { alpha: 0.75 });
+    d.wash(low, '#8f9a9c', { alpha: 0.35 });
+    d.wash([[116, 62], [190, 62], [190, gy], [116, gy]], '#2a2420', { alpha: 0.35, edge: 0 });
+    pen.set({ width: 1.2 });
+    pen.path([[110, 50], [200, 50], [200, 58], [110, 58]], true);
+    pen.line(196, 58, 196, gy); pen.line(152, 58, 152, gy);
+    pen.set({ width: 0.4, double: false }); for (let x = 112; x < 200; x += 3.2) pen.line(x, 51, x, 57);
+    pen.set({ width: 1.4, double: true });
+    // Leña de eucalipto apilada: troncos con la cara rojiza
+    for (let k = 0; k < 9; k++) {
+      const lx = 206 + (k % 3) * 9 + r.range(-1, 1), ly = 96 - Math.floor(k / 3) * 7;
+      d.washBlob(lx, ly, 4, 3.4, '#c0703a', { alpha: 0.75, layers: 1, edge: 0.5, grain: 0 });
+      pen.set({ width: 0.7 }); pen.ellipse(lx, ly, 4, 3.4, 0.1);
+    }
+    pen.set({ width: 0.8 });
+    for (let k = 0; k < 6; k++) { const x = 196 + r() * 40, y = 100 + r() * 6; pen.line(x, y, x + 14, y - 3); }   // ramas sueltas
+    // Valla del corral
     pen.set({ width: 1.0 });
-    const fence = [[16, 70], [W - 16, 60], [W - 8, H - 12], [10, H - 8], [16, 70]];
+    const fence = [[16, 112], [W - 16, 104], [W - 8, H - 12], [10, H - 8], [16, 112]];
     for (let i = 0; i < fence.length - 1; i++) {
       const [x1, y1] = fence[i], [x2, y2] = fence[i + 1];
       const n = Math.round(Math.hypot(x2 - x1, y2 - y1) / 22);
@@ -6223,9 +6281,9 @@ const SKETCHES = {
       pen.line(x1, y1 - 11, x2, y2 - 11);
       pen.line(x1, y1 - 5, x2, y2 - 5);
     }
-    // Yuca con rueda de carro roja (de la foto)
-    yuca(d, W - 50, 150, 1.2, 26);
-    const wx = W - 46, wy = 150;
+    // Yuca con la rueda de carro roja
+    yuca(d, W - 50, 168, 1.2, 26);
+    const wx = W - 46, wy = 168;
     pen.set({ width: 1.2 });
     d.wash(blobPts(wx, wy - 18, 18, 18, r, 0.02, 30), '#b8301f', { alpha: 0.18, edge: 0, grain: 0 });
     pen.set({ color: '#7a2010' });
@@ -6239,62 +6297,78 @@ const SKETCHES = {
     d.washBlob(wx, wy - 18, 4.5, 4.5, P.yellow, { alpha: 0.9, layers: 1, edge: 0.4, grain: 0 });
     pen.set({ color: '#3b2a1c', width: 1.4 });
     // Comedero
-    d.wash([[110, 200], [160, 200], [156, 210], [114, 210]], P.wood, { alpha: 0.5 });
-    pen.path([[110, 200], [160, 200], [156, 210], [114, 210]], true);
-    // Tocones (de la foto)
-    for (const [tx, ty] of [[40, 210], [56, 214]]) {
-      d.wash([[tx - 6, ty], [tx + 6, ty], [tx + 6, ty - 14], [tx - 6, ty - 14]], P.wood, { alpha: 0.45 });
-      pen.rect(tx - 6, ty - 14, 12, 14);
-      pen.ellipse(tx, ty - 14, 6, 2);
-    }
+    d.wash([[110, 214], [160, 214], [156, 224], [114, 224]], P.wood, { alpha: 0.5 });
+    pen.path([[110, 214], [160, 214], [156, 224], [114, 224]], true);
+    // Matojo de esparto delante
+    pen.set({ width: 0.6, double: false, color: '#7a6a3a' });
+    for (let k = 0; k < 14; k++) { const a = -Math.PI / 2 + (k / 13 - 0.5) * 1.6; pen.line(40, 248, 40 + Math.cos(a) * 14, 248 + Math.sin(a) * 16); }
+    pen.set({ width: 1.4, double: true, color: '#3b2a1c' });
   },
 
   pozo(d) {
+    // Según la foto: brocal redondo de lajas de piedra gris sobre una plataforma de losas
+    // irregulares, emparrado de postes de hierro con alambre y la parra trepando, cubo de zinc boca
+    // abajo en el brocal y un álamo alto detrás.
     const { pen, r, P } = d;
     const W = d.w, H = d.h;
-    groundPatch(d, 4, 60, W - 8, H - 64, mix(P.ground, '#bfae88', 0.4), 0.3, 24);
-    // Emparrado: postes, vigas y la viña por encima
-    pen.set({ width: 1.3 });
-    for (const x of [14, W - 14]) {
-      d.wash([[x - 3, H - 8], [x + 3, H - 8], [x + 3, 34], [x - 3, 34]], P.wood, { alpha: 0.5, edge: 0 });
-      pen.line(x - 3, H - 8, x - 3, 34); pen.line(x + 3, H - 8, x + 3, 34);
+    groundPatch(d, 4, 70, W - 8, H - 74, mix(P.ground, '#c8b48a', 0.5), 0.3, 24);
+    // Álamo detrás, a la derecha
+    pen.set({ width: 1.2 });
+    pen.line(W - 32, H - 40, W - 30, 0); pen.line(W - 28, H - 40, W - 27, 0);
+    const pop = canopyPts(W - 30, 4, 18, 40, r, 12, 0.3);
+    d.wash(pop, mix(P.foliage, '#9ab060', 0.45), { alpha: 0.42 });
+    pen.set({ width: 0.8 }); pen.path(pop, true);
+    for (let i = 0; i < 18; i++) pen.dot(W - 30 + r.range(-14, 14), 4 + r.range(-32, 32), 1.1, '#5f7a3a', 0.6);
+    // Plataforma de losas (vista un poco desde arriba)
+    const plat = [[6, H - 46], [W - 10, H - 52], [W - 4, H - 22], [10, H - 14]];
+    d.wash(plat, '#c4c0b6', { alpha: 0.8, edge: 0.2 });
+    pen.set({ width: 0.5, double: false });
+    for (let i = 0; i < 26; i++) {
+      const x = 14 + r() * (W - 30), y = H - 44 + r() * 26;
+      pen.path(blobPts(x, y, 5 + r() * 4, 2.5 + r() * 1.5, r, 0.25, 6), true);
     }
-    pen.line(6, 34, W - 6, 34); pen.line(6, 40, W - 6, 40);
-    for (let x = 18; x < W - 10; x += 16) pen.line(x, 32, x + 6, 26);
-    d.wash(canopyPts(W / 2, 30, W / 2 - 2, 20, r, 14, 0.35), mix(P.foliage, '#6a8a3a', 0.4), { alpha: 0.55 });
-    pen.set({ width: 0.8 });
-    pen.path(canopyPts(W / 2, 30, W / 2 - 2, 20, r, 14, 0.35), true);
-    // Pámpanos colgando y racimos
-    for (let i = 0; i < 7; i++) {
-      const x = 20 + i * 17 + r.range(-3, 3);
-      pen.curve([[x, 42], [x + 3, 50], [x - 1, 58]]);
-      if (i % 2 === 0) for (let k = 0; k < 5; k++) pen.dot(x + (k % 2) * 3 - 1, 50 + k * 2.4, 2.1, '#5a3a6a', 0.8);
+    pen.set({ width: 1.3, double: true });
+    pen.path(plat, true);
+    d.wash([[10, H - 14], [W - 4, H - 22], [W - 4, H - 16], [10, H - 8]], '#9a968c', { alpha: 0.6 });
+    pen.line(10, H - 8, W - 4, H - 16);
+    // Postes de hierro, alambres y la parra
+    const posts = [[12, H - 30], [46, H - 44], [W - 50, H - 46], [W - 16, H - 24]];
+    pen.set({ width: 1.3, color: '#7a4a2a' });
+    for (const [x, y] of posts) pen.line(x, y, x + 1, 24);
+    pen.set({ width: 0.5, double: false, color: '#5a4a3a' });
+    pen.line(12, 24, W - 16, 26); pen.line(46, 22, W - 50, 22); pen.line(12, 24, 46, 22);
+    pen.set({ color: '#3b2a1c', double: true });
+    const vine = canopyPts(W / 2 - 10, 26, W / 2 - 14, 14, r, 14, 0.4);
+    d.wash(vine, mix(P.foliage, '#7a9a3a', 0.4), { alpha: 0.5 });
+    pen.set({ width: 0.8 }); pen.path(vine, true);
+    pen.set({ width: 1.1, color: '#6a4a2a' });
+    pen.curve([[W - 60, H - 40], [W - 54, 70], [W - 70, 40], [W - 80, 28]]);   // tronco retorcido de la parra
+    pen.set({ color: '#3b2a1c' });
+    for (let i = 0; i < 6; i++) {
+      const x = 20 + i * 15 + r.range(-3, 3);
+      pen.set({ width: 0.6 }); pen.curve([[x, 34], [x + 3, 42], [x - 1, 48]]);
+      if (i % 2 === 0) for (let k = 0; k < 5; k++) pen.dot(x + (k % 2) * 3 - 1, 42 + k * 2.3, 2, '#5a3a6a', 0.8);
     }
-    // El pozo: brocal encalado, arco de hierro, polea y cubo
-    const cx = W / 2, top = H - 50;
-    groundShadow(d, cx + 4, H - 14, 36, 6);
-    d.wash([[cx - 30, top], [cx + 30, top], [cx + 30, H - 18], [cx - 30, H - 18]], P.whitewash, { alpha: 1 });
-    d.washBlob(cx, top, 30, 9, '#e8e4da', { alpha: 1, irregular: 0.03 });
-    d.washBlob(cx, top, 22, 6, '#2a3a44', { alpha: 0.85, irregular: 0.03, edge: 0 });
+    // Brocal de lajas
+    const cx = W / 2 + 14, top = H - 76;
+    groundShadow(d, cx + 4, H - 34, 26, 5);
+    d.wash([[cx - 22, top], [cx + 22, top], [cx + 22, H - 40], [cx - 22, H - 40]], '#d8d4ca', { alpha: 1 });
+    pen.set({ width: 0.5, double: false });
+    for (let row = 0; row < 3; row++) for (let k = 0; k < 4; k++) {
+      const x = cx - 20 + k * 10 + (row % 2) * 5 + r.range(-1, 1), y = top + 6 + row * 9;
+      pen.path(blobPts(x, y, 4.5, 3.4, r, 0.2, 6), true);
+      d.washBlob(x, y, 4, 3, r() < 0.5 ? P.granite : '#b8b4aa', { alpha: 0.4, layers: 1, edge: 0.3, grain: 0 });
+    }
+    pen.set({ width: 1.4, double: true });
+    pen.ellipse(cx, top, 22, 6.5, 0.04);
+    d.washBlob(cx, top, 17, 4.5, '#2a3a44', { alpha: 0.8, irregular: 0.03, edge: 0 });
+    pen.line(cx - 22, top, cx - 22, H - 40); pen.line(cx + 22, top, cx + 22, H - 40);
+    pen.curve([[cx - 22, H - 40], [cx, H - 35], [cx + 22, H - 40]]);
+    // Cubo de zinc boca abajo
+    d.wash([[cx - 5, top - 12], [cx + 5, top - 12], [cx + 7, top - 2], [cx - 7, top - 2]], '#9aa0a4', { alpha: 0.85 });
+    pen.set({ width: 1.0 });
+    pen.path([[cx - 5, top - 12], [cx + 5, top - 12], [cx + 7, top - 2], [cx - 7, top - 2]], true);
     pen.set({ width: 1.4 });
-    pen.ellipse(cx, top, 30, 9, 0.03);
-    pen.ellipse(cx, top, 22, 6, 0.03);
-    pen.line(cx - 30, top, cx - 30, H - 18);
-    pen.line(cx + 30, top, cx + 30, H - 18);
-    pen.curve([[cx - 30, H - 18], [cx, H - 12], [cx + 30, H - 18]]);
-    pen.set({ width: 0.6, double: false });
-    for (let k = 0; k < 6; k++) pen.line(cx - 26 + k * 10, top + 10, cx - 27 + k * 10, H - 16);
-    pen.set({ width: 1.6, double: true, color: '#2b2420' });
-    pen.curve([[cx - 26, top - 2], [cx - 18, top - 30], [cx, top - 38], [cx + 18, top - 30], [cx + 26, top - 2]]);
-    pen.ellipse(cx, top - 32, 4, 4);
-    pen.set({ width: 0.8 });
-    pen.line(cx, top - 28, cx, top - 12);
-    pen.set({ color: '#3b2a1c', width: 1.1 });
-    d.wash([[cx - 6, top - 12], [cx + 6, top - 12], [cx + 5, top - 2], [cx - 5, top - 2]], '#8a8a8a', { alpha: 0.7 });
-    pen.path([[cx - 6, top - 12], [cx + 6, top - 12], [cx + 5, top - 2], [cx - 5, top - 2]], true);
-    // Cántaro junto al brocal
-    d.washBlob(cx + 42, H - 22, 7, 9, '#c07a4a', { alpha: 0.75 });
-    pen.ellipse(cx + 42, H - 22, 7, 9);
   },
 
   bancos(d) {
@@ -6378,6 +6452,85 @@ const SKETCHES = {
       pen.set({ width: 1.4, double: true, color: '#3b2a1c' });
     }
     leafLitter(d, 0, 10, W, H - 14, 26, ['#9a6a35', '#b08a3a', '#c9a24a']);
+  },
+
+  barbacoa(d) {
+    // Según la foto: bajo un árbol grande, la barbacoa de ladrillo con su chimenea tiznada, bancos
+    // de obra, tocones de asiento, una mesa redonda de mosaico con pie amarillo, el tobogán rojo
+    // y verde, yucas, y el eje de rueda de carro pintado de colores que hacía de columpio.
+    const { pen, r, P } = d;
+    const W = d.w, H = d.h;
+    groundPatch(d, 6, 40, W - 12, H - 46, mix(P.ground, '#9a7a58', 0.45), 0.36, 26);
+    for (let i = 0; i < 14; i++) d.washBlob(r() * W, 50 + r() * (H - 60), 10 + r() * 14, 4 + r() * 4, '#5a4a38', { alpha: 0.14, edge: 0, grain: 0 });
+    // Árbol grande cuya copa cubre la zona por arriba
+    pen.set({ width: 1.6 });
+    pen.curve([[40, 124], [42, 90], [38, 70], [34, 52]]);
+    pen.curve([[50, 124], [50, 90], [50, 72], [56, 54]]);
+    pen.set({ width: 1.0 }); pen.line(46, 76, 76, 52);
+    for (const [cx, cy, rx, ry] of [[44, 40, 46, 30], [104, 34, 40, 24], [160, 40, 30, 20]]) {
+      const crown = canopyPts(cx, cy, rx, ry, r, 12, 0.32);
+      d.wash(crown, mix(P.foliage, '#6a9a44', 0.35), { alpha: 0.38, spread: 2 });
+      pen.set({ width: 0.8 }); pen.path(crown, true);
+      for (let i = 0; i < 8; i++) { const px = cx + r.range(-rx, rx) * 0.7, py = cy + r.range(-ry, ry) * 0.6; pen.line(px, py, px + 3, py + 2); }
+    }
+    // Barbacoa de ladrillo con tejadillo y chimenea
+    const bx = 70, by = 104;
+    const body = [[bx, by], [bx + 56, by], [bx + 56, by - 34], [bx, by - 34]];
+    d.wash(body, '#b5654a', { alpha: 0.75 });
+    d.wash([[bx + 6, by - 4], [bx + 50, by - 4], [bx + 50, by - 22], [bx + 6, by - 22]], '#2a2420', { alpha: 0.55, edge: 0 });
+    const roof = [[bx - 4, by - 34], [bx + 60, by - 34], [bx + 28, by - 58]];
+    d.wash(roof, '#b5654a', { alpha: 0.8 });
+    d.washBlob(bx + 28, by - 44, 10, 10, '#2a2420', { alpha: 0.35, edge: 0, grain: 0 });   // tizne
+    pen.set({ width: 1.2 }); pen.path(body, true); pen.path(roof, true);
+    pen.set({ width: 0.35, double: false });
+    for (let y = by - 31; y < by; y += 3) pen.line(bx, y, bx + 56, y);
+    pen.set({ width: 0.9, double: true });
+    for (let x = bx + 10; x < bx + 48; x += 4) pen.line(x, by - 14, x, by - 6);           // parrilla
+    // Bancos de obra (dos) y tocones
+    for (const [x, y, w] of [[12, 150, 46], [86, 150, 50]]) {
+      d.wash([[x, y - 8], [x + w, y - 8], [x + w, y], [x, y]], '#d8d4ca', { alpha: 1 });
+      pen.set({ width: 1.0 }); pen.rect(x, y - 8, w, 8);
+      pen.rect(x + 4, y, 7, 7); pen.rect(x + w - 11, y, 7, 7);
+      pen.set({ width: 0.4, double: false });
+      for (let k = 0; k < 5; k++) pen.dot(x + 6 + k * (w - 12) / 4, y - 4, 1, '#fbf8f0', 1);
+      pen.set({ double: true });
+    }
+    for (const [x, y] of [[72, 186], [168, 128], [192, 130]]) {
+      d.wash([[x - 7, y], [x + 7, y], [x + 7, y - 14], [x - 7, y - 14]], '#8a7a66', { alpha: 0.6 });
+      pen.set({ width: 1.0 }); pen.rect(x - 7, y - 14, 14, 14); pen.ellipse(x, y - 14, 7, 2.2);
+      pen.set({ width: 0.4 }); pen.line(x - 1, y - 12, x + 1, y - 2);
+    }
+    // Mesa redonda de mosaico con pie amarillo
+    const mx = 180, my = 110;
+    d.wash([[mx - 6, my + 2], [mx + 6, my + 2], [mx + 6, my + 18], [mx - 6, my + 18]], P.yellow, { alpha: 0.75 });
+    pen.set({ width: 1.0 }); pen.rect(mx - 6, my + 2, 12, 16);
+    d.washBlob(mx, my, 20, 6, '#e8e2d6', { alpha: 1, irregular: 0.03 });
+    pen.ellipse(mx, my, 20, 6, 0.03);
+    for (let k = 0; k < 9; k++) pen.dot(mx + r.range(-15, 15), my + r.range(-3, 3), 1.1, r.pick(['#2f5f9e', '#c9412f', '#4f8a3a', '#e2b33a']), 0.9);
+    // Tobogán rojo y verde
+    const tx = 206, ty = 186;
+    pen.set({ width: 1.4, color: '#b8301f', double: false });
+    pen.line(tx, ty, tx + 6, ty - 40); pen.line(tx + 10, ty, tx + 16, ty - 40);
+    for (let k = 1; k < 5; k++) pen.line(tx + k * 1.4, ty - k * 9, tx + 10 + k * 1.4, ty - k * 9);
+    pen.set({ color: '#3a7a3a' });
+    pen.curve([[tx + 6, ty - 40], [tx + 4, ty - 50], [tx + 10, ty - 50]]);
+    pen.curve([[tx + 16, ty - 40], [tx + 14, ty - 50], [tx + 20, ty - 50]]);
+    pen.set({ color: '#b8301f' });
+    pen.line(tx + 8, ty - 40, tx - 40, ty - 6); pen.line(tx + 16, ty - 40, tx - 32, ty - 4);
+    pen.set({ color: '#3b2a1c', double: true, width: 1.4 });
+    // El eje de rueda de carro pintado de colores (el viejo columpio)
+    const ex = 136, ey = 194;
+    pen.set({ width: 1.2 }); pen.line(ex, ey, ex, ey - 16);
+    const hub = [[ex - 9, ey - 16], [ex + 9, ey - 16], [ex + 7, ey - 30], [ex - 7, ey - 30]];
+    d.wash(hub, '#c9412f', { alpha: 0.6 });
+    d.wash([[ex - 8, ey - 22], [ex + 8, ey - 22], [ex + 8, ey - 26], [ex - 8, ey - 26]], P.yellow, { alpha: 0.8 });
+    pen.path(hub, true);
+    d.washBlob(ex, ey - 31, 6, 2.2, '#2f5f9e', { alpha: 0.8 });
+    pen.ellipse(ex, ey - 31, 6, 2.2);
+    // Yucas a la derecha
+    yuca(d, W - 22, 92, 1.1); yuca(d, W - 12, 120, 0.9);
+    leafLitter(d, 6, 46, W - 12, H - 52, 40, ['#c9a24a', '#9a6a35', '#b08a3a']);
+    pen.set({ width: 1.4 });
   },
 
   piano(d) {
@@ -6899,7 +7052,7 @@ const PAD = 46;
 const LABELS = {
   cortijo: [775, 534], patio: [770, 968], paseo: [1160, 760], ermita: [1475, 680], pozo: [1000, 414], bancos: [1115, 994], huerta: [330, 582],
   bosquete: [290, 818], dehesa: [250, 140], muros: [640, 462], alberca: [940, 184], colmenar: [1205, 134],
-  corral: [1445, 140], piano: [1195, 424],
+  corral: [1445, 140], piano: [1195, 424], barbacoa: [1455, 452],
 };
 
 function drawCtx(ctx, seed, P, w, h) {
@@ -7001,8 +7154,8 @@ class FarmMap {
     }
     pen.set({ width: 1.4, double: true, alpha: 1 });
     // Árboles y matas sueltas en los huecos del plano
-    const loose = [[1080, 360, 'e', 0.7], [620, 470, 'a', 0.9], [1340, 560, 'e', 0.9],
-      [1350, 650, 'a', 1], [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8],
+    const loose = [[1080, 360, 'e', 0.7], [620, 470, 'a', 0.9],
+      [1270, 360, 'e', 0.75], [590, 760, 'a', 0.8],
       [560, 990, 'a', 0.8], [1250, 300, 'a', 0.8], [800, 410, 'e', 0.7], [1050, 120, 'e', 0.6], [520, 400, 'a', 0.6]];
     for (const [x, y, k, s] of loose) {
       if (k === 'e') encinaFree(d, x, y, s); else matorral(d, x, y, s);

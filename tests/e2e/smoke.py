@@ -52,7 +52,7 @@ def run(url, tag, browser):
     pg.wait_for_selector('.hud', timeout=10000)
     time.sleep(1)
     st = pg.evaluate("() => ({ day: __huerta.s.day, zones: Object.keys(__huerta.s.zones).length })")
-    check('partida creada con 14 zonas', st['zones'] == 14)
+    check('partida creada con 15 zonas', st['zones'] == 15)
     pg.screenshot(path=f'{SHOTS}/{tag}-03-plano.png')
 
     # Tocar el cortijo y encalar
