@@ -84,7 +84,7 @@ export function exportFile(s) {
 
 export function loadSettings() {
   const ls = storage();
-  const def = { music: 0.7, ambience: 0.6, sfx: 0.7, lofi: true, pauseBook: true, names: false, bigText: false, seenTips: 0 };
+  const def = { music: 0.7, ambience: 0.6, sfx: 0.7, lofi: true, bso: true, pauseBook: true, names: false, bigText: false, seenTips: 0 };
   try { return { ...def, ...JSON.parse((ls && ls.getItem(SETTINGS_KEY)) || '{}') }; } catch { return def; }
 }
 

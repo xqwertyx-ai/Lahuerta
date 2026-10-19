@@ -353,6 +353,7 @@ export class Notebook {
     el.append(
       h('h3', {}, 'Sonido'),
       slider('music', 'Música'), slider('ambience', 'Ambiente'), slider('sfx', 'Efectos'),
+      check('bso', 'Banda sonora grabada (si no, piano generativo)'),
       check('lofi', 'Capa lo-fi (vinilo, ritmo suave, cinta)'),
       h('div', { class: 'row', style: { margin: '8px 0' } }, btn('Probar sonido', () => g.testSound(), { cls: 'small' }),
         h('span', { class: 'small muted' }, g.audioStatus())),

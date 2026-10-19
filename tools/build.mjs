@@ -123,6 +123,9 @@ if (fs.existsSync(path.join(ROOT, 'icons/icon-192.png'))) {
 fs.writeFileSync(path.join(DIST, 'index.html'), html);
 // PWA
 for (const f of ['manifest.webmanifest']) fs.copyFileSync(path.join(ROOT, f), path.join(DIST, f));
+// La banda sonora va aparte (no dentro del HTML): pesa varios megas y se carga mientras suena
+fs.mkdirSync(path.join(DIST, 'audio'), { recursive: true });
+for (const f of fs.readdirSync(path.join(ROOT, 'audio'))) fs.copyFileSync(path.join(ROOT, 'audio', f), path.join(DIST, 'audio', f));
 for (const f of fs.readdirSync(path.join(ROOT, 'icons'))) fs.copyFileSync(path.join(ROOT, 'icons', f), path.join(DIST, 'icons', f));
 fs.writeFileSync(path.join(DIST, 'sw.js'), read('sw.js').replace('__VERSION__', version));
 const kb = (fs.statSync(path.join(DIST, 'index.html')).size / 1024).toFixed(0);

@@ -14,6 +14,7 @@ import { SEASONS } from '../data/seasons.js';
 import * as Save from '../save/save.js';
 import { audio } from '../audio/audio.js';
 import { music } from '../audio/music.js';
+import { bso } from '../audio/bso.js';
 import { ambience, sfx } from '../audio/ambience.js';
 
 export class Game {
@@ -348,8 +349,8 @@ export class Game {
     window.addEventListener('keydown', unlock, true);
     window.addEventListener('touchend', unlock, true);
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { if (this.s) Save.save(this.s); audio.suspend(); }
-      else { audio.resume(); }
+      if (document.hidden) { if (this.s) Save.save(this.s); bso.pause(); audio.suspend(); }
+      else { audio.resume(); setTimeout(() => bso.resume(), 200); }
     });
     window.addEventListener('pagehide', () => { if (this.s) Save.save(this.s); });
     window.addEventListener('pageshow', () => audio.resume());
@@ -374,10 +375,12 @@ export class Game {
     audio.unlock();
     if (audio.running && !this._audioStarted) {
       this._audioStarted = true;
+      bso.onFail = () => { music.silent = false; };
+      bso.start();
       this.applySettings(false);
       music.start();
       ambience.start();
-    }
+    } else if (audio.running) bso.resume();
   }
 
   updateAudio() {
@@ -395,7 +398,8 @@ export class Game {
 
   playTheme(full) {
     if (!audio.running) return;
-    music.playTheme(S.themeNotesKnown(this.s || S.createState(1)), full);
+    const dur = music.playTheme(S.themeNotesKnown(this.s || S.createState(1)), full);
+    if (dur) bso.duck(dur + 2);
   }
 
   testSound() {
@@ -415,6 +419,8 @@ export class Game {
     audio.setVolume('sfx', st.sfx);
     audio.setLofi(st.lofi);
     music.setLofi(st.lofi);
+    bso.setEnabled(st.bso !== false);
+    music.silent = bso.enabled && !bso.failed;
     document.documentElement.classList.toggle('big-text', !!st.bigText);
     if (persist) this.persistSettings();
     if (this.ui) setTimeout(() => this.layout(), 50);

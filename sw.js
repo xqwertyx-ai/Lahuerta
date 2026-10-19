@@ -12,7 +12,7 @@ self.addEventListener('activate', (e) => {
 
 // Primero la red (para recibir versiones nuevas) y, si no hay, la copia guardada
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
+  if (e.request.method !== 'GET' || e.request.headers.has('range')) return;   // el audio se pide por trozos
   e.respondWith(
     fetch(e.request).then((res) => {
       const copy = res.clone();

@@ -85,6 +85,7 @@ export class Music {
     this.themeUntil = 0;
     this.lofiGain = null;
     this.duck = 1;
+    this.silent = false;   // con la banda sonora grabada sonando, el piano generativo calla
   }
 
   start() {
@@ -117,6 +118,7 @@ export class Music {
 
   _beat(t) {
     const c = audio.ctx;
+    if (this.silent && t >= this.themeUntil) return;
     if (!this.on || t < this.themeUntil) { this._lofiBeat(t, true); return; }
     const m = MOODS[this.season];
     const h = this.hour;
